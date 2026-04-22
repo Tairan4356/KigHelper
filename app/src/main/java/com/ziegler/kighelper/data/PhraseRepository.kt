@@ -20,9 +20,15 @@ class PhraseRepository(context: Context) {
         prefs.edit { putString("phrases_key", json) }
     }
 
+    fun clearAll() {
+        prefs.edit { remove("phrases_key") }
+    }
+
     private fun getDefaultPhrases() = listOf(
         Phrase(label = "你好", speech = "你好"),
         Phrase(label = "谢谢", speech = "谢谢你"),
+        Phrase(label = "我的角色", speech = "我今天出的角色是……"),
+        Phrase(label = "不能说话", speech = "我现在不能说话，可以打字沟通"),
         Phrase(label = "喝水", speech = "我想喝点水")
     )
 }
