@@ -3,6 +3,7 @@ package com.ziegler.kighelper
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.ui.AACViewModel
 import com.ziegler.kighelper.ui.KigHelperApp
@@ -16,6 +17,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 开启边到边显示
+        enableEdgeToEdge()
 
         // 配置锁屏窗口权限
         WindowConfig.setup(this)

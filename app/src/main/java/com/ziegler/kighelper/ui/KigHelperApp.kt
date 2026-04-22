@@ -1,6 +1,8 @@
 package com.ziegler.kighelper.ui
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
@@ -38,6 +40,10 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
     )
 
     Scaffold(
+        // 配置 Scaffold 自动处理安全区域
+        // safeDrawing 包含了状态栏、导航栏以及 IME 键盘区域
+        contentWindowInsets = WindowInsets.safeDrawing,
+
         bottomBar = {
             NavigationBar {
                 items.forEach { item ->
