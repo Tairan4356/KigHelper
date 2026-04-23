@@ -6,7 +6,6 @@ import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseRepository
 
 class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
-    // 使用 SnapshotStateList，Compose 会自动监听列表内容的增删
     var phraseList = mutableStateListOf<Phrase>()
         private set
 
@@ -30,10 +29,17 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         repository.savePhrases(phraseList)
     }
 
+    fun movePhrase(fromIndex: Int, toIndex: Int) {
+        if (fromIndex !in phraseList.indices || toIndex !in phraseList.indices) return
+
+        val item = phraseList.removeAt(fromIndex)
+        phraseList.add(toIndex, item)
+
+        repository.savePhrases(phraseList)
+    }
+
     fun resetToDefault() {
-        // 清除持久化数据
         repository.clearAll()
-        // 重新加载（Repository 内部逻辑会因为找不到数据而加载默认值）
         loadPhrases()
     }
 }

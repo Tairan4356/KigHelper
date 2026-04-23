@@ -28,11 +28,9 @@ import com.ziegler.kighelper.ui.screens.MainScreen
 fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
     val navController = rememberNavController()
 
-    // 获取当前路由
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "input"
 
-    // 导航项定义
     val items = listOf(
         NavigationItem("main", "快捷", Icons.Filled.Home),
         NavigationItem("input", "输入", Icons.Filled.Keyboard),
@@ -40,8 +38,6 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
     )
 
     Scaffold(
-        // 配置 Scaffold 自动处理安全区域
-        // safeDrawing 包含了状态栏、导航栏以及 IME 键盘区域
         contentWindowInsets = WindowInsets.safeDrawing,
 
         bottomBar = {
@@ -67,10 +63,10 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "input",
+            startDestination = "main",
             modifier = Modifier.padding(innerPadding)
         ) {
-            // 1. 快捷短语页
+            // 快捷短语页
             composable("main") {
                 MainScreen(
                     phrases = viewModel.phraseList, // 直接使用 viewModel 的列表
@@ -78,17 +74,18 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
                 )
             }
 
-            // 2. 键盘输入页
+            // 键盘输入页
             composable("input") {
                 InputScreen(onSpeak = onSpeak)
             }
 
-            // 3. 管理编辑页
+            // 管理编辑页
             composable("edit") {
                 EditScreen(
                     phrases = viewModel.phraseList,
                     onAdd = { label, speech -> viewModel.addPhrase(label, speech) },
                     onDelete = { phrase -> viewModel.deletePhrase(phrase) },
+                    onMove = { from, to -> viewModel.movePhrase(from, to) },
                     onReset = { viewModel.resetToDefault() }
                 )
             }

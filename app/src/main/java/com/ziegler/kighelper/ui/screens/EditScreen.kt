@@ -9,15 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -31,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.ui.components.PhraseItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +35,7 @@ fun EditScreen(
     phrases: List<Phrase>,
     onAdd: (String, String) -> Unit,
     onDelete: (Phrase) -> Unit,
+    onMove: (Int, Int) -> Unit,
     onReset: () -> Unit
 ) {
     var newLabel by remember { mutableStateOf("") }
@@ -52,7 +50,6 @@ fun EditScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 新增短语卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -97,44 +94,16 @@ fun EditScreen(
         }
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            items(phrases) { phrase ->
-                PhraseItem(phrase = phrase, onDelete = { onDelete(phrase) })
+            itemsIndexed(phrases, key = { _, phrase -> phrase.id }) { index, phrase ->
+                PhraseItem(
+                    phrase = phrase,
+                    isFirst = index == 0,
+                    isLast = index == phrases.size - 1,
+                    onDelete = { onDelete(phrase) },
+                    onMoveUp = { onMove(index, index - 1) },
+                    onMoveDown = { onMove(index, index + 1) }
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun PhraseItem(phrase: Phrase, onDelete: () -> Unit) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = phrase.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "语音: ${phrase.speech}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error
-                )
             }
         }
     }
