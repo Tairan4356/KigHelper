@@ -39,12 +39,12 @@ fun EditScreen(
     onReset: () -> Unit
 ) {
     var newLabel by remember { mutableStateOf("") }
-    var newSpeech by remember { mutableStateOf("") }
+    var newText by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(12.dp,0.dp)
     ) {
         Text("管理短语", style = MaterialTheme.typography.headlineSmall)
 
@@ -58,21 +58,21 @@ fun EditScreen(
                 OutlinedTextField(
                     value = newLabel,
                     onValueChange = { newLabel = it },
-                    label = { Text("按钮显示 (如: 谢谢)") },
+                    label = { Text("按钮显示") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = newSpeech,
-                    onValueChange = { newSpeech = it },
-                    label = { Text("朗读内容 (如: 谢谢你)") },
+                    value = newText,
+                    onValueChange = { newText = it },
+                    label = { Text("完整内容") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Button(
                     onClick = {
-                        if (newLabel.isNotBlank() && newSpeech.isNotBlank()) {
-                            onAdd(newLabel, newSpeech)
-                            newLabel = ""; newSpeech = ""
+                        if (newLabel.isNotBlank() && newText.isNotBlank()) {
+                            onAdd(newLabel, newText)
+                            newLabel = ""; newText = ""
                         }
                     },
                     modifier = Modifier.align(Alignment.End).padding(top = 8.dp)

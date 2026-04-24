@@ -46,7 +46,7 @@ fun PhraseItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "语音: ${phrase.speech}",
+                    text = phrase.speech,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,6 +1,8 @@
 package com.ziegler.kighelper.ui
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
@@ -29,17 +31,15 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
     val navController = rememberNavController()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: "input"
+    val currentRoute = navBackStackEntry?.destination?.route ?: "main"
 
     val items = listOf(
         NavigationItem("main", "快捷", Icons.Filled.Home),
         NavigationItem("input", "输入", Icons.Filled.Keyboard),
         NavigationItem("edit", "管理", Icons.Filled.Edit)
     )
-
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
-
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
         bottomBar = {
             NavigationBar {
                 items.forEach { item ->
@@ -55,12 +55,10 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        }
-                    )
+                        })
                 }
             }
-        }
-    ) { innerPadding ->
+        }) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = "main",
@@ -70,8 +68,7 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
             composable("main") {
                 MainScreen(
                     phrases = viewModel.phraseList, // 直接使用 viewModel 的列表
-                    onPhraseClick = { phrase -> onSpeak(phrase.speech) }
-                )
+                    onPhraseClick = { phrase -> onSpeak(phrase.speech) })
             }
 
             // 键盘输入页
@@ -86,11 +83,12 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
                     onAdd = { label, speech -> viewModel.addPhrase(label, speech) },
                     onDelete = { phrase -> viewModel.deletePhrase(phrase) },
                     onMove = { from, to -> viewModel.movePhrase(from, to) },
-                    onReset = { viewModel.resetToDefault() }
-                )
+                    onReset = { viewModel.resetToDefault() })
             }
         }
     }
 }
 
-data class NavigationItem(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+data class NavigationItem(
+    val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector
+)

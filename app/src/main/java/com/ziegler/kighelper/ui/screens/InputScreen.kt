@@ -42,7 +42,7 @@ fun InputScreen(onSpeak: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(12.dp,0.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- 文字展示区 ---

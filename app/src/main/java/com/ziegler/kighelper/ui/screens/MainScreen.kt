@@ -52,7 +52,7 @@ fun MainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp)
+            .padding(12.dp,0.dp)
     ) {
         // --- 显示区 ---
         Surface(
@@ -109,16 +109,16 @@ fun MainScreen(
 
         // --- 快捷按钮区 ---
         Text(
-            text = "点击短语发音:",
+            text = "点击短语显示:",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(0.45f),
-            contentPadding = PaddingValues(bottom = 80.dp),
+            contentPadding = PaddingValues(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

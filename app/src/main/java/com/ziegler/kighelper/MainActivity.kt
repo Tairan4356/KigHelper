@@ -1,9 +1,11 @@
 package com.ziegler.kighelper
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.ui.AACViewModel
 import com.ziegler.kighelper.ui.KigHelperApp
@@ -15,6 +17,7 @@ import com.ziegler.kighelper.utils.WindowConfig
 class MainActivity : ComponentActivity() {
     private lateinit var ttsManager: TTSManager
 
+    @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 开启边到边显示
