@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -36,55 +38,62 @@ import androidx.compose.ui.unit.sp
 
 @OptIn(androidx.compose.animation.ExperimentalAnimationApi::class)
 @Composable
-fun InputScreen(onSpeak: (String) -> Unit) {
+fun InputScreen(onSpeak: (String) -> Unit, onStop: () -> Unit) {
     var text by remember { mutableStateOf("") }
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp,0.dp),
+            .padding(12.dp, 0.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- 文字展示区 ---
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth(), contentAlignment = Alignment.Center
         ) {
-            androidx.compose.animation.AnimatedContent(
-                targetState = text,
-                transitionSpec = {
-                    (fadeIn() + scaleIn(initialScale = 0.9f)).togetherWith(
-                        fadeOut() + scaleOut(
-                            targetScale = 0.9f
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.animation.AnimatedContent(
+                    targetState = text, transitionSpec = {
+                        (fadeIn() + scaleIn(initialScale = 0.9f)).togetherWith(
+                            fadeOut() + scaleOut(
+                                targetScale = 0.9f
+                            )
                         )
+                    }, label = "inputTextColorAnimation"
+                ) { targetText ->
+                    Text(
+                        text = targetText.ifEmpty { "请输入文字" },
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            lineHeight = 52.sp,
+                            letterSpacing = 0.sp
+                        ),
+                        textAlign = TextAlign.Center,
+                        color = if (targetText.isEmpty()) MaterialTheme.colorScheme.outline.copy(
+                            alpha = 0.5f
+                        )
+                        else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(16.dp)
                     )
-                },
-                label = "inputTextColorAnimation"
-            ) { targetText ->
-                Text(
-                    text = targetText.ifEmpty { "请输入文字" },
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 52.sp,
-                        letterSpacing = 0.sp
-                    ),
-                    textAlign = TextAlign.Center,
-                    color = if (targetText.isEmpty())
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                    else
-                        MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(16.dp)
-                )
+                }
             }
 
             // --- 清空按钮 ---
             if (text.isNotEmpty()) {
                 IconButton(
-                    onClick = { text = "" },
-                    modifier = Modifier
+                    onClick = {
+                        text = ""
+                        onStop()
+                    }, modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(8.dp)
                 ) {
@@ -106,8 +115,7 @@ fun InputScreen(onSpeak: (String) -> Unit) {
             shape = MaterialTheme.shapes.extraLarge
         ) {
             Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = text,

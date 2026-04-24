@@ -21,6 +21,12 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
+    fun stop() {
+        if (isReady) {
+            tts.stop()
+        }
+    }
+
     fun shutDown() {
         tts.stop()
         tts.shutdown()

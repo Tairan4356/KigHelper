@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
@@ -29,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,15 +49,19 @@ import com.ziegler.kighelper.data.Phrase
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
-    phrases: List<Phrase>,
-    onPhraseClick: (Phrase) -> Unit
+    phrases: List<Phrase>, onPhraseClick: (Phrase) -> Unit, onClearClick: () -> Unit
 ) {
     var lastSpoken by remember { mutableStateOf("") }
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(lastSpoken) {
+        scrollState.scrollTo(0)
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp,0.dp)
+            .padding(12.dp, 0.dp)
     ) {
         // --- 显示区 ---
         Surface(
@@ -71,29 +80,39 @@ fun MainScreen(
                     .padding(20.dp)
             ) {
                 androidx.compose.animation.AnimatedContent(
-                    targetState = lastSpoken,
-                    transitionSpec = {
+                    targetState = lastSpoken, transitionSpec = {
                         (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
-                    },
-                    label = "textAnimation"
+                    }, label = "textAnimation", modifier = Modifier.fillMaxSize()
                 ) { targetText ->
-                    Text(
-                        text = targetText,
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 48.sp,
-                            lineHeight = 52.sp
-                        ),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = targetText,
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 52.sp
+                            ),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
 
                 // 右下角清除按钮
                 if (lastSpoken.isNotEmpty()) {
                     IconButton(
-                        onClick = { lastSpoken = "" },
-                        modifier = Modifier.align(Alignment.BottomEnd)
+                        onClick = {
+                            lastSpoken = ""
+                            onClearClick()
+                        }, modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                shape = CircleShape
+                            )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Clear,

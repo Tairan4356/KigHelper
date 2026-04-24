@@ -32,10 +32,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KigHelperTheme {
-                // 传入 TTS 回调，供各页面调用
-                KigHelperApp(viewModel) { text ->
-                    ttsManager.speak(text)
-                }
+                KigHelperApp(
+                    viewModel = viewModel,
+                    onSpeak = { text -> ttsManager.speak(text) },
+                    onStop = { ttsManager.stop() })
             }
         }
     }

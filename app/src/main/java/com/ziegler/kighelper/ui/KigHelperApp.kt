@@ -27,7 +27,7 @@ import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
 
 @Composable
-fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
+fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () -> Unit) {
     val navController = rememberNavController()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -39,8 +39,7 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
         NavigationItem("edit", "管理", Icons.Filled.Edit)
     )
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
-        bottomBar = {
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top), bottomBar = {
             NavigationBar {
                 items.forEach { item ->
                     NavigationBarItem(
@@ -68,12 +67,15 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit) {
             composable("main") {
                 MainScreen(
                     phrases = viewModel.phraseList, // 直接使用 viewModel 的列表
-                    onPhraseClick = { phrase -> onSpeak(phrase.speech) })
+                    onPhraseClick = { phrase -> onSpeak(phrase.speech) },
+                    onClearClick = { onStop() })
             }
 
             // 键盘输入页
             composable("input") {
-                InputScreen(onSpeak = onSpeak)
+                InputScreen(
+                    onSpeak = onSpeak, onStop = onStop
+                )
             }
 
             // 管理编辑页
