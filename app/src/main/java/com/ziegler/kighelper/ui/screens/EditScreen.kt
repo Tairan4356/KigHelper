@@ -10,14 +10,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +39,7 @@ fun EditScreen(
     onAdd: (String, String) -> Unit,
     onDelete: (Phrase) -> Unit,
     onMove: (Int, Int) -> Unit,
-    onReset: () -> Unit
+    onNavigateToAbout: () -> Unit
 ) {
     var newLabel by remember { mutableStateOf("") }
     var newText by remember { mutableStateOf("") }
@@ -46,7 +49,20 @@ fun EditScreen(
             .fillMaxSize()
             .padding(12.dp,0.dp)
     ) {
-        Text("管理短语", style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("管理短语", style = MaterialTheme.typography.headlineSmall)
+            IconButton(onClick = onNavigateToAbout) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "关于",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -88,9 +104,6 @@ fun EditScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("列表", style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = onReset) {
-                Text("重置默认", color = MaterialTheme.colorScheme.error)
-            }
         }
 
         LazyColumn(modifier = Modifier.weight(1f)) {

@@ -22,9 +22,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ziegler.kighelper.ui.screens.AboutScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 
 @Composable
 fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () -> Unit) {
@@ -33,28 +36,38 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "main"
 
+    val showBottomBar = currentRoute in listOf("main", "input", "edit")
+
     val items = listOf(
         NavigationItem("main", "快捷", Icons.Filled.Home),
         NavigationItem("input", "输入", Icons.Filled.Keyboard),
         NavigationItem("edit", "管理", Icons.Filled.Edit)
     )
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top), bottomBar = {
-            NavigationBar {
-                items.forEach { item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                        selected = currentRoute == item.route,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
+        bottomBar = {
+            if (showBottomBar) {
+                NavigationBar {
+                    items.forEach { item ->
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    item.icon,
+                                    contentDescription = item.label
+                                )
+                            },
+                            label = { Text(item.label) },
+                            selected = currentRoute == item.route,
+                            onClick = {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        })
+                            })
+                    }
                 }
             }
         }) { innerPadding ->
@@ -85,7 +98,24 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () 
                     onAdd = { label, speech -> viewModel.addPhrase(label, speech) },
                     onDelete = { phrase -> viewModel.deletePhrase(phrase) },
                     onMove = { from, to -> viewModel.movePhrase(from, to) },
-                    onReset = { viewModel.resetToDefault() })
+                    onNavigateToAbout = { navController.navigate("about") })
+            }
+
+            composable("about",
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(300)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(300)
+                    )
+                }
+            ) {
+                AboutScreen(onBack = { navController.popBackStack() })
             }
         }
     }
