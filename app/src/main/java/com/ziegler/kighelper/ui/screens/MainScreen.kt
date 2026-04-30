@@ -42,18 +42,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
 
+/**
+ * 主界面：提供大字显示区域和短语快捷按钮网格
+ * @param phrases 要显示的短语列表
+ * @param onPhraseClick 点击短语时的回调（通常用于触发 TTS）
+ * @param onClearClick 点击清除按钮时的回调
+ */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
     phrases: List<Phrase>, onPhraseClick: (Phrase) -> Unit, onClearClick: () -> Unit
 ) {
+    // 当前屏幕上方显示的文本
     var lastSpoken by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
 
+    // 当文本变化时，滚动条回到顶部
     LaunchedEffect(lastSpoken) {
         scrollState.scrollTo(0)
     }
@@ -79,6 +88,7 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(20.dp)
             ) {
+                // 文字切换动画
                 androidx.compose.animation.AnimatedContent(
                     targetState = lastSpoken, transitionSpec = {
                         (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
@@ -101,7 +111,7 @@ fun MainScreen(
                     }
                 }
 
-                // 右下角清除按钮
+                // 右下角清除按钮：仅在有文字时显示
                 if (lastSpoken.isNotEmpty()) {
                     IconButton(
                         onClick = {
@@ -116,7 +126,7 @@ fun MainScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Clear,
-                            contentDescription = "Clear",
+                            contentDescription = "清除显示内容", // 增加无障碍描述
                             tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
                         )
                     }
@@ -141,7 +151,7 @@ fun MainScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(phrases) { phrase ->
+            items(phrases, key = { it.id }) { phrase ->
                 Button(
                     onClick = {
                         lastSpoken = phrase.speech
@@ -161,7 +171,8 @@ fun MainScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center,
-                        maxLines = 2
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

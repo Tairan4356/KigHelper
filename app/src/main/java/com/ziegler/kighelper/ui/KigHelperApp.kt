@@ -29,13 +29,17 @@ import com.ziegler.kighelper.ui.screens.MainScreen
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 
+/**
+ * 应用导航根容器
+ * 负责：管理 NavHost、底部导航栏显隐逻辑、以及全局导航行为
+ */
 @Composable
 fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () -> Unit) {
     val navController = rememberNavController()
-
+// 获取当前路由，用于处理底部导航栏的选中状态和显隐
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "main"
-
+// 定义需要显示底部导航栏的页面
     val showBottomBar = currentRoute in listOf("main", "input", "edit")
 
     val items = listOf(
@@ -44,21 +48,21 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () 
         NavigationItem("edit", "管理", Icons.Filled.Edit)
     )
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
-        bottomBar = {
+        // 处理沉浸式状态栏：仅对顶部进行安全区域缩进，底部由 NavigationBar 处理
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top), bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
                     items.forEach { item ->
                         NavigationBarItem(
                             icon = {
-                                Icon(
-                                    item.icon,
-                                    contentDescription = item.label
-                                )
-                            },
+                            Icon(
+                                item.icon, contentDescription = item.label
+                            )
+                        },
                             label = { Text(item.label) },
                             selected = currentRoute == item.route,
                             onClick = {
+                                // 避免重复点击同一个 tab 产生多个实例
                                 navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
@@ -74,7 +78,7 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () 
         NavHost(
             navController = navController,
             startDestination = "main",
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding) // 应用 Scaffold 的内边距
         ) {
             // 快捷短语页
             composable("main") {
@@ -101,20 +105,17 @@ fun KigHelperApp(viewModel: AACViewModel, onSpeak: (String) -> Unit, onStop: () 
                     onNavigateToAbout = { navController.navigate("about") })
             }
 
-            composable("about",
-                enterTransition = {
-                    slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(300)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(300)
-                    )
-                }
-            ) {
+            composable("about", enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            }, exitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }) {
                 AboutScreen(onBack = { navController.popBackStack() })
             }
         }

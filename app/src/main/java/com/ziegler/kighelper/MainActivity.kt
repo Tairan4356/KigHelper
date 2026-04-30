@@ -33,17 +33,20 @@ import com.ziegler.kighelper.utils.UpdateConfig
 import com.ziegler.kighelper.utils.UpdateManager
 import com.ziegler.kighelper.utils.WindowConfig
 
+/**
+ * 应用主入口
+ * 负责：生命周期管理、权限申请、TTS 初始化、锁屏通知协调
+ */
 class MainActivity : ComponentActivity() {
     private lateinit var ttsManager: TTSManager
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // 开启边到边显示
-        enableEdgeToEdge()
+        enableEdgeToEdge() // 开启边到边显示
 
-        // 配置锁屏窗口权限
-        WindowConfig.setup(this)
+
+        WindowConfig.setup(this) // 配置锁屏窗口权限
 
         ttsManager = TTSManager(this)
         val repository = PhraseRepository(this)
@@ -51,8 +54,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KigHelperTheme {
-                PermissionChecker()
-                UpdateDialogHandler()
+                PermissionChecker() // 检查必要权限（通知、悬浮窗）
+                UpdateDialogHandler() // 处理版本更新提示
 
                 KigHelperApp(
                     viewModel = viewModel,
@@ -64,17 +67,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 回到前台时取消锁屏控制通知
         NotificationHelper.cancelNotification(this)
     }
 
     override fun onPause() {
         super.onPause()
+        // 切到后台/锁屏时，显示静默通知以便在锁屏界面快速调起应用
         NotificationHelper.showSilentLockScreenNotification(this)
     }
 
     override fun onDestroy() {
         NotificationHelper.cancelNotification(this)
-        ttsManager.shutDown()
+        ttsManager.shutDown() // 释放资源防止泄漏
         super.onDestroy()
     }
 

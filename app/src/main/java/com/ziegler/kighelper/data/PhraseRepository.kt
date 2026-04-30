@@ -5,21 +5,33 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import androidx.core.content.edit
 
+/**
+ * 短语数据仓库，负责数据的持久化存储（当前使用 SharedPreferences + Gson）
+ */
 class PhraseRepository(context: Context) {
     private val prefs = context.getSharedPreferences("aac_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
 
+    /**
+     * 从本地存储获取所有短语，若为空则返回默认列表
+     */
     fun getPhrases(): List<Phrase> {
         val json = prefs.getString("phrases_key", null) ?: return getDefaultPhrases()
         val type = object : TypeToken<List<Phrase>>() {}.type
         return gson.fromJson(json, type)
     }
 
+    /**
+     * 将短语列表序列化并保存到本地
+     */
     fun savePhrases(phrases: List<Phrase>) {
         val json = gson.toJson(phrases)
         prefs.edit { putString("phrases_key", json) }
     }
 
+    /**
+     * 重置数据
+     */
     fun clearAll() {
         prefs.edit { remove("phrases_key") }
     }

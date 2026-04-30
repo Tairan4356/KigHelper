@@ -12,6 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
 
+/**
+ * 列表项组件：用于管理界面中的短语条目
+ */
 @Composable
 fun PhraseItem(
     phrase: Phrase,
@@ -31,6 +34,7 @@ fun PhraseItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
+                // 排序控制区
                 IconButton(onClick = onMoveUp, enabled = !isFirst) {
                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
                 }
@@ -39,7 +43,12 @@ fun PhraseItem(
                 }
             }
 
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+            // 内容显示区
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+            ) {
                 Text(
                     text = phrase.label,
                     style = MaterialTheme.typography.bodyLarge,
@@ -51,7 +60,7 @@ fun PhraseItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
+            // 操作区
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,

@@ -15,6 +15,9 @@ data class UpdateConfig(
     val downloadUrl: String
 )
 
+/**
+ * 更新管理器：负责从远程 JSON 获取版本信息并与本地对比
+ */
 object UpdateManager {
     private const val UPDATE_URL =
         "https://raw.giteeusercontent.com/tairan_4356/kig-helper/raw/master/update.json"
@@ -23,7 +26,9 @@ object UpdateManager {
         return withContext(Dispatchers.IO) {
             try {
                 val client = OkHttpClient()
-                val request = Request.Builder().url(UPDATE_URL).build()
+                val request = Request.Builder().url(UPDATE_URL)
+                    .header("Cache-Control", "no-cache") // 强制获取最新，不使用本地缓存
+                    .build()
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null

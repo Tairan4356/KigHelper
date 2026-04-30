@@ -32,6 +32,10 @@ import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.ui.components.PhraseItem
 
+/**
+ * 短语管理界面
+ * 提供添加、删除、排序短语的功能
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreen(
@@ -47,8 +51,9 @@ fun EditScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp,0.dp)
+            .padding(12.dp, 0.dp)
     ) {
+        // 标题栏
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -66,6 +71,7 @@ fun EditScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // 输入卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -90,8 +96,9 @@ fun EditScreen(
                             onAdd(newLabel, newText)
                             newLabel = ""; newText = ""
                         }
-                    },
-                    modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
+                    }, modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 8.dp)
                 ) {
                     Text("添加")
                 }
@@ -99,7 +106,9 @@ fun EditScreen(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -114,8 +123,7 @@ fun EditScreen(
                     isLast = index == phrases.size - 1,
                     onDelete = { onDelete(phrase) },
                     onMoveUp = { onMove(index, index - 1) },
-                    onMoveDown = { onMove(index, index + 1) }
-                )
+                    onMoveDown = { onMove(index, index + 1) })
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
