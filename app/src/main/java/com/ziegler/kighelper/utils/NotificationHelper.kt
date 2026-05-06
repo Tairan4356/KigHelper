@@ -49,8 +49,9 @@ object NotificationHelper {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(com.ziegler.kighelper.R.drawable.ic_launcher_foreground)
             .setContentTitle("KigHelper 已准备就绪").setContentText("点击此处唤起主界面")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             /**
              * 关键配置：fullScreenIntent
              * 在锁屏状态下，系统会尝试直接弹出 Activity 而不是只显示通知栏图标

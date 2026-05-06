@@ -49,8 +49,7 @@ fun InputScreen(onSpeak: (String) -> Unit, onStop: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp, 0.dp)
-            .imePadding(), // 关键：确保底部输入框不被软键盘遮挡
+            .padding(12.dp, 0.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- 文字展示区 ---

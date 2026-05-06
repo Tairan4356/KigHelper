@@ -1,7 +1,10 @@
 package com.ziegler.kighelper
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -40,11 +43,21 @@ import com.ziegler.kighelper.utils.WindowConfig
 class MainActivity : ComponentActivity() {
     private lateinit var ttsManager: TTSManager
 
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SCREEN_OFF) {
+                NotificationHelper.showSilentLockScreenNotification(context)
+            }
+        }
+    }
+
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge() // 开启边到边显示
 
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        registerReceiver(screenReceiver, filter)
 
         WindowConfig.setup(this) // 配置锁屏窗口权限
 
@@ -80,6 +93,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         NotificationHelper.cancelNotification(this)
         ttsManager.shutDown() // 释放资源防止泄漏
+        unregisterReceiver(screenReceiver)
         super.onDestroy()
     }
 
