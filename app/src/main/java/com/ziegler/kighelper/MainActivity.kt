@@ -1,39 +1,23 @@
 package com.ziegler.kighelper
 
-import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.ui.AACViewModel
 import com.ziegler.kighelper.ui.KigHelperApp
+import com.ziegler.kighelper.ui.components.PermissionHandler
+import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
-import com.ziegler.kighelper.utils.UpdateConfig
-import com.ziegler.kighelper.utils.UpdateManager
 import com.ziegler.kighelper.utils.WindowConfig
 
 /**
@@ -67,8 +51,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KigHelperTheme {
-                PermissionChecker() // 检查必要权限（通知、悬浮窗）
-                UpdateDialogHandler() // 处理版本更新提示
+                PermissionHandler() // 检查必要权限（通知、悬浮窗）
+                UpdateHandler() // 处理版本更新提示
 
                 KigHelperApp(
                     viewModel = viewModel,
@@ -95,104 +79,5 @@ class MainActivity : ComponentActivity() {
         ttsManager.shutDown() // 释放资源防止泄漏
         unregisterReceiver(screenReceiver)
         super.onDestroy()
-    }
-
-    @Composable
-    private fun PermissionChecker() {
-        val context = LocalContext.current
-        var showDialog by remember { mutableStateOf(false) }
-
-        // 检查通知权限
-        val notificationPermissionResult = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (!isGranted) {
-                Toast.makeText(context, "通知权限未开启，锁屏快捷控制可能受限", Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
-
-        LaunchedEffect(Unit) {
-            // 1. 请求通知权限 (Android 13+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                notificationPermissionResult.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-
-            // 2. 检查悬浮窗权限 (国产机型锁屏显示的依赖)
-            if (!WindowConfig.canDrawOverlays(context)) {
-                showDialog = true
-            }
-        }
-
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = {
-                showDialog = false
-                Toast.makeText(
-                    context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
-                ).show()
-            },
-                title = { Text("需要锁屏显示权限") },
-                text = { Text("为了能在锁屏时使用，请开启“显示在其他应用上”或“锁屏显示”权限。") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDialog = false
-                        try {
-                            context.startActivity(WindowConfig.getOverlayPermissionIntent(context))
-                            Toast.makeText(
-                                context, "请找到并开启 KigHelper 的权限", Toast.LENGTH_LONG
-                            ).show()
-                        } catch (_: Exception) {
-                            Toast.makeText(
-                                context, "无法跳转设置，请手动开启权限", Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }) {
-                        Text("去设置")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        showDialog = false
-                        Toast.makeText(
-                            context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
-                        ).show()
-                    }) {
-                        Text("取消")
-                    }
-                })
-        }
-    }
-}
-
-@Composable
-private fun UpdateDialogHandler() {
-    val context = LocalContext.current
-    var updateInfo by remember { mutableStateOf<UpdateConfig?>(null) }
-
-    // 仅在 App 启动时执行一次
-    LaunchedEffect(Unit) {
-        updateInfo = UpdateManager.checkUpdate(context)
-    }
-
-    updateInfo?.let { info ->
-        AlertDialog(
-            onDismissRequest = { updateInfo = null },
-            title = { Text("发现新版本 v${info.versionName}") },
-            text = { Text(info.updateContent) },
-            confirmButton = {
-                Button(onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, info.downloadUrl.toUri())
-                    context.startActivity(intent)
-                    updateInfo = null
-                }) {
-                    Text("更新")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { updateInfo = null }) {
-                    Text("暂不")
-                }
-            })
     }
 }
