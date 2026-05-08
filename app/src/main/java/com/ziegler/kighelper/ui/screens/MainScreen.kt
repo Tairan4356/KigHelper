@@ -1,15 +1,18 @@
 package com.ziegler.kighelper.ui.screens
 
+import android.content.res.Configuration
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,141 +43,205 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
 
 /**
- * 主界面：提供大字显示区域和短语快捷按钮网格
+ * 主界面：提供大字显示区域和短语快捷按钮网格。
  * @param phrases 要显示的短语列表
- * @param onPhraseClick 点击短语时的回调（通常用于触发 TTS）
+ * @param onPhraseClick 点击短语时的回调，通常用于触发 TTS
  * @param onClearClick 点击清除按钮时的回调
  */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
-    phrases: List<Phrase>, onPhraseClick: (Phrase) -> Unit, onClearClick: () -> Unit
+    modifier: Modifier = Modifier,
+    phrases: List<Phrase>,
+    onPhraseClick: (Phrase) -> Unit,
+    onClearClick: () -> Unit,
 ) {
-    // 当前屏幕上方显示的文本
-    var lastSpoken by remember { mutableStateOf("") }
+    val initialHint = "点击下面按钮文字在此显示"
+    var displayText by remember { mutableStateOf(initialHint) }
+    var isShowingInitialHint by remember { mutableStateOf(true) }
     val scrollState = rememberScrollState()
 
-    // 当文本变化时，滚动条回到顶部
-    LaunchedEffect(lastSpoken) {
+    fun clearDisplayText() {
+        displayText = ""
+        isShowingInitialHint = false
+        onClearClick()
+    }
+
+    fun showPhrase(phrase: Phrase) {
+        displayText = phrase.speech
+        isShowingInitialHint = false
+        onPhraseClick(phrase)
+    }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    LaunchedEffect(displayText) {
         scrollState.scrollTo(0)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp, 0.dp)
-    ) {
-        // --- 显示区 ---
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.55f),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.primary,
-            tonalElevation = 8.dp,
-            shadowElevation = 4.dp
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
+    val contentLayout = @Composable {
+        if (isLandscape) {
+            Row(
+                modifier = modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 文字切换动画
-                androidx.compose.animation.AnimatedContent(
-                    targetState = lastSpoken, transitionSpec = {
-                        (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
-                    }, label = "textAnimation", modifier = Modifier.fillMaxSize()
-                ) { targetText ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(scrollState),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = targetText,
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 52.sp
-                            ),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 16.dp)
+                ) {
+                    DisplaySurface(
+                        text = displayText,
+                        isSubtle = isShowingInitialHint,
+                        scrollState = scrollState,
+                        onClear = { clearDisplayText() }
+                    )
                 }
 
-                // 右下角清除按钮：仅在有文字时显示
-                if (lastSpoken.isNotEmpty()) {
-                    IconButton(
-                        onClick = {
-                            lastSpoken = ""
-                            onClearClick()
-                        }, modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                shape = CircleShape
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "清除显示内容", // 增加无障碍描述
-                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "点击短语显示:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    PhraseGrid(
+                        phrases = phrases,
+                        columns = GridCells.Fixed(2),
+                        onPhraseClick = { showPhrase(it) }
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = modifier.fillMaxSize(),
+            ) {
+                Box(modifier = Modifier.weight(0.55f)) {
+                    DisplaySurface(
+                        text = displayText,
+                        isSubtle = isShowingInitialHint,
+                        scrollState = scrollState,
+                        onClear = { clearDisplayText() }
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "点击短语显示:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                PhraseGrid(
+                    modifier = Modifier.weight(0.45f),
+                    phrases = phrases,
+                    columns = GridCells.Fixed(2),
+                    onPhraseClick = { showPhrase(it) }
+                )
+            }
+        }
+    }
+
+    contentLayout()
+}
+
+@Composable
+fun DisplaySurface(
+    text: String,
+    isSubtle: Boolean,
+    scrollState: ScrollState,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.primary,
+        tonalElevation = 8.dp,
+        shadowElevation = 4.dp
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp)
+        ) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = text,
+                transitionSpec = { (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut()) },
+                label = "textAnimation"
+            ) { targetText ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = targetText,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (targetText.length > 20) 36.sp else 48.sp,
+                            lineHeight = if (targetText.length > 20) 40.sp else 52.sp
+                        ),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(
+                            alpha = if (isSubtle) 0.55f else 1f
                         )
-                    }
+                    )
+                }
+            }
+            if (text.isNotEmpty()) {
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            CircleShape
+                        )
+                ) {
+                    Icon(Icons.Default.Clear, "清除", tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
+    }
+}
 
-        Spacer(Modifier.height(16.dp))
-
-        // --- 快捷按钮区 ---
-        Text(
-            text = "点击短语显示:",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.weight(0.45f),
-            contentPadding = PaddingValues(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(phrases, key = { it.id }) { phrase ->
-                Button(
-                    onClick = {
-                        lastSpoken = phrase.speech
-                        onPhraseClick(phrase)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp),
-                    shape = MaterialTheme.shapes.large,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Text(
-                        phrase.label,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+@Composable
+fun PhraseGrid(
+    phrases: List<Phrase>,
+    columns: GridCells,
+    onPhraseClick: (Phrase) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalGrid(
+        columns = columns,
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(phrases, key = { it.id }) { phrase ->
+            Button(
+                onClick = { onPhraseClick(phrase) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                shape = MaterialTheme.shapes.large,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text(phrase.label, fontSize = 18.sp, textAlign = TextAlign.Center, maxLines = 2)
             }
         }
     }

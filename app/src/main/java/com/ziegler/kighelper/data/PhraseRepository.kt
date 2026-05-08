@@ -4,6 +4,8 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 短语数据仓库，负责数据的持久化存储（当前使用 SharedPreferences + Gson）
@@ -11,29 +13,37 @@ import androidx.core.content.edit
 class PhraseRepository(context: Context) {
     private val prefs = context.getSharedPreferences("aac_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
+    private val PHRASES_KEY = "phrases_key"
 
     /**
      * 从本地存储获取所有短语，若为空则返回默认列表
      */
-    fun getPhrases(): List<Phrase> {
-        val json = prefs.getString("phrases_key", null) ?: return getDefaultPhrases()
-        val type = object : TypeToken<List<Phrase>>() {}.type
-        return gson.fromJson(json, type)
+    suspend fun getPhrases(): List<Phrase> = withContext(Dispatchers.IO) {
+        val json = prefs.getString(PHRASES_KEY, null) ?: return@withContext getDefaultPhrases()
+        return@withContext try {
+            val type = object : TypeToken<List<Phrase>>() {}.type
+            gson.fromJson<List<Phrase>>(json, type)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            getDefaultPhrases() // 解析失败（如版本升级导致字段不兼容）时返回默认值
+        }
     }
 
     /**
      * 将短语列表序列化并保存到本地
      */
-    fun savePhrases(phrases: List<Phrase>) {
+    suspend fun savePhrases(phrases: List<Phrase>) = withContext(Dispatchers.IO) {
         val json = gson.toJson(phrases)
-        prefs.edit { putString("phrases_key", json) }
+        prefs.edit(commit = true) {
+            putString(PHRASES_KEY, json)
+        }
     }
 
     /**
      * 重置数据
      */
-    fun clearAll() {
-        prefs.edit { remove("phrases_key") }
+    suspend fun clearAll() = withContext(Dispatchers.IO) {
+        prefs.edit { remove(PHRASES_KEY) }
     }
 
     private fun getDefaultPhrases() = listOf(

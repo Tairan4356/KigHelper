@@ -2,8 +2,10 @@ package com.ziegler.kighelper.ui
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseRepository
+import kotlinx.coroutines.launch
 
 /**
  * 核心业务逻辑层，管理 UI 状态
@@ -18,19 +20,30 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
     }
 
     private fun loadPhrases() {
-        phraseList.clear()
-        phraseList.addAll(repository.getPhrases())
+        viewModelScope.launch {
+            val phrases = repository.getPhrases()
+            phraseList.clear()
+            phraseList.addAll(phrases)
+        }
     }
 
     fun addPhrase(label: String, speech: String) {
         val newPhrase = Phrase(label = label, speech = speech)
         phraseList.add(newPhrase)
-        saveToDisk()
+        syncToRepository()
     }
 
     fun deletePhrase(phrase: Phrase) {
         phraseList.remove(phrase)
-        saveToDisk()
+        syncToRepository()
+    }
+
+    fun updatePhrase(id: String, newLabel: String, newSpeech: String) {
+        val index = phraseList.indexOfFirst { it.id == id }
+        if (index != -1) {
+            phraseList[index] = phraseList[index].copy(label = newLabel, speech = newSpeech)
+            syncToRepository()
+        }
     }
 
     /**
@@ -42,18 +55,30 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         val item = phraseList.removeAt(fromIndex)
         phraseList.add(toIndex, item)
 
-        saveToDisk()
-    }
-
-    fun resetToDefault() {
-        repository.clearAll()
-        loadPhrases()
+        syncToRepository()
     }
 
     /**
-     * 统一保存入口
+     * 恢复默认
      */
-    private fun saveToDisk() {
-        repository.savePhrases(phraseList.toList())
+    fun resetToDefault() {
+        viewModelScope.launch {
+            repository.clearAll()
+            val defaults = repository.getPhrases()
+            phraseList.clear()
+            phraseList.addAll(defaults)
+        }
+    }
+
+
+    /**
+     * 将当前内存中的列表同步到持久化存储
+     */
+    private fun syncToRepository() {
+        // 将 SnapshotStateList 转换为普通 List 再进行序列化
+        val listToSave = phraseList.toList()
+        viewModelScope.launch {
+            repository.savePhrases(listToSave)
+        }
     }
 }

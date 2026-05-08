@@ -10,6 +10,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.ui.AACViewModel
 import com.ziegler.kighelper.ui.KigHelperApp
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,11 +53,13 @@ class MainActivity : ComponentActivity() {
         val viewModel = AACViewModel(repository)
 
         setContent {
+            val windowSizeClass = calculateWindowSizeClass(this)
             KigHelperTheme {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
                 UpdateHandler() // 处理版本更新提示
 
                 KigHelperApp(
+                    windowSize = windowSizeClass,
                     viewModel = viewModel,
                     onSpeak = { text -> ttsManager.speak(text) },
                     onStop = { ttsManager.stop() })
