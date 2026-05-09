@@ -9,13 +9,14 @@ import java.util.Locale
  * 注意：必须在 Activity 或 Application 生命周期中正确调用 shutDown() 防止内存泄漏
  */
 class TTSManager(context: Context) : TextToSpeech.OnInitListener {
-    private var tts: TextToSpeech = TextToSpeech(context, this)
+    private var tts: TextToSpeech = TextToSpeech(context.applicationContext, this)
     private var isReady = false
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            tts.language = Locale.CHINESE
-            isReady = true
+            val languageResult = tts.setLanguage(Locale.CHINESE)
+            isReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                languageResult != TextToSpeech.LANG_NOT_SUPPORTED
         }
     }
 
@@ -24,8 +25,9 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
      * @param text 要转语音的文字
      */
     fun speak(text: String) {
-        if (isReady) {
-            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AAC_ID")
+        val content = text.trim()
+        if (isReady && content.isNotEmpty()) {
+            tts.speak(content, TextToSpeech.QUEUE_FLUSH, null, UTTERANCE_ID)
         }
     }
 
@@ -42,7 +44,14 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
      * 释放资源
      */
     fun shutDown() {
-        tts.stop()
+        if (isReady) {
+            tts.stop()
+        }
         tts.shutdown()
+        isReady = false
+    }
+
+    private companion object {
+        private const val UTTERANCE_ID = "KIG_HELPER_TTS"
     }
 }

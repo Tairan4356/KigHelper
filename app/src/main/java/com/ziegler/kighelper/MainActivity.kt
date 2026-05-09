@@ -4,16 +4,17 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.RequiresApi
+import androidx.activity.viewModels
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import com.ziegler.kighelper.data.PhraseRepository
+import androidx.core.content.ContextCompat
+import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
 import com.ziegler.kighelper.ui.AACViewModel
+import com.ziegler.kighelper.ui.AACViewModelFactory
 import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.UpdateHandler
@@ -28,29 +29,31 @@ import com.ziegler.kighelper.utils.WindowConfig
  */
 class MainActivity : ComponentActivity() {
     private lateinit var ttsManager: TTSManager
+    private var screenReceiverRegistered = false
+    private val phraseRepository by lazy {
+        SharedPreferencesPhraseRepository(applicationContext)
+    }
+    private val viewModel: AACViewModel by viewModels {
+        AACViewModelFactory(phraseRepository)
+    }
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_SCREEN_OFF) {
-                NotificationHelper.showSilentLockScreenNotification(context)
+                NotificationHelper.recreateSilentLockScreenNotification(context)
             }
         }
     }
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
-    @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge() // 开启边到边显示
 
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-        registerReceiver(screenReceiver, filter)
-
+        registerScreenReceiver()
         WindowConfig.setup(this) // 配置锁屏窗口权限
 
         ttsManager = TTSManager(this)
-        val repository = PhraseRepository(this)
-        val viewModel = AACViewModel(repository)
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
@@ -62,27 +65,39 @@ class MainActivity : ComponentActivity() {
                     windowSize = windowSizeClass,
                     viewModel = viewModel,
                     onSpeak = { text -> ttsManager.speak(text) },
-                    onStop = { ttsManager.stop() })
+                    onStop = { ttsManager.stop() }
+                )
             }
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 回到前台时取消锁屏控制通知
+    override fun onStart() {
+        super.onStart()
         NotificationHelper.cancelNotification(this)
     }
 
-    override fun onPause() {
-        super.onPause()
-        // 切到后台/锁屏时，显示静默通知以便在锁屏界面快速调起应用
+    override fun onStop() {
+        super.onStop()
         NotificationHelper.showSilentLockScreenNotification(this)
     }
 
     override fun onDestroy() {
         NotificationHelper.cancelNotification(this)
-        ttsManager.shutDown() // 释放资源防止泄漏
-        unregisterReceiver(screenReceiver)
+        if (screenReceiverRegistered) {
+            unregisterReceiver(screenReceiver)
+            screenReceiverRegistered = false
+        }
+        ttsManager.shutDown()
         super.onDestroy()
+    }
+
+    private fun registerScreenReceiver() {
+        ContextCompat.registerReceiver(
+            this,
+            screenReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        screenReceiverRegistered = true
     }
 }

@@ -2,6 +2,7 @@ package com.ziegler.kighelper.utils
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,13 +20,16 @@ data class UpdateConfig(
  * 更新管理器：负责从远程 JSON 获取版本信息并与本地对比
  */
 object UpdateManager {
+    private const val TAG = "UpdateManager"
     private const val UPDATE_URL =
         "https://raw.giteeusercontent.com/tairan_4356/kig-helper/raw/master/update.json"
+    private val client = OkHttpClient()
+    private val gson = Gson()
 
     suspend fun checkUpdate(context: Context): UpdateConfig? {
         return withContext(Dispatchers.IO) {
+            val appContext = context.applicationContext
             try {
-                val client = OkHttpClient()
                 val request = Request.Builder().url(UPDATE_URL)
                     .header("Cache-Control", "no-cache") // 强制获取最新，不使用本地缓存
                     .build()
@@ -34,18 +38,18 @@ object UpdateManager {
                     if (!response.isSuccessful) return@withContext null
 
                     val json = response.body.string()
-                    val config = Gson().fromJson(json, UpdateConfig::class.java)
+                    val config = gson.fromJson(json, UpdateConfig::class.java)
 
-                    val currentVersionCode = getAppVersionCode(context)
+                    val currentVersionCode = getAppVersionCode(appContext)
 
-                    if (config.versionCode > currentVersionCode) {
+                    if (config.versionCode.toLong() > currentVersionCode) {
                         config
                     } else {
                         null
                     }
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (error: Exception) {
+                Log.w(TAG, "检查更新失败", error)
                 null
             }
         }

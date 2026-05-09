@@ -1,5 +1,6 @@
 package com.ziegler.kighelper.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Canvas
@@ -20,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,31 +54,8 @@ import androidx.core.net.toUri
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
-    // 动态获取应用信息
-    val packageManager = context.packageManager
-    val packageName = context.packageName
-    val appName = context.applicationInfo.loadLabel(packageManager).toString()
-    val version = try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.getPackageInfo(
-                packageName, PackageManager.PackageInfoFlags.of(0)
-            ).versionName
-        } else {
-            packageManager.getPackageInfo(packageName, 0).versionName
-        }
-    } catch (_: Exception) {
-        "Unknown"
-    }
-
-    val appIcon: ImageBitmap? = remember {
-        try {
-            val drawable = packageManager.getApplicationIcon(packageName)
-            drawable.toImageBitmap()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
+    // 应用信息读取放入 remember，避免重组时重复访问 PackageManager
+    val appInfo = remember(context) { context.loadAboutAppInfo() }
     val bLink = "https://space.bilibili.com/353197379"
     val githubLink = "https://github.com/Tairan4356/KigHelper"
 
@@ -98,9 +77,9 @@ fun AboutScreen(onBack: () -> Unit) {
                 .padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 1. 应用信息
-            if (appIcon != null) {
+            if (appInfo.icon != null) {
                 Image(
-                    bitmap = appIcon,
+                    bitmap = appInfo.icon,
                     contentDescription = "App Icon",
                     modifier = Modifier
                         .size(80.dp)
@@ -113,19 +92,19 @@ fun AboutScreen(onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(appName.take(1))
+                        Text(appInfo.appName.take(1))
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                appName,
+                appInfo.appName,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "版本：$version",
+                "版本：${appInfo.versionName}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline
             )
@@ -171,7 +150,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 "© 2026 Ziegler. All Rights Reserved.",
                 modifier = Modifier.padding(top = 24.dp),
@@ -183,7 +162,7 @@ fun AboutScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun InfoCard(title: String, subtitle: String, onClick: () -> Unit) {
+private fun InfoCard(title: String, subtitle: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(), onClick = onClick
     ) {
@@ -198,16 +177,49 @@ fun InfoCard(title: String, subtitle: String, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            Text(
-                ">",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.outline
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline
             )
         }
     }
 }
 
-fun Drawable.toImageBitmap(): ImageBitmap {
+private data class AboutAppInfo(
+    val appName: String,
+    val versionName: String,
+    val icon: ImageBitmap?
+)
+
+private fun Context.loadAboutAppInfo(): AboutAppInfo {
+    val pm = packageManager
+    val appPackageName = packageName
+    val appName = applicationInfo.loadLabel(pm).toString()
+    val versionName = pm.getVersionName(appPackageName)
+    val icon = runCatching {
+        pm.getApplicationIcon(appPackageName).toImageBitmap()
+    }.getOrNull()
+
+    return AboutAppInfo(
+        appName = appName,
+        versionName = versionName,
+        icon = icon
+    )
+}
+
+private fun PackageManager.getVersionName(packageName: String): String {
+    return runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).versionName
+        } else {
+            @Suppress("DEPRECATION")
+            getPackageInfo(packageName, 0).versionName
+        } ?: "Unknown"
+    }.getOrDefault("Unknown")
+}
+
+private fun Drawable.toImageBitmap(): ImageBitmap {
     if (this is BitmapDrawable) {
         return this.bitmap.asImageBitmap()
     }

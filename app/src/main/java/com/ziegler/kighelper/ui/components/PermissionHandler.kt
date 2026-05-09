@@ -1,6 +1,7 @@
 package com.ziegler.kighelper.ui.components
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,8 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.utils.WindowConfig
 
+/**
+ * 统一处理启动时需要的系统权限提示。
+ */
 @Composable
 fun PermissionHandler() {
     val context = LocalContext.current
@@ -33,12 +38,19 @@ fun PermissionHandler() {
     }
 
     LaunchedEffect(Unit) {
-        // 1. 请求通知权限 (Android 13+)
+        // Android 13+ 需要显式申请通知权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notificationPermissionResult.launch(Manifest.permission.POST_NOTIFICATIONS)
+            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasNotificationPermission) {
+                notificationPermissionResult.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
 
-        // 2. 检查悬浮窗权限 (国产机型锁屏显示的依赖)
+        // 部分 ROM 的锁屏显示依赖悬浮窗权限
         if (!WindowConfig.canDrawOverlays(context)) {
             showDialog = true
         }

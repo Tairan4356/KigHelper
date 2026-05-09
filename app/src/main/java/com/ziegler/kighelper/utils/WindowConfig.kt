@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import androidx.annotation.RequiresApi
+import android.view.WindowManager
 import androidx.core.net.toUri
 
 /**
@@ -17,13 +17,20 @@ object WindowConfig {
      * 配置 Activity 的 Window 属性
      * 需在 Activity.onCreate() 中 setContentView 之前调用
      */
-    @RequiresApi(Build.VERSION_CODES.O_MR1)
     fun setup(activity: Activity) {
-        // 允许在锁屏上方显示
-        activity.setShowWhenLocked(true)
-        // 允许启动时点亮屏幕
-        activity.setTurnScreenOn(true)
-        // 尝试请求关闭非安全锁屏（如 PIN、图案等除外的简单锁屏）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            // Android 8.1+ 使用官方方法控制锁屏显示
+            activity.setShowWhenLocked(true)
+            activity.setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            activity.window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
+
+        // 尝试关闭非安全锁屏，安全锁屏仍由系统保持
         val keyguardManager = activity.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         keyguardManager.requestDismissKeyguard(activity, null)
     }

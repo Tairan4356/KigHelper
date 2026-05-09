@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +56,7 @@ import com.ziegler.kighelper.data.Phrase
  * @param onPhraseClick 点击短语时的回调，通常用于触发 TTS
  * @param onClearClick 点击清除按钮时的回调
  */
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
@@ -153,7 +153,7 @@ fun MainScreen(
 }
 
 @Composable
-fun DisplaySurface(
+private fun DisplaySurface(
     text: String,
     isSubtle: Boolean,
     scrollState: ScrollState,
@@ -216,7 +216,7 @@ fun DisplaySurface(
 }
 
 @Composable
-fun PhraseGrid(
+private fun PhraseGrid(
     phrases: List<Phrase>,
     columns: GridCells,
     onPhraseClick: (Phrase) -> Unit,

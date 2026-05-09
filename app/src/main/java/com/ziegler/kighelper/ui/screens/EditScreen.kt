@@ -60,10 +60,9 @@ fun EditScreen(
     onMove: (Int, Int) -> Unit,
     onNavigateToAdd: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    onNavigateToAbout: () -> Unit,
-
-    ) {
-    // 获取当前屏幕方向
+    onNavigateToAbout: () -> Unit
+) {
+    // 根据屏幕方向切换列表密度
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val layoutDirection = LocalLayoutDirection.current
@@ -76,24 +75,31 @@ fun EditScreen(
         bottom = outerBottomPadding + 88.dp
     )
 
-    Scaffold(topBar = {
-        TopAppBar(title = { Text("管理短语") }, actions = {
-            IconButton(onClick = onNavigateToAbout) {
-                Icon(Icons.Default.Info, "关于")
-            }
-        })
-    }, floatingActionButton = {
-        FloatingActionButton(
-            onClick = onNavigateToAdd,
-            modifier = Modifier.padding(
-                start = outerStartPadding,
-                end = outerEndPadding,
-                bottom = outerBottomPadding
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("管理短语") },
+                actions = {
+                    IconButton(onClick = onNavigateToAbout) {
+                        Icon(Icons.Default.Info, "关于")
+                    }
+                }
             )
-        ) {
-            Icon(Icons.Default.Add, "添加")
-        }
-    }, contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)) { padding ->
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onNavigateToAdd,
+                modifier = Modifier.padding(
+                    start = outerStartPadding,
+                    end = outerEndPadding,
+                    bottom = outerBottomPadding
+                )
+            ) {
+                Icon(Icons.Default.Add, "添加")
+            }
+        },
+        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
+    ) { padding ->
         if (isLandscape) {
             // 横屏使用 2 列网格
             LazyVerticalGrid(
@@ -148,7 +154,7 @@ fun EditScreen(
 }
 
 @Composable
-fun PhraseEditItem(
+private fun PhraseEditItem(
     phrase: Phrase,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
@@ -171,14 +177,14 @@ fun PhraseEditItem(
                     enabled = onMoveUp != null,
                     modifier = Modifier.size(32.dp)
                 ) {
-                    Icon(Icons.Default.KeyboardArrowUp, null)
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
                 }
                 IconButton(
                     onClick = onMoveDown ?: {},
                     enabled = onMoveDown != null,
                     modifier = Modifier.size(32.dp)
                 ) {
-                    Icon(Icons.Default.KeyboardArrowDown, null)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
                 }
             }
 

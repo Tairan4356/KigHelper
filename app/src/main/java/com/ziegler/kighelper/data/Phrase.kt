@@ -9,5 +9,7 @@ import java.util.UUID
  * @param speech 点击后 TTS 朗读的具体内容
  */
 data class Phrase(
-    val id: String = UUID.randomUUID().toString(), val label: String, val speech: String
+    val id: String = UUID.randomUUID().toString(),
+    val label: String,
+    val speech: String
 )
