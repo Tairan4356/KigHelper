@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge() // 开启边到边显示
 
+        startService(Intent(this, TaskRemovedCleanupService::class.java))
         registerScreenReceiver()
         WindowConfig.setup(this) // 配置锁屏窗口权限
 
@@ -83,6 +84,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         NotificationHelper.cancelNotification(this)
+        stopService(Intent(this, TaskRemovedCleanupService::class.java))
         if (screenReceiverRegistered) {
             unregisterReceiver(screenReceiver)
             screenReceiverRegistered = false
