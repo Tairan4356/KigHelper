@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KigHelper | 娃娃的神之嘴 - 专为 Kiger 设计的辅助沟通工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #f8f9fa; }
+        .hero-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .feature-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
+        .screenshot-img { border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 200px; margin: 0 auto; }
+        .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+<!-- Header / Hero Section -->
+<header class="hero-gradient text-white py-16 px-6 text-center">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-5xl font-extrabold mb-4 tracking-tight">KigHelper</h1>
+        <p class="text-2xl mb-6 opacity-90 font-light">娃娃的神之嘴</p>
+
+        <!-- Badges -->
+        <div class="flex justify-center gap-3 mb-10 flex-wrap">
+            <span class="bg-green-500/20 backdrop-blur-sm border border-green-400/30 px-3 py-1 rounded-full text-sm font-medium">Android 8.0+</span>
+            <span class="bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 px-3 py-1 rounded-full text-sm font-medium">Kotlin & Compose</span>
+            <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-sm font-medium underline"><a
+                    href="https://github.com/Tairan4356/KigHelper/blob/main/LICENSE">GPL v3</a></span>
+        </div>
+
+        <!-- Download Buttons -->
+        <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+            <a href="https://github.com/Tairan4356/KigHelper/releases/download/release/KigHelper-v1.0.1.apk"
+               class="bg-white text-purple-700 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-transform shadow-xl flex items-center justify-center">
+                <i class="fas fa-download mr-3"></i>立即下载 (GitHub)
+            </a>
+            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/release/KigHelper-v1.0.1.apk"
+               class="bg-purple-900/30 backdrop-blur text-white border border-white/30 px-8 py-4 rounded-2xl font-bold hover:bg-purple-900/50 transition flex items-center justify-center">
+                <i class="fas fa-rocket mr-3"></i>国内镜像 (Gitee)
+            </a>
+        </div>
+
+        <div class="flex justify-center gap-6">
+            <a href="https://github.com/Tairan4356/KigHelper"
+               class="text-white/80 hover:text-white transition flex items-center">
+                <i class="fab fa-github mr-2 text-xl"></i> GitHub 仓库
+            </a>
+            <a href="https://space.bilibili.com/353197379" target="_blank"
+               class="text-white/80 hover:text-white transition flex items-center">
+                <i class="fab fa-bilibili mr-2 text-xl"></i> 作者 B 站
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- Video Demonstration -->
+<section class="py-16 px-6 -mt-10">
+    <div class="max-w-4xl mx-auto">
+        <div class="video-container">
+            <iframe src="//player.bilibili.com/player.html?isOutside=true&aid=116498135783607&bvid=BV1LuRMBDEk5&cid=38003083063&p=1"
+                    scrolling="no" border="0" frameborder="no" framespacing="0"
+                    allowfullscreen="true"></iframe>
+        </div>
+        <p class="text-center mt-4 text-gray-500 italic">📺 演示视频：看一看 KigHelper
+            如何改变你的沟通体验</p>
+    </div>
+</section>
+
+<!-- Core Highlight: Lock Screen -->
+<section class="py-16 px-6 bg-white">
+    <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center gap-12">
+            <div class="flex-1">
+                <h2 class="text-3xl font-bold mb-6 text-purple-800 border-l-4 border-purple-500 pl-4">
+                    🌟 锁屏显示：最懂你的痛点</h2>
+                <p class="text-gray-600 leading-relaxed mb-6">
+                    在变娃状态下，指纹识别和面部解锁几乎完全失效。在嘈杂的漫展或外景现场，频繁输入密码解锁手机极其痛苦。
+                </p>
+                <div class="bg-purple-50 p-6 rounded-2xl border border-purple-100">
+                    <p class="font-bold text-purple-900 mb-2 italic text-lg">
+                        “无需解锁手机，点亮屏幕即可直接使用。”</p>
+                    <p class="text-sm text-purple-700">深度适配 <b>ShowWhenLocked</b>
+                        窗口管理，点击即呼应，真正做到“即开即说”。</p>
+                </div>
+            </div>
+            <div class="flex-1 flex justify-center gap-4">
+                <img src="screenshots/main.jpg" alt="主界面" class="screenshot-img">
+                <img src="screenshots/input.jpg" alt="输入界面"
+                     class="screenshot-img mt-8 md:mt-16">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Grid -->
+<section class="py-16 px-6 bg-gray-50">
+    <div class="max-w-5xl mx-auto text-center mb-12">
+        <h2 class="text-3xl font-bold">✨ 功能特性</h2>
+    </div>
+    <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+        <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 text-xl mb-6 mx-auto md:mx-0">
+                <i class="fas fa-comment-dots"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">一键呼应</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">预设卡片一键触发巨型文字 +
+                语音朗读，在喧闹中也能清晰传达意图。</p>
+        </div>
+        <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="bg-green-100 w-12 h-12 rounded-xl flex items-center justify-center text-green-600 text-xl mb-6 mx-auto md:mx-0">
+                <i class="fas fa-bell"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">常驻通知</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">
+                后台运行时自动开启静默通知，通过下拉通知栏实现“秒回”应用。</p>
+        </div>
+        <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="bg-purple-100 w-12 h-12 rounded-xl flex items-center justify-center text-purple-600 text-xl mb-6 mx-auto md:mx-0">
+                <i class="fas fa-wand-magic-sparkles"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">动态配色</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">基于 Material 3 开发，支持 Android 12+
+                动态壁纸取色，美观且现代化。</p>
+        </div>
+    </div>
+</section>
+
+<!-- Roadmap -->
+<section class="py-20 px-6 bg-gray-900 text-white">
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold mb-10 flex items-center justify-center">
+            <i class="fas fa-list-check mr-4 text-purple-400"></i> TODO 路线图
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="far fa-circle text-gray-500"></i>
+                <span>音频文件导入播放</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="far fa-circle text-gray-500"></i>
+                <span>一键扩列 (展示社交二维码)</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="far fa-circle text-gray-500"></i>
+                <span>短语分组与分类管理</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="far fa-circle text-gray-500"></i>
+                <span>一键呼叫后勤</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-12 px-6 bg-gray-900 text-center text-gray-400 text-sm">
+    <div class="max-w-4xl mx-auto border-t border-white/10 pt-8">
+        <p class="mb-4">献给所有热爱 Kigurumi 文化的同好，以及每一个在沉默中努力沟通的灵魂。</p>
+        <p>© 2026 KigHelper Project | <a
+                href="https://github.com/Tairan4356/KigHelper/blob/main/LICENSE"
+                class="underline hover:text-white">GPL v3 License</a></p>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 {
-  "versionCode": 1,
-  "versionName": "1.0.0",
-  "updateContent": "第一个正式版，欢迎使用！",
-  "downloadUrl": "https://github.com/Tairan4356/KigHelper/releases/latest"
+  "versionCode": 2,
+  "versionName": "1.0.1",
+  "updateContent": "1. 对横屏模式/平板进行适配\n2. 优化了通知的显示\n3. 优化了动画效果\n4. 变娃与亲友贴贴~",
+  "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/releases/download/release/KigHelper-v1.0.1.apk"
 }
