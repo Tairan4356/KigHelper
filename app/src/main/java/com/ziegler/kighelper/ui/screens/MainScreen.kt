@@ -37,10 +37,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -61,25 +57,12 @@ import com.ziegler.kighelper.data.Phrase
 fun MainScreen(
     modifier: Modifier = Modifier,
     phrases: List<Phrase>,
+    displayText: String,
+    isShowingInitialHint: Boolean,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
 ) {
-    val initialHint = "点击下面按钮文字在此显示"
-    var displayText by remember { mutableStateOf(initialHint) }
-    var isShowingInitialHint by remember { mutableStateOf(true) }
     val scrollState = rememberScrollState()
-
-    fun clearDisplayText() {
-        displayText = ""
-        isShowingInitialHint = false
-        onClearClick()
-    }
-
-    fun showPhrase(phrase: Phrase) {
-        displayText = phrase.speech
-        isShowingInitialHint = false
-        onPhraseClick(phrase)
-    }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -103,7 +86,7 @@ fun MainScreen(
                         text = displayText,
                         isSubtle = isShowingInitialHint,
                         scrollState = scrollState,
-                        onClear = { clearDisplayText() }
+                        onClear = onClearClick
                     )
                 }
 
@@ -117,7 +100,7 @@ fun MainScreen(
                     PhraseGrid(
                         phrases = phrases,
                         columns = GridCells.Fixed(2),
-                        onPhraseClick = { showPhrase(it) }
+                        onPhraseClick = onPhraseClick
                     )
                 }
             }
@@ -130,7 +113,7 @@ fun MainScreen(
                         text = displayText,
                         isSubtle = isShowingInitialHint,
                         scrollState = scrollState,
-                        onClear = { clearDisplayText() }
+                        onClear = onClearClick
                     )
                 }
                 Spacer(Modifier.height(16.dp))
@@ -143,7 +126,7 @@ fun MainScreen(
                     modifier = Modifier.weight(0.45f),
                     phrases = phrases,
                     columns = GridCells.Fixed(2),
-                    onPhraseClick = { showPhrase(it) }
+                    onPhraseClick = onPhraseClick
                 )
             }
         }

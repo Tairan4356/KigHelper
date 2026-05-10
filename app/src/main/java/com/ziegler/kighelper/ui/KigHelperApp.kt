@@ -102,8 +102,16 @@ fun KigHelperApp(
                     MainScreen(
                         modifier = Modifier.padding(innerPadding),
                         phrases = viewModel.phraseList,
-                        onPhraseClick = { phrase -> onSpeak(phrase.speech) },
-                        onClearClick = onStop
+                        displayText = viewModel.displayText,
+                        isShowingInitialHint = viewModel.isShowingInitialHint,
+                        onPhraseClick = { phrase ->
+                            viewModel.showPhrase(phrase)
+                            onSpeak(phrase.speech)
+                        },
+                        onClearClick = {
+                            viewModel.clearDisplayText()
+                            onStop()
+                        }
                     )
                 }
 

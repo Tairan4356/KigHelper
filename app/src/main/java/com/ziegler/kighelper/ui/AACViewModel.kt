@@ -1,6 +1,9 @@
 package com.ziegler.kighelper.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,11 +15,18 @@ import kotlinx.coroutines.launch
  * 核心业务逻辑层，负责短语列表的加载、编辑和持久化。
  */
 class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
+    private val initialHint = "点击下面按钮文字在此显示"
     private val _phraseList = mutableStateListOf<Phrase>()
 
     // 对 UI 暴露只读列表，避免页面直接修改业务状态
     val phraseList: List<Phrase>
         get() = _phraseList
+
+    var displayText by mutableStateOf(initialHint)
+        private set
+
+    var isShowingInitialHint by mutableStateOf(true)
+        private set
 
     init {
         loadPhrases()
@@ -76,6 +86,16 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
      */
     fun findPhraseById(id: String?): Phrase? {
         return _phraseList.firstOrNull { it.id == id }
+    }
+
+    fun showPhrase(phrase: Phrase) {
+        displayText = phrase.speech
+        isShowingInitialHint = false
+    }
+
+    fun clearDisplayText() {
+        displayText = ""
+        isShowingInitialHint = false
     }
 
     /**
