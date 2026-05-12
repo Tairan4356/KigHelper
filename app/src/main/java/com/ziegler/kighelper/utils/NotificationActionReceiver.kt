@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import java.util.Locale
 
@@ -32,13 +33,21 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                     Log.w(TAG, "中文 TTS 不支持，使用默认语言")
                 }
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
-
-                // 延迟关闭 TTS，确保播放完成
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    tts?.shutdown()
-                    tts = null
-                }, 5000)
+                val utteranceId = System.currentTimeMillis().toString()
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        // do nothing
+                    }
+                    override fun onDone(utteranceId: String?) {
+                        tts?.shutdown()
+                        tts = null
+                    }
+                    override fun onError(utteranceId: String?) {
+                        tts?.shutdown()
+                        tts = null
+                    }
+                })
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
             }
         }
     }
@@ -49,4 +58,3 @@ class NotificationActionReceiver : BroadcastReceiver() {
         private const val TAG = "NotificationReceiver"
     }
 }
-
