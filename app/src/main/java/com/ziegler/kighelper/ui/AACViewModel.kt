@@ -79,6 +79,22 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
     }
 
     /**
+     * 记录最后使用的短语
+     */
+    fun markPhraseAsUsed(phrase: Phrase) {
+        viewModelScope.launch {
+            repository.saveLastUsedPhrase(phrase)
+        }
+    }
+
+    /**
+     * 获取最后使用的短语
+     */
+    suspend fun getLastUsedPhrase(): Phrase? {
+        return repository.getLastUsedPhrase()
+    }
+
+    /**
      * 恢复默认短语
      */
     fun resetToDefault() {

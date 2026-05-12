@@ -17,6 +17,8 @@ interface PhraseRepository {
     suspend fun getPhrases(): List<Phrase>
     suspend fun savePhrases(phrases: List<Phrase>)
     suspend fun resetPhrases()
+    suspend fun saveLastUsedPhrase(phrase: Phrase)
+    suspend fun getLastUsedPhrase(): Phrase?
 }
 
 /**
@@ -63,10 +65,31 @@ class SharedPreferencesPhraseRepository(
         }
     }
 
+    /**
+     * 保存最后使用的短语
+     */
+    override suspend fun saveLastUsedPhrase(phrase: Phrase) = withContext(Dispatchers.IO) {
+        val json = gson.toJson(phrase)
+        prefs.edit(commit = true) {
+            putString(LAST_PHRASE_KEY, json)
+        }
+    }
+
+    /**
+     * 获取最后使用的短语
+     */
+    override suspend fun getLastUsedPhrase(): Phrase? = withContext(Dispatchers.IO) {
+        val json = prefs.getString(LAST_PHRASE_KEY, null) ?: return@withContext null
+        runCatching {
+            gson.fromJson(json, Phrase::class.java)
+        }.getOrNull()
+    }
+
     private companion object {
         private const val TAG = "PhraseRepository"
         private const val PREFS_NAME = "aac_prefs"
         private const val PHRASES_KEY = "phrases_key"
+        private const val LAST_PHRASE_KEY = "last_phrase_key"
 
         private fun defaultPhrases() = listOf(
             Phrase(label = "你好", speech = "你好"),

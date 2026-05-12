@@ -7,37 +7,88 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
 
 /**
- * 锁屏快捷通知工具。
+ * 锁屏快捷通知工具 - 支持 Live Updates
  * 负责创建静默通知，让用户在后台或锁屏时快速回到主界面。
+ * 通知会显示在通知中心的 Live Updates 区域。
  */
 object NotificationHelper {
     private const val CHANNEL_ID = "aac_silent_channel"
     private const val NOTIFICATION_ID = 888
+    private const val REPLAY_REQUEST_CODE = 100
+    
+    // 存储当前的短语文本，用于更新通知
+    private var currentPhraseLabel: String? = null  // 显示用的标签
+    private var currentPhraseSpeech: String? = null  // TTS 播放用的内容
 
     @SuppressLint("FullScreenIntentPolicy", "MissingPermission")
-    fun showSilentLockScreenNotification(context: Context) {
+    fun showSilentLockScreenNotification(context: Context, phraseLabel: String? = null, phraseSpeech: String? = null) {
         val appContext = context.applicationContext
         val notificationManager = appContext.notificationManager()
 
         notificationManager.createNotificationChannel(createNotificationChannel())
-        notificationManager.notify(
-            NOTIFICATION_ID,
-            buildNotification(appContext, createLaunchPendingIntent(appContext))
-        )
+        
+        // 更新当前短语文本
+        if (phraseLabel != null) {
+            currentPhraseLabel = phraseLabel
+        }
+        if (phraseSpeech != null) {
+            currentPhraseSpeech = phraseSpeech
+        }
+
+        val notification = buildNotification(appContext, createLaunchPendingIntent(appContext), currentPhraseLabel, currentPhraseSpeech)
+
+        // 验证 Live Updates 支持 (仅用于调试 - 需要 API 36+)
+        if (Build.VERSION.SDK_INT >= 36) {
+            val canPost = notificationManager.canPostPromotedNotifications()
+            val hasCharacteristics = notification.hasPromotableCharacteristics()
+            android.util.Log.d("NotificationHelper",
+                "Live Updates - canPost: $canPost, hasPromotableCharacteristics: $hasCharacteristics")
+        }
+
+        notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     fun recreateSilentLockScreenNotification(context: Context) {
         cancelNotification(context)
-        showSilentLockScreenNotification(context)
+        showSilentLockScreenNotification(context, currentPhraseLabel, currentPhraseSpeech)
     }
 
     fun cancelNotification(context: Context) {
         context.applicationContext.notificationManager().cancel(NOTIFICATION_ID)
+    }
+
+    /**
+     * 检查应用是否可以发送 Live Update 通知
+     * @return true 如果用户在设置中启用了 Live Updates (需要 API 36+)
+     */
+    @Suppress("NewApi")
+    fun canPostLiveUpdates(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= 36) {
+            val notificationManager = context.applicationContext.notificationManager()
+            return notificationManager.canPostPromotedNotifications()
+        }
+        return false
+    }
+
+    /**
+     * 打开系统设置，允许用户管理 Live Updates 权限 (需要 API 36+)
+     */
+    fun openLiveUpdatesSettings(context: Context) {
+        if (Build.VERSION.SDK_INT >= 36) {
+            try {
+                val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                android.util.Log.e("NotificationHelper", "无法打开 Live Updates 设置", e)
+            }
+        }
     }
 
     private fun createNotificationChannel(): NotificationChannel {
@@ -71,23 +122,79 @@ object NotificationHelper {
     @SuppressLint("FullScreenIntentPolicy")
     private fun buildNotification(
         context: Context,
-        pendingIntent: PendingIntent
+        pendingIntent: PendingIntent,
+        phraseLabel: String? = null,
+        phraseSpeech: String? = null
     ): Notification {
-        return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("KigHelper 正在后台运行")
-            .setContentText("点击返回主界面")
+        val title = phraseLabel ?: "KigHelper 正在后台运行"
+        val chipText = phraseLabel ?: "待机中"
+        // 内容文本显示完整短语，如果太长则截断
+        val contentText = when {
+            phraseSpeech.isNullOrEmpty() -> "点击返回主界面"
+            phraseSpeech.length > 40 -> phraseSpeech.take(37) + "..."
+            else -> phraseSpeech
+        }
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_speaker)  // 使用音频图标
+            .setContentTitle(title)  // 显示短语标签作为标题
+            .setContentText(contentText)  // 显示短语内容（截断长文本）
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)  // 使用 SERVICE 类别以符合 Live Updates 要求
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .setFullScreenIntent(pendingIntent, true)
             .setSilent(true)
-            .setOngoing(true)
+            .setOngoing(true)  // 必需：设置为持续通知
             .setAutoCancel(false)
-            .setWhen(System.currentTimeMillis())
-            .setShowWhen(true)
-            .build()
+            .setWhen(System.currentTimeMillis())  // 设置时间戳用于状态芯片显示
+            .setShowWhen(false)  // 不显示时间，使用自定义芯片文本
+            .apply {
+                // 添加 Live Updates 支持 - 让通知显示在 Live Updates 区域
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    setRequestPromotedOngoing(true)  // 必需：请求提升为 Live Update
+                    // 设置状态芯片的关键文本（显示短语标签）
+                    setShortCriticalText(chipText)
+                }
+            }
+
+        // 添加操作按钮
+        // 按钮1：重播短语（使用 speech 内容而非 label）
+        if (!phraseSpeech.isNullOrEmpty()) {
+            val replayIntent = createReplayPendingIntent(context, phraseSpeech)
+            builder.addAction(
+                R.drawable.ic_speaker,
+                "重播",
+                replayIntent
+            )
+        }
+
+        // 按钮2：打开应用
+        builder.addAction(
+            R.drawable.ic_launcher_foreground,
+            "打开应用",
+            pendingIntent
+        )
+
+        return builder.build()
+    }
+
+    /**
+     * 创建重播短语的 PendingIntent
+     * @param phraseSpeech TTS 要播放的完整内容（不是标签）
+     */
+    private fun createReplayPendingIntent(context: Context, phraseSpeech: String): PendingIntent {
+        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_REPLAY_PHRASE
+            putExtra(NotificationActionReceiver.EXTRA_PHRASE_TEXT, phraseSpeech)
+        }
+
+        return PendingIntent.getBroadcast(
+            context,
+            REPLAY_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     private fun Context.notificationManager(): NotificationManager {
