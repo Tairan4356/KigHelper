@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        NotificationHelper.clearPhraseAndRefresh(this)
         NotificationHelper.cancelNotification(this)
         stopService(Intent(this, TaskRemovedCleanupService::class.java))
         if (screenReceiverRegistered) {

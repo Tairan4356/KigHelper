@@ -18,6 +18,14 @@ import com.ziegler.kighelper.R
  * 通知会显示在通知中心的 Live Updates 区域。
  */
 object NotificationHelper {
+            /**
+             * 清除当前通知短语内容，并刷新通知为默认提示。
+             */
+            fun clearPhraseAndRefresh(context: Context) {
+                currentPhraseLabel = null
+                currentPhraseSpeech = null
+                showSilentLockScreenNotification(context, null, null)
+            }
     private const val CHANNEL_ID = "aac_silent_channel"
     private const val NOTIFICATION_ID = 888
     private const val REPLAY_REQUEST_CODE = 100
@@ -168,12 +176,21 @@ object NotificationHelper {
             )
         }
 
-        // 按钮2：打开应用
-        builder.addAction(
-            R.drawable.ic_launcher_foreground,
-            "打开应用",
-            pendingIntent
-        )
+//        // 按钮2：打开应用（与通知点击一致，确保都能在锁屏上启动 Activity）
+//        val openAppIntent = Intent(context, MainActivity::class.java).apply {
+//            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+//        }
+//        val openAppPendingIntent = PendingIntent.getActivity(
+//            context,
+//            1, // unique request code for action button
+//            openAppIntent,
+//            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+//        )
+//        builder.addAction(
+//            R.drawable.ic_launcher_foreground,
+//            "打开应用",
+//            openAppPendingIntent
+//        )
 
         return builder.build()
     }

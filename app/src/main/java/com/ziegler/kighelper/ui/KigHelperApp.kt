@@ -101,6 +101,7 @@ fun KigHelperApp(
                     .padding(horizontal = 16.dp)
             ) {
                 composable(AppRoutes.MAIN) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     MainScreen(
                         modifier = Modifier.padding(innerPadding),
                         phrases = viewModel.phraseList,
@@ -109,7 +110,10 @@ fun KigHelperApp(
                             viewModel.markPhraseAsUsed(phrase)
                             onPhraseSpoken(phrase)
                         },
-                        onClearClick = onStop
+                        onClearClick = {
+                            onStop()
+                            com.ziegler.kighelper.utils.NotificationHelper.clearPhraseAndRefresh(context)
+                        }
                     )
                 }
 
