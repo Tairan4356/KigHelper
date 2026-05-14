@@ -143,7 +143,6 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)  // 使用 SERVICE 类别以符合 Live Updates 要求
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
-            .setFullScreenIntent(pendingIntent, true)
             .setSilent(true)
             .setOngoing(true)  // 必需：设置为持续通知
             .setAutoCancel(false)
