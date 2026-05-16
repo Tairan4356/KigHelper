@@ -47,6 +47,8 @@ import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
+import com.ziegler.kighelper.ui.screens.ToolboxScreen
+import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 
 /**
  * 应用导航根容器。
@@ -56,6 +58,7 @@ import com.ziegler.kighelper.ui.screens.MainScreen
 fun KigHelperApp(
     windowSize: WindowSizeClass,
     viewModel: AACViewModel,
+    voiceViewModel: VoiceViewModel,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit
 ) {
@@ -124,11 +127,27 @@ fun KigHelperApp(
                 }
 
                 composable(AppRoutes.EDIT) {
+                    ToolboxScreen(
+                        contentPadding = innerPadding,
+                        onNavigateToPhraseManager = {
+                            navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
+                        },
+                        onNavigateToVoiceSettings = {
+                            navController.navigate(AppRoutes.VOICE_SETTINGS)
+                        },
+                        onNavigateToAbout = {
+                            navController.navigate(AppRoutes.ABOUT)
+                        }
+                    )
+                }
+
+                composable(AppRoutes.PHRASE_MANAGEMENT) {
                     EditScreen(
                         contentPadding = innerPadding,
                         phrases = viewModel.phraseList,
                         onDelete = viewModel::deletePhrase,
                         onMove = viewModel::movePhrase,
+                        onBack = { navController.popBackStack() },
                         onNavigateToAdd = {
                             navController.navigate(AppRoutes.addEditRoute())
                         },
@@ -138,6 +157,14 @@ fun KigHelperApp(
                         onNavigateToAbout = {
                             navController.navigate(AppRoutes.ABOUT)
                         }
+                    )
+                }
+
+                composable(AppRoutes.VOICE_SETTINGS) {
+                    VoiceSettingsScreen(
+                        viewModel = voiceViewModel,
+                        onBack = { navController.popBackStack() },
+                        onPreview = onSpeak
                     )
                 }
 

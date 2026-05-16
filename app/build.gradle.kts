@@ -16,7 +16,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 2
-        versionName = "1.0.1"
+        versionName = "1.0.2-preview"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -57,9 +57,12 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.okhttp)
+    implementation(libs.commons.compress)
+    implementation(libs.onnxruntime.android)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.foundation)
+    implementation(files("libs/sherpa-onnx-1.12.11-no-ort2.aar"))
 
     testImplementation(libs.junit)
 

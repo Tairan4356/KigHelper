@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -58,6 +59,7 @@ fun EditScreen(
     phrases: List<Phrase>,
     onDelete: (Phrase) -> Unit,
     onMove: (Int, Int) -> Unit,
+    onBack: () -> Unit,
     onNavigateToAdd: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
     onNavigateToAbout: () -> Unit
@@ -79,6 +81,11 @@ fun EditScreen(
         topBar = {
             TopAppBar(
                 title = { Text("管理短语") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToAbout) {
                         Icon(Icons.Default.Info, "关于")

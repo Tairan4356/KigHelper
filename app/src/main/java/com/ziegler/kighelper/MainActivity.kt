@@ -13,9 +13,12 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
+import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
 import com.ziegler.kighelper.ui.AACViewModel
 import com.ziegler.kighelper.ui.AACViewModelFactory
 import com.ziegler.kighelper.ui.KigHelperApp
+import com.ziegler.kighelper.ui.VoiceViewModel
+import com.ziegler.kighelper.ui.VoiceViewModelFactory
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
@@ -33,8 +36,14 @@ class MainActivity : ComponentActivity() {
     private val phraseRepository by lazy {
         SharedPreferencesPhraseRepository(applicationContext)
     }
+    private val voiceProfileRepository by lazy {
+        SharedPreferencesVoiceProfileRepository(applicationContext)
+    }
     private val viewModel: AACViewModel by viewModels {
         AACViewModelFactory(phraseRepository)
+    }
+    private val voiceViewModel: VoiceViewModel by viewModels {
+        VoiceViewModelFactory(voiceProfileRepository)
     }
 
     private val screenReceiver = object : BroadcastReceiver() {
@@ -65,7 +74,8 @@ class MainActivity : ComponentActivity() {
                 KigHelperApp(
                     windowSize = windowSizeClass,
                     viewModel = viewModel,
-                    onSpeak = { text -> ttsManager.speak(text) },
+                    voiceViewModel = voiceViewModel,
+                    onSpeak = { text -> ttsManager.speak(text, voiceViewModel.activeProfile) },
                     onStop = { ttsManager.stop() }
                 )
             }
