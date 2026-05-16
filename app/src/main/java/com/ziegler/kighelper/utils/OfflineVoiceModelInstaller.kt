@@ -16,13 +16,21 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
 class OfflineVoiceModelInstaller(context: Context) {
     private val appContext = context.applicationContext
     private val modelManager = OfflineVoiceModelManager(appContext)
-    private val httpClient = OkHttpClient()
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.MINUTES)
+        .writeTimeout(2, TimeUnit.MINUTES)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
 
     suspend fun importFromDirectory(treeUri: Uri): ModelInstallResult = withContext(Dispatchers.IO) {
         runCatching {
@@ -152,18 +160,8 @@ class OfflineVoiceModelInstaller(context: Context) {
                         "model.tar.bz2"
                     }
                     val archiveType = ArchiveType.fromFileName(archiveName) ?: ArchiveType.ZIP
-                    val request = Request.Builder().url(archiveUrl).build()
-                    httpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            return@withContext ModelInstallResult.Failure("下载失败：HTTP ${response.code}")
-                        }
-                        val body = response.body
-                        val contentLength = body.contentLength()
-                        if (contentLength > MAX_MODEL_ARCHIVE_BYTES) {
-                            return@withContext ModelInstallResult.Failure("模型包超过 1GB，已取消安装")
-                        }
-                        extractArchiveToDirectory(body.byteStream(), tempDir, archiveType)
-                    }
+                    val urls = listOf(archiveUrl, entry.sourceUrl).distinct()
+                    downloadArchiveFromAnyUrl(urls, tempDir, archiveType)
                     val result = installExtractedModel(
                         status = status,
                         tempDir = tempDir,
@@ -197,7 +195,7 @@ class OfflineVoiceModelInstaller(context: Context) {
 
                 ModelInstallResult.Success("${entry.pack.name} 已安装")
             }.getOrElse { error ->
-                ModelInstallResult.Failure(error.message ?: "模型安装失败")
+                ModelInstallResult.Failure(error.downloadFailureMessage("模型安装失败"))
             }
         }
 
@@ -215,46 +213,33 @@ class OfflineVoiceModelInstaller(context: Context) {
             }
             val archiveType = ArchiveType.fromFileName(archiveName) ?: ArchiveType.ZIP
 
-            val request = Request.Builder().url(normalizedUrl).build()
-            httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@withContext ModelInstallResult.Failure("下载失败：HTTP ${response.code}")
-                }
-
-                val body = response.body
-                val contentLength = body.contentLength()
-                if (contentLength > MAX_MODEL_ARCHIVE_BYTES) {
-                    return@withContext ModelInstallResult.Failure("模型包超过 1GB，已取消安装")
-                }
-
-                val tempDir = File(appContext.cacheDir, "voice_model_download").apply {
-                    deleteRecursively()
-                    mkdirs()
-                }
-                extractArchiveToDirectory(body.byteStream(), tempDir, archiveType)
-                val importSpec = createManualImportSpec(
-                    displayName = archiveName,
-                    format = format,
-                    tempDir = tempDir
-                )
-                val status = modelManager.registerCustomModel(
-                    displayName = importSpec.displayName,
-                    format = importSpec.format,
-                    requiredFiles = importSpec.requiredFiles,
-                    speakerCount = importSpec.speakerCount
-                )
-                val result = installExtractedModel(
-                    status = status,
-                    tempDir = tempDir,
-                    sourceUrl = normalizedUrl,
-                    successMessage = "${status.pack.name} 已下载并安装",
-                    modelId = status.pack.id
-                )
-                tempDir.deleteRecursively()
-                result
+            val tempDir = File(appContext.cacheDir, "voice_model_download").apply {
+                deleteRecursively()
+                mkdirs()
             }
+            downloadArchiveFromAnyUrl(listOf(normalizedUrl), tempDir, archiveType)
+            val importSpec = createManualImportSpec(
+                displayName = archiveName,
+                format = format,
+                tempDir = tempDir
+            )
+            val status = modelManager.registerCustomModel(
+                displayName = importSpec.displayName,
+                format = importSpec.format,
+                requiredFiles = importSpec.requiredFiles,
+                speakerCount = importSpec.speakerCount
+            )
+            val result = installExtractedModel(
+                status = status,
+                tempDir = tempDir,
+                sourceUrl = normalizedUrl,
+                successMessage = "${status.pack.name} 已下载并安装",
+                modelId = status.pack.id
+            )
+            tempDir.deleteRecursively()
+            result
         }.getOrElse { error ->
-            ModelInstallResult.Failure(error.message ?: "模型下载失败")
+            ModelInstallResult.Failure(error.downloadFailureMessage("模型下载失败"))
         }
     }
 
@@ -268,46 +253,33 @@ class OfflineVoiceModelInstaller(context: Context) {
                 return@withContext ModelInstallResult.Failure("请输入有效的 http 或 https 下载地址")
             }
 
-            val request = Request.Builder().url(normalizedUrl).build()
-            httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@withContext ModelInstallResult.Failure("下载失败：HTTP ${response.code}")
-                }
-
-                val body = response.body
-                val contentLength = body.contentLength()
-                if (contentLength > MAX_MODEL_ZIP_BYTES) {
-                    return@withContext ModelInstallResult.Failure("模型包超过 500MB，已取消安装")
-                }
-
-                val tempDir = File(appContext.cacheDir, "voice_model_download").apply {
-                    deleteRecursively()
-                    mkdirs()
-                }
-                extractZipToDirectory(body.byteStream(), tempDir)
-                val importSpec = createManualImportSpec(
-                    displayName = normalizedUrl.substringAfterLast('/'),
-                    format = format,
-                    tempDir = tempDir
-                )
-                val status = modelManager.registerCustomModel(
-                    displayName = importSpec.displayName,
-                    format = importSpec.format,
-                    requiredFiles = importSpec.requiredFiles,
-                    speakerCount = importSpec.speakerCount
-                )
-                val result = installExtractedModel(
-                    status = status,
-                    tempDir = tempDir,
-                    sourceUrl = normalizedUrl,
-                    successMessage = "${status.pack.name} 已下载并安装",
-                    modelId = status.pack.id
-                )
-                tempDir.deleteRecursively()
-                result
+            val tempDir = File(appContext.cacheDir, "voice_model_download").apply {
+                deleteRecursively()
+                mkdirs()
             }
+            downloadArchiveFromAnyUrl(listOf(normalizedUrl), tempDir, ArchiveType.ZIP)
+            val importSpec = createManualImportSpec(
+                displayName = normalizedUrl.substringAfterLast('/'),
+                format = format,
+                tempDir = tempDir
+            )
+            val status = modelManager.registerCustomModel(
+                displayName = importSpec.displayName,
+                format = importSpec.format,
+                requiredFiles = importSpec.requiredFiles,
+                speakerCount = importSpec.speakerCount
+            )
+            val result = installExtractedModel(
+                status = status,
+                tempDir = tempDir,
+                sourceUrl = normalizedUrl,
+                successMessage = "${status.pack.name} 已下载并安装",
+                modelId = status.pack.id
+            )
+            tempDir.deleteRecursively()
+            result
         }.getOrElse { error ->
-            ModelInstallResult.Failure(error.message ?: "模型下载失败")
+            ModelInstallResult.Failure(error.downloadFailureMessage("模型下载失败"))
         }
     }
 
@@ -324,6 +296,48 @@ class OfflineVoiceModelInstaller(context: Context) {
                 BZip2CompressorInputStream(BufferedInputStream(input)),
                 tempDir
             )
+        }
+    }
+
+    private fun downloadArchiveFromAnyUrl(
+        urls: List<String>,
+        tempDir: File,
+        archiveType: ArchiveType
+    ) {
+        var lastError: Throwable? = null
+        urls.filter { it.isNotBlank() }.forEach { url ->
+            repeat(DOWNLOAD_RETRY_COUNT) { attempt ->
+                tempDir.replaceWithEmptyDirectory()
+                runCatching {
+                    downloadArchiveOnce(url, tempDir, archiveType)
+                    return
+                }.onFailure { error ->
+                    lastError = error
+                    if (attempt < DOWNLOAD_RETRY_COUNT - 1) {
+                        sleepBeforeRetry(attempt)
+                    }
+                }
+            }
+        }
+        throw IOException(lastError.downloadFailureMessage())
+    }
+
+    private fun downloadArchiveOnce(
+        url: String,
+        tempDir: File,
+        archiveType: ArchiveType
+    ) {
+        val request = Request.Builder().url(url).build()
+        httpClient.executeWithRetry(request).use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("下载失败：HTTP ${response.code}")
+            }
+            val body = response.body
+            val contentLength = body.contentLength()
+            if (contentLength > MAX_MODEL_ARCHIVE_BYTES) {
+                throw IOException("模型包超过 1GB，已取消安装")
+            }
+            extractArchiveToDirectory(body.byteStream(), tempDir, archiveType)
         }
     }
 
@@ -731,7 +745,7 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private fun downloadFile(url: String, target: File) {
         val request = Request.Builder().url(url).build()
-        httpClient.newCall(request).execute().use { response ->
+        httpClient.executeWithRetry(request).use { response ->
             if (!response.isSuccessful) {
                 throw IOException("${target.name} 下载失败：HTTP ${response.code}")
             }
@@ -839,8 +853,8 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private companion object {
         private const val MAX_MODEL_ARCHIVE_BYTES = 1024L * 1024L * 1024L
-        private const val MAX_MODEL_ZIP_BYTES = MAX_MODEL_ARCHIVE_BYTES
         private const val MAX_SINGLE_MODEL_FILE_BYTES = 1024L * 1024L * 1024L
+        private const val DOWNLOAD_RETRY_COUNT = 2
     }
 }
 
@@ -871,6 +885,41 @@ private fun File.resolveSafeArchiveTarget(entryName: String): File {
         throw IOException("模型包路径不安全：$entryName")
     }
     return target
+}
+
+private fun OkHttpClient.executeWithRetry(request: Request): okhttp3.Response {
+    var lastError: IOException? = null
+    repeat(2) { attempt ->
+        try {
+            return newCall(request).execute()
+        } catch (error: IOException) {
+            lastError = error
+            if (attempt == 0) sleepBeforeRetry(attempt)
+        }
+    }
+    throw lastError ?: IOException("下载失败")
+}
+
+private fun sleepBeforeRetry(attempt: Int) {
+    runCatching {
+        Thread.sleep((attempt + 1L) * 1500L)
+    }.onFailure { error ->
+        if (error is InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
+}
+
+private fun Throwable?.downloadFailureMessage(defaultMessage: String = "模型下载失败"): String {
+    val error = this ?: return defaultMessage
+    val message = error.message.orEmpty()
+    return when {
+        error is SocketTimeoutException || message.contains("timeout", ignoreCase = true) ->
+            "$defaultMessage：网络超时。请切换网络后重试，或手动下载模型压缩包后导入。"
+
+        message.isNotBlank() -> "$defaultMessage：$message"
+        else -> defaultMessage
+    }
 }
 
 private fun JsonObject.optionalObject(name: String): JsonObject? {
