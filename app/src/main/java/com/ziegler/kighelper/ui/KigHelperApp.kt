@@ -37,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ziegler.kighelper.R
+import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.ui.navigation.AppRoutes
 import com.ziegler.kighelper.ui.navigation.TopLevelDestination
 import com.ziegler.kighelper.ui.navigation.navigateToTopLevelDestination
@@ -47,8 +48,6 @@ import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
-import com.ziegler.kighelper.ui.screens.ToolboxScreen
-import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 
 /**
  * 应用导航根容器。
@@ -60,7 +59,8 @@ fun KigHelperApp(
     viewModel: AACViewModel,
     voiceViewModel: VoiceViewModel,
     onSpeak: (String) -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    onPhraseSpoken: (Phrase) -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -110,6 +110,8 @@ fun KigHelperApp(
                         onPhraseClick = { phrase ->
                             viewModel.showPhrase(phrase)
                             onSpeak(phrase.speech)
+                            viewModel.markPhraseAsUsed(phrase)
+                            onPhraseSpoken(phrase)
                         },
                         onClearClick = {
                             viewModel.clearDisplayText()

@@ -9,6 +9,8 @@
         tools:ignore="FullScreenIntentPolicy" />
     <!-- 发送通知（Android 13+） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Live Updates 通知权限（Android 14+） -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- 后台保活 -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE"
@@ -29,6 +31,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.KigHelper">
+
+        <!-- BroadcastReceiver 用于处理通知中的操作 -->
+        <receiver
+            android:name=".utils.NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.ziegler.kighelper.ACTION_REPLAY_PHRASE" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".TaskRemovedCleanupService"
             android:exported="false"
