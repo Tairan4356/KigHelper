@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 
 /**
  * 自由输入界面：允许用户手动输入文字并朗读
@@ -68,6 +69,7 @@ fun InputScreen(
     val layoutDirection = LocalLayoutDirection.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val text = textFieldValue.text
+    val performButtonHaptic = rememberPhysicalButtonHaptics()
     val imeBottomPadding = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationStartPadding = with(density) {
         WindowInsets.navigationBars.getLeft(this, layoutDirection).toDp()
@@ -195,7 +197,12 @@ fun InputScreen(
             }
 
             Button(
-                onClick = { if (text.isNotBlank()) onSpeak(text) },
+                onClick = {
+                    if (text.isNotBlank()) {
+                        performButtonHaptic()
+                        onSpeak(text)
+                    }
+                },
                 enabled = text.isNotBlank(),
                 shape = MaterialTheme.shapes.medium
             ) {

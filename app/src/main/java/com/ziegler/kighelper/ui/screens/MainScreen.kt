@@ -7,6 +7,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,8 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,14 +42,24 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 
 /**
  * 主界面：提供大字显示区域和短语快捷按钮网格。
@@ -63,12 +78,44 @@ fun MainScreen(
     onClearClick: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val phraseGridState = rememberLazyGridState()
+    var isDisplayCompressed by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val isPhraseGridAtTop by remember {
+        derivedStateOf {
+            phraseGridState.firstVisibleItemIndex == 0 && phraseGridState.firstVisibleItemScrollOffset == 0
+        }
+    }
+    val displayWeight by animateFloatAsState(
+        targetValue = if (!isLandscape && isDisplayCompressed) 0.38f else 0.55f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "displayAreaWeight"
+    )
+    val phraseGridWeight = 1f - displayWeight
+    val phraseGridNestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y < 0f) {
+                    isDisplayCompressed = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     LaunchedEffect(displayText) {
         scrollState.scrollTo(0)
+    }
+
+    LaunchedEffect(isPhraseGridAtTop) {
+        if (isPhraseGridAtTop) {
+            isDisplayCompressed = false
+        }
     }
 
     val contentLayout = @Composable {
@@ -99,8 +146,10 @@ fun MainScreen(
                     Spacer(Modifier.height(8.dp))
                     PhraseGrid(
                         phrases = phrases,
+                        state = phraseGridState,
                         columns = GridCells.Fixed(2),
-                        onPhraseClick = onPhraseClick
+                        onPhraseClick = onPhraseClick,
+                        onDisplayShouldExpand = { isDisplayCompressed = false }
                     )
                 }
             }
@@ -108,7 +157,7 @@ fun MainScreen(
             Column(
                 modifier = modifier.fillMaxSize(),
             ) {
-                Box(modifier = Modifier.weight(0.55f)) {
+                Box(modifier = Modifier.weight(displayWeight)) {
                     DisplaySurface(
                         text = displayText,
                         isSubtle = isShowingInitialHint,
@@ -123,10 +172,14 @@ fun MainScreen(
                     color = MaterialTheme.colorScheme.outline
                 )
                 PhraseGrid(
-                    modifier = Modifier.weight(0.45f),
+                    modifier = Modifier
+                        .weight(phraseGridWeight)
+                        .nestedScroll(phraseGridNestedScrollConnection),
                     phrases = phrases,
+                    state = phraseGridState,
                     columns = GridCells.Fixed(2),
-                    onPhraseClick = onPhraseClick
+                    onPhraseClick = onPhraseClick,
+                    onDisplayShouldExpand = { isDisplayCompressed = false }
                 )
             }
         }
@@ -201,12 +254,17 @@ private fun DisplaySurface(
 @Composable
 private fun PhraseGrid(
     phrases: List<Phrase>,
+    state: LazyGridState,
     columns: GridCells,
     onPhraseClick: (Phrase) -> Unit,
+    onDisplayShouldExpand: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val performButtonHaptic = rememberPhysicalButtonHaptics()
+
     LazyVerticalGrid(
         columns = columns,
+        state = state,
         modifier = modifier,
         contentPadding = PaddingValues(bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -214,7 +272,11 @@ private fun PhraseGrid(
     ) {
         items(phrases, key = { it.id }) { phrase ->
             Button(
-                onClick = { onPhraseClick(phrase) },
+                onClick = {
+                    performButtonHaptic()
+                    onDisplayShouldExpand()
+                    onPhraseClick(phrase)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp),
