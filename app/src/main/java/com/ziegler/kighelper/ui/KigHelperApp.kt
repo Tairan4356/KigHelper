@@ -48,6 +48,8 @@ import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
+import com.ziegler.kighelper.ui.screens.ToolboxScreen
+import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 
 /**
  * 应用导航根容器。
