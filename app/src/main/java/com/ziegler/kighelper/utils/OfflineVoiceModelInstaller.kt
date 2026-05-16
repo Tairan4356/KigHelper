@@ -531,6 +531,7 @@ class OfflineVoiceModelInstaller(context: Context) {
         }
     }
 
+    // 只使用 manifest、Piper 配置、Kokoro voices 等强信号，避免弱规则误伤普通 VITS 包。
     private fun detectStrongPackageFormat(tempDir: File): OfflineVoiceModelFormat? {
         inferManifestFormat(tempDir)?.let { return it }
 

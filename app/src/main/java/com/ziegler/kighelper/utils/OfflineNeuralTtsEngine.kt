@@ -35,6 +35,7 @@ class OfflineNeuralTtsEngine(context: Context) {
 
     private var loadedModelId: String? = null
     private var loadedTts: OfflineTts? = null
+    // native 推理失败后本次进程内熔断，避免用户连续点击反复触发同一模型初始化。
     private val failedModelIds = Collections.synchronizedSet(mutableSetOf<String>())
 
     fun speak(text: String, profile: VoiceProfile): Boolean {
@@ -134,6 +135,7 @@ class OfflineNeuralTtsEngine(context: Context) {
         if (!modelDir.isDirectory) {
             error("模型目录不存在：${modelDir.absolutePath}")
         }
+        // 尽量在进入 sherpa native 层前拦住明显坏包，降低格式错误导致崩溃的概率。
         File(modelDir, "model.onnx").requireReadableModelFile("model.onnx")
 
         when (modelStatus.pack.format) {

@@ -74,7 +74,7 @@ fun VoiceSettingsScreen(
 ) {
     val context = LocalContext.current
     val profile = viewModel.activeProfile
-    val modelManager = OfflineVoiceModelManager(context)
+    val modelManager = remember(context) { OfflineVoiceModelManager(context) }
     val modelInstaller = remember(context) { OfflineVoiceModelInstaller(context) }
     var modelRefreshKey by remember { mutableIntStateOf(0) }
     val modelStatuses = remember(modelRefreshKey) { modelManager.getModelStatuses() }
@@ -88,7 +88,8 @@ fun VoiceSettingsScreen(
     var showModelPicker by remember { mutableStateOf(false) }
     var showPresetPicker by remember { mutableStateOf(false) }
     val activeModelStatus =
-        modelStatuses.firstOrNull { it.pack.id == profile.modelId } ?: modelStatuses.firstOrNull()
+        modelStatuses.firstOrNull { it.pack.id == modelManager.normalizeModelId(profile.modelId) }
+            ?: modelStatuses.firstOrNull()
     val coroutineScope = rememberCoroutineScope()
     val archiveImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()

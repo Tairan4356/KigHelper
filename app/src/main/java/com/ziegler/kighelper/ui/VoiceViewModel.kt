@@ -115,6 +115,7 @@ class VoiceViewModel(
             ?: return VoicePresetImportResult.InvalidFile
         var imported = importedPreset.profile
         if (imported.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
+            // 导入端侧预设时必须先匹配到本机模型，否则保存后会出现不可试听的配置。
             val matchedModel = modelManager.resolveSharedModelRef(importedPreset.model)
                 ?: modelManager.getModelStatus(imported.modelId)
                     ?.takeIf { it.isReady && it.isRuntimeCompatible }

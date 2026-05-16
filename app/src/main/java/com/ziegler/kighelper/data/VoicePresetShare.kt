@@ -5,6 +5,7 @@ import com.google.gson.Gson
 object VoicePresetShare {
     private const val SCHEMA_VERSION = 2
 
+    // 预设跨设备分享时，modelId 可能不同；modelRef 用于在导入端匹配本地模型。
     fun export(
         profile: VoiceProfile,
         modelRef: SharedVoiceModelRef? = null,
@@ -57,6 +58,7 @@ data class ImportedVoicePreset(
     val model: SharedVoiceModelRef?
 )
 
+// 不包含模型文件本身，只保存可用于识别同一模型的轻量元数据。
 data class SharedVoiceModelRef(
     val modelId: String?,
     val name: String?,

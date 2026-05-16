@@ -69,6 +69,7 @@ class OfflineVoiceModelManager(context: Context) {
         if (ref == null) return null
         getModelStatus(ref.modelId)?.takeIf { it.isReady && it.isRuntimeCompatible }?.let { return it }
 
+        // 自定义模型在不同设备上的 id 不稳定，所以按强到弱逐级匹配。
         val installed = getModelStatuses().filter { it.isReady && it.isRuntimeCompatible }
         return installed.firstOrNull { status ->
             status.pack.format.name == ref.format &&
@@ -392,6 +393,7 @@ private fun File.readTextPrefix(maxBytes: Int = 64 * 1024): String {
     }.getOrDefault("")
 }
 
+// 只读取文件头部并带上文件大小，避免为百 MB 级模型做完整哈希。
 private fun File.signature(maxBytes: Int = 1024 * 1024): String {
     val digest = MessageDigest.getInstance("SHA-256")
     inputStream().use { input ->
