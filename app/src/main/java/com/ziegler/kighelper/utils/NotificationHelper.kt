@@ -152,7 +152,9 @@ object NotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .setSilent(true)
-            .setOngoing(true)  // 必需：设置为持续通知
+            // Android 14+: setOngoing(true) 必需用于 Live Updates，但用户仍可滑动关闭
+            // Android 13-: setOngoing(false) 允许用户滑动关闭
+            .setOngoing(Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
             .setAutoCancel(false)
             .setWhen(System.currentTimeMillis())  // 设置时间戳用于状态芯片显示
             .setShowWhen(false)  // 不显示时间，使用自定义芯片文本
@@ -162,7 +164,7 @@ object NotificationHelper {
                     .setBigContentTitle(title)
             )
             .apply {
-                // 添加 Live Updates 支持 - 让通知显示在 Live Updates 区域
+                // 添加 Live Updates 支持 - 让通知显示在 Live Updates 区域 (Android 14+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     setRequestPromotedOngoing(true)  // 必需：请求提升为 Live Update
                     // 设置状态芯片的关键文本（显示短语标签）
