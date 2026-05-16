@@ -3,54 +3,55 @@ package com.ziegler.kighelper.utils
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import java.util.Locale
+import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
+import com.ziegler.kighelper.data.VoiceProfile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * BroadcastReceiver 用于处理通知中的 TTS 重播按钮
  */
 class NotificationActionReceiver : BroadcastReceiver() {
-    private var tts: TextToSpeech? = null
-
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             ACTION_REPLAY_PHRASE -> {
                 val phraseText = intent.getStringExtra(EXTRA_PHRASE_TEXT)
                 if (!phraseText.isNullOrEmpty()) {
-                    replayPhrase(context, phraseText)
+                    replayPhrase(context.applicationContext, phraseText)
                 }
             }
         }
     }
 
     private fun replayPhrase(context: Context, text: String) {
-        // 创建临时 TTS 实例进行播放
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = tts?.setLanguage(Locale.CHINESE)
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    Log.w(TAG, "中文 TTS 不支持，使用默认语言")
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching {
+                val profile = loadActiveProfile(context)
+                withContext(Dispatchers.Main) {
+                    NotificationReplayPlayer.speak(context, text, profile)
                 }
-                val utteranceId = System.currentTimeMillis().toString()
-                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        // do nothing
-                    }
-                    override fun onDone(utteranceId: String?) {
-                        tts?.shutdown()
-                        tts = null
-                    }
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
-                        tts?.shutdown()
-                        tts = null
-                    }
-                })
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+            }.onFailure { error ->
+                Log.w(TAG, "通知栏重播失败", error)
+            }.also {
+                pendingResult.finish()
             }
         }
+    }
+
+    private suspend fun loadActiveProfile(context: Context): VoiceProfile {
+        val repository = SharedPreferencesVoiceProfileRepository(context)
+        val profiles = repository.getProfiles()
+        val activeProfileId = repository.getActiveProfileId()
+        return profiles.firstOrNull { it.id == activeProfileId }
+            ?: profiles.firstOrNull()
+            ?: VoiceProfile.defaultProfile()
     }
 
     companion object {
@@ -58,4 +59,29 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val EXTRA_PHRASE_TEXT = "phrase_text"
         private const val TAG = "NotificationReceiver"
     }
+}
+
+private object NotificationReplayPlayer {
+    private var ttsManager: TTSManager? = null
+    private var shutdownJob: Job? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    fun speak(context: Context, text: String, profile: VoiceProfile) {
+        val manager = ttsManager ?: TTSManager(context.applicationContext).also {
+            ttsManager = it
+        }
+        manager.speak(text, profile)
+
+        // Receiver 结束后仍需持有 TTSManager；空闲一段时间再释放应用级 TTS 资源。
+        shutdownJob?.cancel()
+        shutdownJob = scope.launch {
+            delay(IDLE_SHUTDOWN_DELAY_MS)
+            if (ttsManager === manager) {
+                manager.shutDown()
+                ttsManager = null
+            }
+        }
+    }
+
+    private const val IDLE_SHUTDOWN_DELAY_MS = 2 * 60 * 1000L
 }

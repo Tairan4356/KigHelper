@@ -14,12 +14,19 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech = TextToSpeech(context.applicationContext, this)
     private val offlineNeuralTtsEngine = OfflineNeuralTtsEngine(context.applicationContext)
     private var isReady = false
+    private var pendingSystemSpeech: Pair<String, VoiceProfile>? = null
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val languageResult = tts.setLanguage(Locale.CHINESE)
             isReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
                 languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+            if (isReady) {
+                pendingSystemSpeech?.let { (content, profile) ->
+                    pendingSystemSpeech = null
+                    speakWithSystemTts(content, profile)
+                }
+            }
         }
     }
 
@@ -44,6 +51,7 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
      * 停止当前所有朗读
      */
     fun stop() {
+        pendingSystemSpeech = null
         stopSystemTts()
         offlineNeuralTtsEngine.stop()
     }
@@ -65,6 +73,8 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
             tts.setSpeechRate(params.speechRate)
             tts.setPitch(params.pitch)
             tts.speak(content, TextToSpeech.QUEUE_FLUSH, null, UTTERANCE_ID)
+        } else {
+            pendingSystemSpeech = content to profile
         }
     }
 
