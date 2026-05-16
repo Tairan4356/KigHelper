@@ -1,7 +1,7 @@
 package com.ziegler.kighelper.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -15,6 +15,8 @@ object AppRoutes {
     const val MAIN = "main"
     const val INPUT = "input"
     const val EDIT = "edit"
+    const val PHRASE_MANAGEMENT = "phrase_management"
+    const val VOICE_SETTINGS = "voice_settings"
     const val ABOUT = "about"
 
     const val ADD_EDIT = "add_edit"
@@ -39,7 +41,7 @@ data class TopLevelDestination(
 val topLevelDestinations = listOf(
     TopLevelDestination(AppRoutes.MAIN, "快捷", Icons.Filled.Home),
     TopLevelDestination(AppRoutes.INPUT, "输入", Icons.Filled.Keyboard),
-    TopLevelDestination(AppRoutes.EDIT, "管理", Icons.Filled.Edit)
+    TopLevelDestination(AppRoutes.EDIT, "工具", Icons.Filled.Build)
 )
 
 val topLevelRoutes = topLevelDestinations.map { it.route }.toSet()

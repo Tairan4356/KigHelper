@@ -15,9 +15,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
+import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
 import com.ziegler.kighelper.ui.AACViewModel
 import com.ziegler.kighelper.ui.AACViewModelFactory
 import com.ziegler.kighelper.ui.KigHelperApp
+import com.ziegler.kighelper.ui.VoiceViewModel
+import com.ziegler.kighelper.ui.VoiceViewModelFactory
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
@@ -36,8 +39,14 @@ class MainActivity : ComponentActivity() {
     private val phraseRepository by lazy {
         SharedPreferencesPhraseRepository(applicationContext)
     }
+    private val voiceProfileRepository by lazy {
+        SharedPreferencesVoiceProfileRepository(applicationContext)
+    }
     private val viewModel: AACViewModel by viewModels {
         AACViewModelFactory(phraseRepository)
+    }
+    private val voiceViewModel: VoiceViewModel by viewModels {
+        VoiceViewModelFactory(voiceProfileRepository)
     }
 
     private val screenReceiver = object : BroadcastReceiver() {
@@ -73,7 +82,8 @@ class MainActivity : ComponentActivity() {
                 KigHelperApp(
                     windowSize = windowSizeClass,
                     viewModel = viewModel,
-                    onSpeak = { text -> ttsManager.speak(text) },
+                    voiceViewModel = voiceViewModel,
+                    onSpeak = { text -> ttsManager.speak(text, voiceViewModel.activeProfile) },
                     onStop = { ttsManager.stop() },
                     onPhraseSpoken = { phrase ->
                         // 当短语被使用时更新通知
@@ -84,22 +94,6 @@ class MainActivity : ComponentActivity() {
                             phraseSpeech = phrase.speech
                         )
                     }
-                )
-            }
-        }
-
-        // 加载最后使用的短语并显示在通知中
-        loadLastUsedPhraseForNotification()
-    }
-
-    private fun loadLastUsedPhraseForNotification() {
-        lifecycleScope.launch {
-            viewModel.getLastUsedPhrase()?.let { phrase ->
-                // 如果有最后使用的短语，用它初始化通知
-                NotificationHelper.showSilentLockScreenNotification(
-                    this@MainActivity,
-                    phraseLabel = phrase.label,
-                    phraseSpeech = phrase.speech
                 )
             }
         }

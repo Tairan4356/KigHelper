@@ -3,8 +3,6 @@ package com.ziegler.kighelper.ui
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
@@ -35,6 +33,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.navArgument
 import com.ziegler.kighelper.R
 import com.ziegler.kighelper.data.Phrase
@@ -48,6 +47,8 @@ import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
+import com.ziegler.kighelper.ui.screens.ToolboxScreen
+import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 
 /**
  * 应用导航根容器。
@@ -57,6 +58,7 @@ import com.ziegler.kighelper.ui.screens.MainScreen
 fun KigHelperApp(
     windowSize: WindowSizeClass,
     viewModel: AACViewModel,
+    voiceViewModel: VoiceViewModel,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
     onPhraseSpoken: (Phrase) -> Unit = {}
@@ -98,19 +100,47 @@ fun KigHelperApp(
                 startDestination = AppRoutes.MAIN,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp),
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = navSlideDirection(isPop = false),
+                        animationSpec = tween(NavTransitionDurationMillis)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = navSlideDirection(isPop = false),
+                        animationSpec = tween(NavTransitionDurationMillis)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = navSlideDirection(isPop = true),
+                        animationSpec = tween(NavTransitionDurationMillis)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = navSlideDirection(isPop = true),
+                        animationSpec = tween(NavTransitionDurationMillis)
+                    )
+                }
             ) {
                 composable(AppRoutes.MAIN) {
                     val context = androidx.compose.ui.platform.LocalContext.current
                     MainScreen(
                         modifier = Modifier.padding(innerPadding),
                         phrases = viewModel.phraseList,
+                        displayText = viewModel.displayText,
+                        isShowingInitialHint = viewModel.isShowingInitialHint,
                         onPhraseClick = { phrase ->
+                            viewModel.showPhrase(phrase)
                             onSpeak(phrase.speech)
                             viewModel.markPhraseAsUsed(phrase)
                             onPhraseSpoken(phrase)
                         },
                         onClearClick = {
+                            viewModel.clearDisplayText()
                             onStop()
                             com.ziegler.kighelper.utils.NotificationHelper.clearPhraseAndRefresh(context)
                         }
@@ -126,11 +156,27 @@ fun KigHelperApp(
                 }
 
                 composable(AppRoutes.EDIT) {
+                    ToolboxScreen(
+                        contentPadding = innerPadding,
+                        onNavigateToPhraseManager = {
+                            navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
+                        },
+                        onNavigateToVoiceSettings = {
+                            navController.navigate(AppRoutes.VOICE_SETTINGS)
+                        },
+                        onNavigateToAbout = {
+                            navController.navigate(AppRoutes.ABOUT)
+                        }
+                    )
+                }
+
+                composable(AppRoutes.PHRASE_MANAGEMENT) {
                     EditScreen(
                         contentPadding = innerPadding,
                         phrases = viewModel.phraseList,
                         onDelete = viewModel::deletePhrase,
                         onMove = viewModel::movePhrase,
+                        onBack = { navController.popBackStack() },
                         onNavigateToAdd = {
                             navController.navigate(AppRoutes.addEditRoute())
                         },
@@ -140,6 +186,14 @@ fun KigHelperApp(
                         onNavigateToAbout = {
                             navController.navigate(AppRoutes.ABOUT)
                         }
+                    )
+                }
+
+                composable(AppRoutes.VOICE_SETTINGS) {
+                    VoiceSettingsScreen(
+                        viewModel = voiceViewModel,
+                        onBack = { navController.popBackStack() },
+                        onPreview = onSpeak
                     )
                 }
 
@@ -164,25 +218,38 @@ fun KigHelperApp(
                     )
                 }
 
-                composable(
-                    route = AppRoutes.ABOUT,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(300)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(300)
-                        )
-                    }
-                ) {
+                composable(AppRoutes.ABOUT) {
                     AboutScreen(onBack = { navController.popBackStack() })
                 }
             }
         }
+    }
+}
+
+private const val NavTransitionDurationMillis = 300
+
+private val topLevelRouteOrder = listOf(
+    AppRoutes.MAIN,
+    AppRoutes.INPUT,
+    AppRoutes.EDIT
+)
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection(
+    isPop: Boolean
+): AnimatedContentTransitionScope.SlideDirection {
+    val initialIndex = topLevelRouteOrder.indexOf(initialState.destination.route)
+    val targetIndex = topLevelRouteOrder.indexOf(targetState.destination.route)
+
+    return if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
+        if (targetIndex > initialIndex) {
+            AnimatedContentTransitionScope.SlideDirection.Left
+        } else {
+            AnimatedContentTransitionScope.SlideDirection.Right
+        }
+    } else if (isPop) {
+        AnimatedContentTransitionScope.SlideDirection.Right
+    } else {
+        AnimatedContentTransitionScope.SlideDirection.Left
     }
 }
 
@@ -242,11 +309,11 @@ private fun AppBottomBar(
         enter = slideInVertically(
             initialOffsetY = { fullHeight -> fullHeight },
             animationSpec = tween(220)
-        ) + fadeIn(animationSpec = tween(120)),
+        ),
         exit = slideOutVertically(
             targetOffsetY = { fullHeight -> fullHeight },
             animationSpec = tween(180)
-        ) + fadeOut(animationSpec = tween(120))
+        )
     ) {
         NavigationBar {
             topLevelDestinations.forEach { item ->

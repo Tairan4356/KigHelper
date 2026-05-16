@@ -28,3 +28,16 @@
 -keepattributes *Annotation*
 -dontwarn sun.misc.**
 -keep class com.google.gson.** { *; }
+
+# sherpa-onnx JNI 会按 Java/Kotlin 字段名读取 OfflineTtsConfig 等配置对象。
+# release 混淆如果改名这些字段，native GetFieldID 会拿到 null 并直接 abort。
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-dontwarn com.k2fsa.sherpa.onnx.**
+
+# ONNX Runtime Java 层同样包含 JNI 入口，保守 keep 以避免 release-only native 绑定问题。
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+
+-keepclasseswithmembernames class * {
+    native <methods>;
+}

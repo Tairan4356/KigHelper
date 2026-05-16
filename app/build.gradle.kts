@@ -15,16 +15,19 @@ android {
         applicationId = "com.ziegler.kighelper"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -57,9 +60,12 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.okhttp)
+    implementation(libs.commons.compress)
+    implementation(libs.onnxruntime.android)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.foundation)
+    implementation(files("libs/sherpa-onnx-1.12.11-no-ort2.aar"))
 
     testImplementation(libs.junit)
 
