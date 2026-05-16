@@ -139,7 +139,7 @@ object NotificationHelper {
         // 内容文本显示完整短语，如果太长则截断
         val contentText = when {
             phraseSpeech.isNullOrEmpty() -> "点击返回主界面"
-            phraseSpeech.length > 40 -> phraseSpeech.take(37) + "..."
+//            phraseSpeech.length > 40 -> phraseSpeech.take(37) + "..."
             else -> phraseSpeech
         }
 
@@ -156,6 +156,11 @@ object NotificationHelper {
             .setAutoCancel(false)
             .setWhen(System.currentTimeMillis())  // 设置时间戳用于状态芯片显示
             .setShowWhen(false)  // 不显示时间，使用自定义芯片文本
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(phraseSpeech ?: "点击返回主界面")
+                    .setBigContentTitle(title)
+            )
             .apply {
                 // 添加 Live Updates 支持 - 让通知显示在 Live Updates 区域
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
