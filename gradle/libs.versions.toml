@@ -16,7 +16,7 @@ material3 = "1.4.0"
 constraintlayout = "2.2.1"
 foundation = "1.11.1"
 commonsCompress = "1.28.0"
-onnxruntimeAndroid = "1.17.1"
+onnxruntimeAndroid = "1.26.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
