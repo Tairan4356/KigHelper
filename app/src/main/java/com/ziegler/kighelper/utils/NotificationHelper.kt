@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
 
@@ -71,33 +72,6 @@ object NotificationHelper {
         context.applicationContext.notificationManager().cancel(NOTIFICATION_ID)
     }
 
-    /**
-     * 检查应用是否可以发送 Live Update 通知
-     * @return true 如果用户在设置中启用了 Live Updates (需要 API 36+)
-     */
-    @Suppress("NewApi")
-    fun canPostLiveUpdates(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT >= 36) {
-            val notificationManager = context.applicationContext.notificationManager()
-            return notificationManager.canPostPromotedNotifications()
-        }
-        return false
-    }
-
-    /**
-     * 打开系统设置，允许用户管理 Live Updates 权限 (需要 API 36+)
-     */
-    fun openLiveUpdatesSettings(context: Context) {
-        if (Build.VERSION.SDK_INT >= 36) {
-            try {
-                val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                android.util.Log.e("NotificationHelper", "无法打开 Live Updates 设置", e)
-            }
-        }
-    }
 
     private fun createNotificationChannel(): NotificationChannel {
         return NotificationChannel(
@@ -152,6 +126,7 @@ object NotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .setSilent(true)
+            .setColor(ContextCompat.getColor(context, R.color.ic_launcher_background))
             // Android 14+: setOngoing(true) 必需用于 Live Updates，但用户仍可滑动关闭
             // Android 13-: setOngoing(false) 允许用户滑动关闭
             .setOngoing(Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
