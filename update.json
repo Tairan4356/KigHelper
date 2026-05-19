@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "1.1.0",
-  "updateContent": "1. 支持语音模型调用\n2. 点击卡片按钮震动\n3. 通知实时动态更新\n4. 优化页面动画效果",
+  "versionCode": 4,
+  "versionName": "1.1.1",
+  "updateContent": "1. 优化了页面布局\n2. 卡片管理拖动排序\n3. 更新了语音推理引擎\n4. 修复了已知问题\n感谢@yulexun和@iMallpa的代码贡献",
   "downloadUrl": "https://tairan4356.github.io/KigHelper/"
 }
