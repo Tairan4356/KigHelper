@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,6 +42,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,6 +94,7 @@ fun VoiceSettingsScreen(
         modelStatuses.firstOrNull { it.pack.id == modelManager.normalizeModelId(profile.modelId) }
             ?: modelStatuses.firstOrNull()
     val coroutineScope = rememberCoroutineScope()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -157,28 +161,40 @@ fun VoiceSettingsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
-            TopAppBar(title = { Text("全局音色设置") }, navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                }
-            }, actions = {
-                IconButton(onClick = {
-                    configImportLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
-                }) {
-                    Icon(Icons.Filled.FileOpen, "导入配置")
-                }
-                IconButton(
-                    onClick = {
-                        context.shareVoicePresetFile(
-                            title = profile.name,
-                            content = viewModel.exportActiveProfile(modelManager)
-                        )
-                    }) {
-                    Icon(Icons.Filled.Share, "分享预设")
-                }
-            })
-        }) { padding ->
+            TopAppBar(
+                title = { Text("全局音色设置") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            configImportLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                        }
+                    ) {
+                        Icon(Icons.Filled.FileOpen, "导入配置")
+                    }
+
+                    IconButton(
+                        onClick = {
+                            context.shareVoicePresetFile(
+                                title = profile.name,
+                                content = viewModel.exportActiveProfile(modelManager)
+                            )
+                        }
+                    ) {
+                        Icon(Icons.Filled.Share, "分享预设")
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

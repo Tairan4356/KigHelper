@@ -50,51 +50,38 @@ fun ToolboxScreen(
     onNavigateToAbout: () -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
+    val pagePadding = 16.dp
+
+    val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
+    val outerEndPadding = contentPadding.calculateEndPadding(layoutDirection)
+    val outerBottomPadding = contentPadding.calculateBottomPadding()
 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("工具箱") })
         },
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
-    ) { padding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = innerPadding.calculateTopPadding())
                 .padding(
-                    start = contentPadding.calculateStartPadding(layoutDirection),
-                    end = contentPadding.calculateEndPadding(layoutDirection),
-                    bottom = contentPadding.calculateBottomPadding()
+                    start = outerStartPadding + pagePadding,
+                    top = pagePadding,
+                    end = outerEndPadding + pagePadding,
+                    bottom = outerBottomPadding + pagePadding
                 )
         ) {
-//            Text(
-//                text = "工具",
-//                style = MaterialTheme.typography.labelLarge,
-//                color = MaterialTheme.colorScheme.outline,
-//                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
-//            )
-//            LazyVerticalGrid(
-//                columns = GridCells.Fixed(2),
-//                modifier = Modifier
-//                    .fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(8.dp),
-//                verticalArrangement = Arrangement.spacedBy(8.dp),
-//                userScrollEnabled = false
-//            ) {
-//                items(listOf("好东西就要来啦", "敬请期待")) { title ->
-//                    ToolPlaceholder(title = title)
-//                }
-//            }
-//
-//            Spacer(modifier = Modifier.height(12.dp))
-
             Text(
                 text = "菜单",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
             )
+
             LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
@@ -105,6 +92,7 @@ fun ToolboxScreen(
                         onClick = onNavigateToPhraseManager
                     )
                 }
+
                 item {
                     ToolboxMenuItem(
                         title = "全局音色设置",
@@ -113,6 +101,7 @@ fun ToolboxScreen(
                         onClick = onNavigateToVoiceSettings
                     )
                 }
+
                 item {
                     ToolboxMenuItem(
                         title = "关于",

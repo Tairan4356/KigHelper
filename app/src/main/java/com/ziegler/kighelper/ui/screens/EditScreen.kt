@@ -1,34 +1,33 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,18 +38,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
- * 短语管理界面
- * 提供添加、删除、排序短语的功能
+ * 短语管理界面。
+ * 提供添加、删除、编辑、拖拽排序短语的功能。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -61,36 +68,57 @@ fun EditScreen(
     onMove: (Int, Int) -> Unit,
     onBack: () -> Unit,
     onNavigateToAdd: () -> Unit,
-    onNavigateToEdit: (String) -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToEdit: (String) -> Unit
 ) {
-    // 根据屏幕方向切换列表密度
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val layoutDirection = LocalLayoutDirection.current
+
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
     val outerEndPadding = contentPadding.calculateEndPadding(layoutDirection)
     val outerBottomPadding = contentPadding.calculateBottomPadding()
+
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val listHorizontalPadding = 16.dp
+    val itemSpacing = 8.dp
+
     val listContentPadding = PaddingValues(
-        start = outerStartPadding,
-        end = outerEndPadding,
+        start = outerStartPadding + listHorizontalPadding,
+        top = itemSpacing,
+        end = outerEndPadding + listHorizontalPadding,
         bottom = outerBottomPadding + 88.dp
     )
 
+    val currentOnMove by rememberUpdatedState(onMove)
+
+    val lazyListState = rememberLazyListState()
+    val reorderableLazyListState = rememberReorderableLazyListState(
+        lazyListState = lazyListState
+    ) { from, to ->
+        currentOnMove(from.index, to.index)
+    }
+
+    val lazyGridState = rememberLazyGridState()
+    val reorderableLazyGridState = rememberReorderableLazyGridState(
+        lazyGridState = lazyGridState
+    ) { from, to ->
+        currentOnMove(from.index, to.index)
+    }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text("管理短语") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
                     }
                 },
-                actions = {
-                    IconButton(onClick = onNavigateToAbout) {
-                        Icon(Icons.Default.Info, "关于")
-                    }
-                }
+                scrollBehavior = scrollBehavior
             )
         },
         floatingActionButton = {
@@ -102,97 +130,128 @@ fun EditScreen(
                     bottom = outerBottomPadding
                 )
             ) {
-                Icon(Icons.Default.Add, "添加")
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "添加"
+                )
             }
         },
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
-    ) { padding ->
+    ) { innerPadding ->
         if (isLandscape) {
-            // 横屏使用 2 列网格
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
+                state = lazyGridState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding()),
+                    .padding(top = innerPadding.calculateTopPadding()),
                 contentPadding = listContentPadding,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(itemSpacing),
+                verticalArrangement = Arrangement.spacedBy(itemSpacing)
             ) {
-                itemsIndexed(phrases, key = { _, p -> p.id }) { index, phrase ->
-                    Box(modifier = Modifier.animateItem()) {
+                itemsIndexed(
+                    items = phrases,
+                    key = { _, phrase -> phrase.id }
+                ) { _, phrase ->
+                    ReorderableItem(
+                        state = reorderableLazyGridState,
+                        key = phrase.id
+                    ) { isDragging ->
+                        val interactionSource = remember { MutableInteractionSource() }
+
                         PhraseEditItem(
                             phrase = phrase,
+                            isDragging = isDragging,
+                            interactionSource = interactionSource,
                             onDelete = { onDelete(phrase) },
                             onEdit = { onNavigateToEdit(phrase.id) },
-                            onMoveUp = if (index > 0) {
-                                { onMove(index, index - 1) }
-                            } else null,
-                            onMoveDown = if (index < phrases.size - 1) {
-                                { onMove(index, index + 1) }
-                            } else null)
+                            dragHandleModifier = Modifier.draggableHandle(
+                                interactionSource = interactionSource
+                            )
+                        )
                     }
                 }
             }
         } else {
             LazyColumn(
+                state = lazyListState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding()),
-                contentPadding = listContentPadding
+                    .padding(top = innerPadding.calculateTopPadding()),
+                contentPadding = listContentPadding,
+                verticalArrangement = Arrangement.spacedBy(itemSpacing)
             ) {
-                itemsIndexed(phrases, key = { _, p -> p.id }) { index, phrase ->
-                    Box(modifier = Modifier.animateItem()) {
+                itemsIndexed(
+                    items = phrases,
+                    key = { _, phrase -> phrase.id }
+                ) { _, phrase ->
+                    ReorderableItem(
+                        state = reorderableLazyListState,
+                        key = phrase.id
+                    ) { isDragging ->
+                        val interactionSource = remember { MutableInteractionSource() }
+
                         PhraseEditItem(
                             phrase = phrase,
+                            isDragging = isDragging,
+                            interactionSource = interactionSource,
                             onDelete = { onDelete(phrase) },
                             onEdit = { onNavigateToEdit(phrase.id) },
-                            onMoveUp = if (index > 0) {
-                                { onMove(index, index - 1) }
-                            } else null,
-                            onMoveDown = if (index < phrases.size - 1) {
-                                { onMove(index, index + 1) }
-                            } else null)
+                            dragHandleModifier = Modifier.draggableHandle(
+                                interactionSource = interactionSource
+                            )
+                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PhraseEditItem(
     phrase: Phrase,
+    isDragging: Boolean,
+    interactionSource: MutableInteractionSource,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
-    onMoveUp: (() -> Unit)?,
-    onMoveDown: (() -> Unit)?
+    dragHandleModifier: Modifier
 ) {
+    val cardElevation by animateDpAsState(
+        targetValue = if (isDragging) 10.dp else 1.dp,
+        label = "phraseCardElevation"
+    )
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        onClick = onEdit,
+        modifier = Modifier.fillMaxWidth(),
+        interactionSource = interactionSource,
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = cardElevation,
+            pressedElevation = cardElevation,
+            focusedElevation = cardElevation,
+            hoveredElevation = cardElevation,
+            draggedElevation = cardElevation
+        )
     ) {
         Row(
-            modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 排序手柄图标区
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(
-                    onClick = onMoveUp ?: {},
-                    enabled = onMoveUp != null,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
-                }
-                IconButton(
-                    onClick = onMoveDown ?: {},
-                    enabled = onMoveDown != null,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
-                }
+            IconButton(
+                modifier = dragHandleModifier.size(40.dp),
+                onClick = {}
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "拖拽排序",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Column(
@@ -200,9 +259,13 @@ private fun PhraseEditItem(
                     .weight(1f)
                     .padding(horizontal = 8.dp)
             ) {
-                Text(phrase.label, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    phrase.speech,
+                    text = phrase.label,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Text(
+                    text = phrase.speech,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -210,7 +273,11 @@ private fun PhraseEditItem(
             }
 
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error)
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "删除",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
