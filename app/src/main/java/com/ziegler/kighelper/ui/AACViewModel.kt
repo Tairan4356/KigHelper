@@ -1,8 +1,8 @@
 package com.ziegler.kighelper.ui
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -22,6 +22,9 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
     val phraseList: List<Phrase>
         get() = _phraseList
 
+    var isPhrasesLoading by mutableStateOf(true)
+        private set
+
     var displayText by mutableStateOf(initialHint)
         private set
 
@@ -34,7 +37,13 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
 
     private fun loadPhrases() {
         viewModelScope.launch {
-            replacePhrases(repository.getPhrases())
+            isPhrasesLoading = true
+
+            try {
+                replacePhrases(repository.getPhrases())
+            } finally {
+                isPhrasesLoading = false
+            }
         }
     }
 
@@ -119,8 +128,14 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
      */
     fun resetToDefault() {
         viewModelScope.launch {
-            repository.resetPhrases()
-            replacePhrases(repository.getPhrases())
+            isPhrasesLoading = true
+
+            try {
+                repository.resetPhrases()
+                replacePhrases(repository.getPhrases())
+            } finally {
+                isPhrasesLoading = false
+            }
         }
     }
 
@@ -128,7 +143,6 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
      * 将当前内存中的列表同步到持久化存储
      */
     private fun persistCurrentPhrases() {
-        // 拷贝为普通 List，避免持久化过程中继续读取可变状态
         val snapshot = _phraseList.toList()
         viewModelScope.launch {
             repository.savePhrases(snapshot)

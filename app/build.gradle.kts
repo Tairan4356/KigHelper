@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.foundation)
     implementation(files("libs/sherpa-onnx-1.12.11-no-ort2.aar"))
+    implementation(libs.reorderable)
 
     testImplementation(libs.junit)
 
