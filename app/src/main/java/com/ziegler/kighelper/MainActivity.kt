@@ -60,6 +60,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ensure activity stays visible on lock screen
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
         enableEdgeToEdge() // 开启边到边显示
 
         startService(Intent(this, TaskRemovedCleanupService::class.java))
@@ -105,6 +110,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        NotificationHelper.clearPhraseAndRefresh(this)
         NotificationHelper.cancelNotification(this)
         stopService(Intent(this, TaskRemovedCleanupService::class.java))
         if (screenReceiverRegistered) {

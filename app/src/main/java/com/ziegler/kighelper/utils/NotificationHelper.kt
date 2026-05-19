@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
 
@@ -18,6 +19,14 @@ import com.ziegler.kighelper.R
  * 通知会显示在通知中心的 Live Updates 区域。
  */
 object NotificationHelper {
+            /**
+             * 清除当前通知短语内容，并刷新通知为默认提示。
+             */
+            fun clearPhraseAndRefresh(context: Context) {
+                currentPhraseLabel = null
+                currentPhraseSpeech = null
+                showSilentLockScreenNotification(context, null, null)
+            }
     private const val CHANNEL_ID = "aac_silent_channel"
     private const val NOTIFICATION_ID = 888
     private const val REPLAY_REQUEST_CODE = 100
@@ -63,33 +72,6 @@ object NotificationHelper {
         context.applicationContext.notificationManager().cancel(NOTIFICATION_ID)
     }
 
-    /**
-     * 检查应用是否可以发送 Live Update 通知
-     * @return true 如果用户在设置中启用了 Live Updates (需要 API 36+)
-     */
-    @Suppress("NewApi")
-    fun canPostLiveUpdates(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT >= 36) {
-            val notificationManager = context.applicationContext.notificationManager()
-            return notificationManager.canPostPromotedNotifications()
-        }
-        return false
-    }
-
-    /**
-     * 打开系统设置，允许用户管理 Live Updates 权限 (需要 API 36+)
-     */
-    fun openLiveUpdatesSettings(context: Context) {
-        if (Build.VERSION.SDK_INT >= 36) {
-            try {
-                val intent = Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                android.util.Log.e("NotificationHelper", "无法打开 Live Updates 设置", e)
-            }
-        }
-    }
 
     private fun createNotificationChannel(): NotificationChannel {
         return NotificationChannel(
@@ -131,7 +113,7 @@ object NotificationHelper {
         // 内容文本显示完整短语，如果太长则截断
         val contentText = when {
             phraseSpeech.isNullOrEmpty() -> "点击返回主界面"
-            phraseSpeech.length > 40 -> phraseSpeech.take(37) + "..."
+//            phraseSpeech.length > 40 -> phraseSpeech.take(37) + "..."
             else -> phraseSpeech
         }
 
@@ -143,14 +125,21 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)  // 使用 SERVICE 类别以符合 Live Updates 要求
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
-            .setFullScreenIntent(pendingIntent, true)
             .setSilent(true)
-            .setOngoing(true)  // 必需：设置为持续通知
+            .setColor(ContextCompat.getColor(context, R.color.ic_launcher_background))
+            // Android 14+: setOngoing(true) 必需用于 Live Updates，但用户仍可滑动关闭
+            // Android 13-: setOngoing(false) 允许用户滑动关闭
+            .setOngoing(Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
             .setAutoCancel(false)
             .setWhen(System.currentTimeMillis())  // 设置时间戳用于状态芯片显示
             .setShowWhen(false)  // 不显示时间，使用自定义芯片文本
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(phraseSpeech ?: "点击返回主界面")
+                    .setBigContentTitle(title)
+            )
             .apply {
-                // 添加 Live Updates 支持 - 让通知显示在 Live Updates 区域
+                // 添加 Live Updates 支持 - 让通知显示在 Live Updates 区域 (Android 14+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     setRequestPromotedOngoing(true)  // 必需：请求提升为 Live Update
                     // 设置状态芯片的关键文本（显示短语标签）
@@ -169,12 +158,21 @@ object NotificationHelper {
             )
         }
 
-        // 按钮2：打开应用
-        builder.addAction(
-            R.drawable.ic_launcher_foreground,
-            "打开应用",
-            pendingIntent
-        )
+//        // 按钮2：打开应用（与通知点击一致，确保都能在锁屏上启动 Activity）
+//        val openAppIntent = Intent(context, MainActivity::class.java).apply {
+//            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+//        }
+//        val openAppPendingIntent = PendingIntent.getActivity(
+//            context,
+//            1, // unique request code for action button
+//            openAppIntent,
+//            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+//        )
+//        builder.addAction(
+//            R.drawable.ic_launcher_foreground,
+//            "打开应用",
+//            openAppPendingIntent
+//        )
 
         return builder.build()
     }

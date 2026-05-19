@@ -126,6 +126,7 @@ fun KigHelperApp(
                 }
             ) {
                 composable(AppRoutes.MAIN) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     MainScreen(
                         contentPadding = innerPadding,
                         phrases = viewModel.phraseList,
@@ -141,6 +142,7 @@ fun KigHelperApp(
                         onClearClick = {
                             viewModel.clearDisplayText()
                             onStop()
+                            com.ziegler.kighelper.utils.NotificationHelper.clearPhraseAndRefresh(context)
                         },
                         onAddPhrase = viewModel::addPhrase
                     )
