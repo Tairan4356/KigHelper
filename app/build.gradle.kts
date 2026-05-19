@@ -34,6 +34,9 @@ android {
             )
             // signingConfig = signingConfigs.getByName("release")
         }
+        debug {
+            applicationIdSuffix = ".debug"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -41,6 +44,11 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -61,12 +69,13 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.okhttp)
     implementation(libs.commons.compress)
-    implementation(libs.onnxruntime.android)
+    // Commented out to avoid duplicate library conflicts with sherpa-onnx
+    // implementation(libs.onnxruntime.android)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.foundation)
-    implementation(files("libs/sherpa-onnx-1.12.11-no-ort2.aar"))
     implementation(libs.reorderable)
+    implementation(files("libs/sherpa-onnx-1.13.2.aar"))
 
     testImplementation(libs.junit)
 
