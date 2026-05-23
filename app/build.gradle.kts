@@ -48,6 +48,10 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            pickFirsts += setOf(
+                "**/libonnxruntime.so",
+                "**/libonnxruntime4j_jni.so"
+            )
         }
     }
 }
@@ -76,6 +80,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.reorderable)
     implementation(files("libs/sherpa-onnx-1.13.2.aar"))
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.3")
 
     testImplementation(libs.junit)
 

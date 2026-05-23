@@ -231,6 +231,7 @@ enum class OfflineVoiceModelFormat(val label: String) {
     VITS("VITS"),
     PIPER("Piper"),
     KOKORO("Kokoro"),
+    KIGVPK("KigVPK"),
     UNSUPPORTED("不支持")
 }
 
@@ -328,6 +329,7 @@ fun OfflineVoiceModelFormat.defaultRequiredFiles(): List<String> {
         OfflineVoiceModelFormat.VITS -> listOf("model.onnx", "lexicon.txt", "tokens.txt", "config.json")
         OfflineVoiceModelFormat.PIPER -> listOf("model.onnx", "tokens.txt", "espeak-ng-data", "config.json")
         OfflineVoiceModelFormat.KOKORO -> listOf("model.onnx", "voices.bin", "tokens.txt", "espeak-ng-data", "config.json")
+        OfflineVoiceModelFormat.KIGVPK -> listOf("model.onnx", "model.onnx.json", "phonemizer.dict")
         OfflineVoiceModelFormat.UNSUPPORTED -> listOf("model.onnx", "config.json")
     }
 }
@@ -337,6 +339,11 @@ private fun File.detectStrongModelFormat(): OfflineVoiceModelFormat? {
 
     val files = walkTopDown().filter { it.isFile }.toList()
     val names = files.map { it.name.lowercase() }
+
+    if (names.contains("voicepack.json") && names.contains("manifest.json")) {
+        return OfflineVoiceModelFormat.KIGVPK
+    }
+
     if (names.any { it.endsWith(".onnx.json") }) {
         return OfflineVoiceModelFormat.PIPER
     }
@@ -375,6 +382,7 @@ private fun File.inferManifestFormat(): OfflineVoiceModelFormat? {
             }.joinToString(" ").lowercase()
 
             when {
+                "piper-onnx" in signals || "kigvpk" in signals -> return OfflineVoiceModelFormat.KIGVPK
                 "piper" in signals -> return OfflineVoiceModelFormat.PIPER
                 "kokoro" in signals -> return OfflineVoiceModelFormat.KOKORO
                 "vits" in signals -> return OfflineVoiceModelFormat.VITS

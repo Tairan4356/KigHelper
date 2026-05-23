@@ -68,6 +68,8 @@ import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
 import com.ziegler.kighelper.utils.OfflineVoiceModelStatus
 import com.ziegler.kighelper.utils.RemoteVoiceModelCatalogEntry
+import com.ziegler.kighelper.utils.KigvpkModelParams
+import com.ziegler.kighelper.utils.KigvpkParamsManager
 import java.io.File
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -97,6 +99,11 @@ fun VoiceSettingsScreen(
     val activeModelStatus =
         modelStatuses.firstOrNull { it.pack.id == modelManager.normalizeModelId(profile.modelId) }
             ?: modelStatuses.firstOrNull()
+    val isKigvpk = activeModelStatus?.pack?.format == OfflineVoiceModelFormat.KIGVPK
+    val kigvpkParamsManager = remember(context) { KigvpkParamsManager(context) }
+    var kigvpkParams by remember(modelRefreshKey, activeModelStatus?.pack?.id) {
+        mutableStateOf(activeModelStatus?.let { kigvpkParamsManager.loadDefaults(it.directory, it.pack.id) } ?: KigvpkModelParams())
+    }
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
@@ -251,6 +258,15 @@ fun VoiceSettingsScreen(
                         })
                 }
             }
+            if (isKigvpk) {
+                item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Text("KIGVPK 参数", style = MaterialTheme.typography.labelLarge) }
+                item { VoiceSlider(title = "语调起伏", valueText = "${(kigvpkParams.noiseScale * 100).roundToInt()}%", value = kigvpkParams.noiseScale, valueRange = 0.3f..1.5f, onValueChange = { kigvpkParams = kigvpkParams.copy(noiseScale = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
+                item { VoiceSlider(title = "语调力度", valueText = "${(kigvpkParams.noiseW * 100).roundToInt()}%", value = kigvpkParams.noiseW, valueRange = 0.3f..1.5f, onValueChange = { kigvpkParams = kigvpkParams.copy(noiseW = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
+                item { VoiceSlider(title = "模型语速", valueText = "${(kigvpkParams.lengthScale * 100).roundToInt()}%", value = kigvpkParams.lengthScale, valueRange = 0.5f..2.0f, onValueChange = { kigvpkParams = kigvpkParams.copy(lengthScale = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
+                item { VoiceSlider(title = "句末停顿", valueText = "${(kigvpkParams.sentenceSilenceSec * 1000).roundToInt()}ms", value = kigvpkParams.sentenceSilenceSec, valueRange = 0f..1f, onValueChange = { kigvpkParams = kigvpkParams.copy(sentenceSilenceSec = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
+            }
+            if (!isKigvpk) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -324,6 +340,7 @@ fun VoiceSettingsScreen(
                     value = profile.expressiveness,
                     valueRange = 0f..1f,
                     onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
+            }
             }
             item {
                 Button(
@@ -741,7 +758,8 @@ private fun ImportFormatSelector(
         listOf(
             OfflineVoiceModelFormat.VITS,
             OfflineVoiceModelFormat.PIPER,
-            OfflineVoiceModelFormat.KOKORO
+            OfflineVoiceModelFormat.KOKORO,
+            OfflineVoiceModelFormat.KIGVPK
         ).forEach { format ->
             FilterChip(
                 selected = selected == format,

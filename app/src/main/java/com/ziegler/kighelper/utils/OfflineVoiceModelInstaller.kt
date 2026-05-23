@@ -630,6 +630,7 @@ class OfflineVoiceModelInstaller(context: Context) {
             }.joinToString(" ").lowercase()
 
             when {
+                "piper-onnx" in signals -> return OfflineVoiceModelFormat.KIGVPK
                 "piper" in signals -> return OfflineVoiceModelFormat.PIPER
                 "kokoro" in signals -> return OfflineVoiceModelFormat.KOKORO
                 "vits" in signals -> return OfflineVoiceModelFormat.VITS
@@ -723,6 +724,10 @@ class OfflineVoiceModelInstaller(context: Context) {
             }
             "tokens.txt" -> files.firstOrNull { it.name.equals("tokens.txt", ignoreCase = true) }
             "lexicon.txt" -> files.firstOrNull { it.name.equals("lexicon.txt", ignoreCase = true) || it.name.startsWith("lexicon") }
+            "model.onnx.json" -> files.firstOrNull { it.name.equals("model.onnx.json", ignoreCase = true) }
+                ?: files.firstOrNull { it.name.endsWith(".onnx.json", ignoreCase = true) }
+            "phonemizer.dict" -> files.firstOrNull { it.name.equals("phonemizer.dict", ignoreCase = true) }
+                ?: files.firstOrNull { it.name.endsWith(".dict", ignoreCase = true) && !it.name.contains("user", ignoreCase = true) }
             "dict" -> null
             else -> null
         }
