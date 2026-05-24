@@ -143,7 +143,7 @@ class EspeakPhonemizer(
     }
 }
 
-class KigvpkTtsEngine(context: Context, packDir: File) {
+class KigvpkTtsEngine(context: Context, val packDir: File) {
     private val voicePack = KigvpkVoicePack.fromDir(packDir)
     val sampleRate: Int = voicePack.sampleRate
 

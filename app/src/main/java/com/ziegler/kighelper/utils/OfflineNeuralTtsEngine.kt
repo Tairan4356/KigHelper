@@ -116,7 +116,11 @@ class OfflineNeuralTtsEngine(context: Context) {
         targetFile: File
     ) {
         if (modelStatus.pack.format == OfflineVoiceModelFormat.KIGVPK) {
-            val engine = kigvpkEngine ?: KigvpkTtsEngine(appContext, modelStatus.directory).also { kigvpkEngine = it }
+            if (kigvpkEngine == null || kigvpkEngine?.packDir != modelStatus.directory) {
+                kigvpkEngine?.close()
+                kigvpkEngine = KigvpkTtsEngine(appContext, modelStatus.directory)
+            }
+            val engine = kigvpkEngine!!
             val modelParams = kigvpkParamsManager.loadDefaults(modelStatus.directory, modelStatus.pack.id)
             val speed = modelParams.lengthScale / profile.speechRate.coerceAtLeast(0.5f)
             engine.setSynthesisTuning(modelParams.noiseScale, speed, modelParams.noiseW, modelParams.sentenceSilenceSec)
