@@ -1,6 +1,7 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,35 +27,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,12 +59,15 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
-import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
+import com.ziegler.kighelper.ui.drag.PhraseDragInfo
+import com.ziegler.kighelper.ui.screens.main.PhraseGrid
 
 /**
  * 主界面：提供大字显示区域和短语快捷按钮网格。
@@ -85,12 +83,15 @@ fun MainScreen(
     isPhrasesLoading: Boolean,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
-    onAddPhrase: (label: String, speech: String) -> Unit,
+    onSpeakClick: (String) -> Unit,
+    onNavigateToAddPhrase: () -> Unit,
+    onPhraseDragStart: (PhraseDragInfo) -> Unit,
+    onPhraseDragMove: (PhraseDragInfo) -> Unit,
+    onPhraseDragEnd: (PhraseDragInfo) -> Unit,
 ) {
     val scrollState = rememberScrollState()
     val phraseGridState = rememberLazyGridState()
     var isDisplayCompressed by remember { mutableStateOf(false) }
-    var showAddPhraseDialog by rememberSaveable { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -111,6 +112,10 @@ fun MainScreen(
             end = outerEndPadding + pagePadding,
             bottom = outerBottomPadding
         )
+    val fullscreenLandscapeModifier = modifier
+        .fillMaxSize()
+        // 横屏全屏模式隐藏了导航栏，四边使用一致边距，避免显示卡片产生偏心感。
+        .padding(pagePadding)
 
     val hasPhrases = phrases.isNotEmpty()
     val showPhraseGrid = !isPhrasesLoading && hasPhrases
@@ -167,45 +172,56 @@ fun MainScreen(
         }
     }
 
-    if (showAddPhraseDialog) {
-        AddPhraseDialog(
-            onDismiss = {
-                showAddPhraseDialog = false
-            },
-            onSave = { label, speech ->
-                onAddPhrase(label, speech)
-                showAddPhraseDialog = false
-            }
-        )
-    }
-
-    if (isLandscape) {
-        Row(
-            modifier = screenModifier,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(bottom = 16.dp)
-            ) {
+    AnimatedContent(
+        targetState = isLandscape,
+        transitionSpec = {
+            // 横竖屏切换只改变主屏布局，不改变当前显示的文本状态。
+            (fadeIn(animationSpec = spring()) + scaleIn(initialScale = 0.98f))
+                .togetherWith(fadeOut(animationSpec = spring()) + scaleOut(targetScale = 0.98f))
+        },
+        label = "mainScreenOrientationLayout"
+    ) { landscapeFullscreen ->
+        if (landscapeFullscreen) {
+            Box(modifier = fullscreenLandscapeModifier) {
                 DisplaySurface(
                     text = effectiveDisplayText,
                     isSubtle = effectiveIsSubtle,
                     scrollState = scrollState,
+                    onSpeak = onSpeakClick,
                     onClear = onClearClick
                 )
             }
+        } else {
+            Column(
+                modifier = screenModifier
+            ) {
+                Box(modifier = Modifier.weight(displayWeight)) {
+                    DisplaySurface(
+                        text = effectiveDisplayText,
+                        isSubtle = effectiveIsSubtle,
+                        scrollState = scrollState,
+                        onSpeak = onSpeakClick,
+                        onClear = onClearClick
+                    )
+                }
 
-            Box(modifier = Modifier.weight(1f)) {
+                Spacer(Modifier.height(16.dp))
+
                 when {
                     showPhraseGrid -> {
+                        // 短语网格、加号按钮和 PhraseButton 拖拽手势作为一个整体移到了 ui.screens.main.PhraseGrid.kt。
                         PhraseGrid(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .weight(phraseAreaWeight)
+                                .nestedScroll(phraseGridNestedScrollConnection),
                             phrases = phrases,
                             state = phraseGridState,
                             columns = GridCells.Fixed(2),
                             onPhraseClick = onPhraseClick,
+                            onAddPhraseClick = onNavigateToAddPhrase,
+                            onPhraseDragStart = onPhraseDragStart,
+                            onPhraseDragMove = onPhraseDragMove,
+                            onPhraseDragEnd = onPhraseDragEnd,
                             onDisplayShouldExpand = {
                                 isDisplayCompressed = false
                             }
@@ -214,69 +230,20 @@ fun MainScreen(
 
                     showEmptyState -> {
                         EmptyPhraseState(
-                            modifier = Modifier.fillMaxSize(),
-                            onAddClick = {
-                                showAddPhraseDialog = true
-                            }
+                            modifier = Modifier
+                                .weight(phraseAreaWeight)
+                                .fillMaxWidth(),
+                            onAddClick = onNavigateToAddPhrase
                         )
                     }
 
                     else -> {
                         LoadingPhraseState(
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .weight(phraseAreaWeight)
+                                .fillMaxWidth()
                         )
                     }
-                }
-            }
-        }
-    } else {
-        Column(
-            modifier = screenModifier
-        ) {
-            Box(modifier = Modifier.weight(displayWeight)) {
-                DisplaySurface(
-                    text = effectiveDisplayText,
-                    isSubtle = effectiveIsSubtle,
-                    scrollState = scrollState,
-                    onClear = onClearClick
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            when {
-                showPhraseGrid -> {
-                    PhraseGrid(
-                        modifier = Modifier
-                            .weight(phraseAreaWeight)
-                            .nestedScroll(phraseGridNestedScrollConnection),
-                        phrases = phrases,
-                        state = phraseGridState,
-                        columns = GridCells.Fixed(2),
-                        onPhraseClick = onPhraseClick,
-                        onDisplayShouldExpand = {
-                            isDisplayCompressed = false
-                        }
-                    )
-                }
-
-                showEmptyState -> {
-                    EmptyPhraseState(
-                        modifier = Modifier
-                            .weight(phraseAreaWeight)
-                            .fillMaxWidth(),
-                        onAddClick = {
-                            showAddPhraseDialog = true
-                        }
-                    )
-                }
-
-                else -> {
-                    LoadingPhraseState(
-                        modifier = Modifier
-                            .weight(phraseAreaWeight)
-                            .fillMaxWidth()
-                    )
                 }
             }
         }
@@ -288,6 +255,7 @@ private fun DisplaySurface(
     text: String,
     isSubtle: Boolean,
     scrollState: ScrollState,
+    onSpeak: (String) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -333,22 +301,62 @@ private fun DisplaySurface(
             }
 
             if (text.isNotEmpty()) {
-                IconButton(
-                    onClick = onClear,
+                Row(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            CircleShape
-                        )
+                        .padding(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "清除",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
+                    // 复用当前声线配置朗读显示区文本，与 InputScreen 的朗读入口保持同一调用链。
+                    DisplaySurfaceActionButton(
+                        onClick = {
+                            if (text.isNotBlank()) {
+                                onSpeak(text)
+                            }
+                        },
+                        contentDescription = "朗读"
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null
+                        )
+                    }
+
+                    DisplaySurfaceActionButton(
+                        onClick = onClear,
+                        contentDescription = "清除"
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DisplaySurfaceActionButton(
+    onClick: () -> Unit,
+    contentDescription: String,
+    content: @Composable () -> Unit
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .semantics { this.contentDescription = contentDescription }
+            .background(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                CircleShape
+            )
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(24.dp)
+        ) {
+            content()
         }
     }
 }
@@ -418,123 +426,6 @@ private fun EmptyPhraseState(
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
 
             Text("添加短语")
-        }
-    }
-}
-
-@Composable
-private fun AddPhraseDialog(
-    onDismiss: () -> Unit,
-    onSave: (label: String, speech: String) -> Unit
-) {
-    var label by rememberSaveable { mutableStateOf("") }
-    var speech by rememberSaveable { mutableStateOf("") }
-
-    val canSave = label.isNotBlank() && speech.isNotBlank()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null
-            )
-        },
-        title = {
-            Text("添加短语")
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = {
-                        label = it
-                    },
-                    label = {
-                        Text("按钮标签")
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = speech,
-                    onValueChange = {
-                        speech = it
-                    },
-                    label = {
-                        Text("播报内容")
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onSave(label.trim(), speech.trim())
-                },
-                enabled = canSave
-            ) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
-}
-
-@Composable
-private fun PhraseGrid(
-    phrases: List<Phrase>,
-    state: LazyGridState,
-    columns: GridCells,
-    onPhraseClick: (Phrase) -> Unit,
-    onDisplayShouldExpand: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val performButtonHaptic = rememberPhysicalButtonHaptics()
-
-    LazyVerticalGrid(
-        columns = columns,
-        state = state,
-        modifier = modifier,
-        contentPadding = PaddingValues(bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(
-            items = phrases,
-            key = { phrase -> phrase.id }
-        ) { phrase ->
-            Button(
-                onClick = {
-                    performButtonHaptic()
-                    onDisplayShouldExpand()
-                    onPhraseClick(phrase)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            ) {
-                Text(
-                    text = phrase.label,
-                    fontSize = 18.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2
-                )
-            }
         }
     }
 }
