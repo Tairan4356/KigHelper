@@ -52,7 +52,11 @@ class VoiceViewModel(
         speechRate: Float = activeProfile.speechRate,
         pitch: Float = activeProfile.pitch,
         warmth: Float = activeProfile.warmth,
-        expressiveness: Float = activeProfile.expressiveness
+        expressiveness: Float = activeProfile.expressiveness,
+        kigvpkNoiseScale: Float? = activeProfile.kigvpkNoiseScale,
+        kigvpkNoiseW: Float? = activeProfile.kigvpkNoiseW,
+        kigvpkLengthScale: Float? = activeProfile.kigvpkLengthScale,
+        kigvpkSentenceSilenceSec: Float? = activeProfile.kigvpkSentenceSilenceSec
     ) {
         val current = activeProfile
         val updated = current.copy(
@@ -64,7 +68,11 @@ class VoiceViewModel(
             speechRate = speechRate.coerceIn(0.75f, 1.25f),
             pitch = pitch.coerceIn(0.85f, 1.15f),
             warmth = warmth.coerceIn(0f, 1f),
-            expressiveness = expressiveness.coerceIn(0f, 1f)
+            expressiveness = expressiveness.coerceIn(0f, 1f),
+            kigvpkNoiseScale = kigvpkNoiseScale,
+            kigvpkNoiseW = kigvpkNoiseW,
+            kigvpkLengthScale = kigvpkLengthScale,
+            kigvpkSentenceSilenceSec = kigvpkSentenceSilenceSec
         )
         val index = _profiles.indexOfFirst { it.id == current.id }
         if (index == -1) return
@@ -106,7 +114,11 @@ class VoiceViewModel(
             speechRate = 1.0f,
             pitch = 1.0f,
             warmth = 0.55f,
-            expressiveness = 0.45f
+            expressiveness = 0.45f,
+            kigvpkNoiseScale = null,
+            kigvpkNoiseW = null,
+            kigvpkLengthScale = null,
+            kigvpkSentenceSilenceSec = null
         )
     }
 

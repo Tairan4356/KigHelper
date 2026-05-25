@@ -102,8 +102,16 @@ fun VoiceSettingsScreen(
     val isKigvpk = activeModelStatus?.pack?.format == OfflineVoiceModelFormat.KIGVPK
     val kigvpkParamsManager = remember(context) { KigvpkParamsManager(context) }
     var kigvpkParams by remember(modelRefreshKey, activeModelStatus?.pack?.id) {
-        mutableStateOf(activeModelStatus?.let { kigvpkParamsManager.loadDefaults(it.directory, it.pack.id) } ?: KigvpkModelParams())
+        mutableStateOf(activeModelStatus?.let {
+            kigvpkParamsManager.loadDefaults(
+                it.directory, it.pack.id
+            )
+        } ?: KigvpkModelParams())
     }
+    val displayNoiseScale = profile.kigvpkNoiseScale ?: kigvpkParams.noiseScale
+    val displayNoiseW = profile.kigvpkNoiseW ?: kigvpkParams.noiseW
+    val displayLengthScale = profile.kigvpkLengthScale ?: kigvpkParams.lengthScale
+    val displaySentenceSilenceSec = profile.kigvpkSentenceSilenceSec ?: kigvpkParams.sentenceSilenceSec
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
@@ -258,15 +266,7 @@ fun VoiceSettingsScreen(
                         })
                 }
             }
-            if (isKigvpk) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-                item { Text("KIGVPK 参数", style = MaterialTheme.typography.labelLarge) }
-                item { VoiceSlider(title = "语调起伏", valueText = "${(kigvpkParams.noiseScale * 100).roundToInt()}%", value = kigvpkParams.noiseScale, valueRange = 0.3f..1.5f, onValueChange = { kigvpkParams = kigvpkParams.copy(noiseScale = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
-                item { VoiceSlider(title = "语调力度", valueText = "${(kigvpkParams.noiseW * 100).roundToInt()}%", value = kigvpkParams.noiseW, valueRange = 0.3f..1.5f, onValueChange = { kigvpkParams = kigvpkParams.copy(noiseW = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
-                item { VoiceSlider(title = "模型语速", valueText = "${(kigvpkParams.lengthScale * 100).roundToInt()}%", value = kigvpkParams.lengthScale, valueRange = 0.5f..2.0f, onValueChange = { kigvpkParams = kigvpkParams.copy(lengthScale = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
-                item { VoiceSlider(title = "句末停顿", valueText = "${(kigvpkParams.sentenceSilenceSec * 1000).roundToInt()}ms", value = kigvpkParams.sentenceSilenceSec, valueRange = 0f..1f, onValueChange = { kigvpkParams = kigvpkParams.copy(sentenceSilenceSec = it); activeModelStatus?.let { s -> kigvpkParamsManager.save(s.pack.id, kigvpkParams) } }) }
-            }
-            if (!isKigvpk) {
+
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -297,50 +297,86 @@ fun VoiceSettingsScreen(
                     Text("重置当前声线参数")
                 }
             }
-            item {
-                VoiceSlider(
-                    title = "年龄",
-                    valueText = when {
-                        profile.age < 0.35f -> "更年轻"
-                        profile.age > 0.68f -> "更成熟"
-                        else -> "自然"
-                    },
-                    value = profile.age,
-                    valueRange = 0f..1f,
-                    onValueChange = { viewModel.updateActiveProfile(age = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "语速",
-                    valueText = "${(profile.speechRate * 100).roundToInt()}%",
-                    value = profile.speechRate,
-                    valueRange = 0.75f..1.25f,
-                    onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "音高",
-                    valueText = "${(profile.pitch * 100).roundToInt()}%",
-                    value = profile.pitch,
-                    valueRange = 0.85f..1.15f,
-                    onValueChange = { viewModel.updateActiveProfile(pitch = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "温暖度",
-                    valueText = "${(profile.warmth * 100).roundToInt()}%",
-                    value = profile.warmth,
-                    valueRange = 0f..1f,
-                    onValueChange = { viewModel.updateActiveProfile(warmth = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "表现力",
-                    valueText = "${(profile.expressiveness * 100).roundToInt()}%",
-                    value = profile.expressiveness,
-                    valueRange = 0f..1f,
-                    onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
-            }
+            if (isKigvpk) {
+                item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Text("KIGVPK 参数", style = MaterialTheme.typography.labelLarge) }
+                item {
+                    VoiceSlider(
+                        title = "语调起伏",
+                        valueText = "${(displayNoiseScale * 100).roundToInt()}%",
+                        value = displayNoiseScale,
+                        valueRange = 0.3f..1.5f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseScale = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "语调力度",
+                        valueText = "${(displayNoiseW * 100).roundToInt()}%",
+                        value = displayNoiseW,
+                        valueRange = 0.3f..1.5f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseW = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "模型语速",
+                        valueText = "${(displayLengthScale * 100).roundToInt()}%",
+                        value = displayLengthScale,
+                        valueRange = 0.5f..2.0f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkLengthScale = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "句末停顿",
+                        valueText = "${(displaySentenceSilenceSec * 1000).roundToInt()}ms",
+                        value = displaySentenceSilenceSec,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkSentenceSilenceSec = it) })
+                }
+            } else {
+                item {
+                    VoiceSlider(
+                        title = "年龄",
+                        valueText = when {
+                            profile.age < 0.35f -> "更年轻"
+                            profile.age > 0.68f -> "更成熟"
+                            else -> "自然"
+                        },
+                        value = profile.age,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(age = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "语速",
+                        valueText = "${(profile.speechRate * 100).roundToInt()}%",
+                        value = profile.speechRate,
+                        valueRange = 0.75f..1.25f,
+                        onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "音高",
+                        valueText = "${(profile.pitch * 100).roundToInt()}%",
+                        value = profile.pitch,
+                        valueRange = 0.85f..1.15f,
+                        onValueChange = { viewModel.updateActiveProfile(pitch = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "温暖度",
+                        valueText = "${(profile.warmth * 100).roundToInt()}%",
+                        value = profile.warmth,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(warmth = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "表现力",
+                        valueText = "${(profile.expressiveness * 100).roundToInt()}%",
+                        value = profile.expressiveness,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
+                }
             }
             item {
                 Button(
@@ -758,8 +794,7 @@ private fun ImportFormatSelector(
         listOf(
             OfflineVoiceModelFormat.VITS,
             OfflineVoiceModelFormat.PIPER,
-            OfflineVoiceModelFormat.KOKORO,
-            OfflineVoiceModelFormat.KIGVPK
+            OfflineVoiceModelFormat.KOKORO
         ).forEach { format ->
             FilterChip(
                 selected = selected == format,
@@ -769,6 +804,14 @@ private fun ImportFormatSelector(
             )
         }
     }
+
+    val kigvpk = OfflineVoiceModelFormat.KIGVPK
+    FilterChip(
+        selected = selected == kigvpk,
+        onClick = { onSelect(kigvpk) },
+        label = { Text(kigvpk.label + "（KIGTTS 训练器格式）") },
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
