@@ -130,6 +130,7 @@ fun KigHelperApp(
                     MainScreen(
                         contentPadding = innerPadding,
                         phrases = viewModel.phraseList,
+                        groups = viewModel.groupList,
                         displayText = viewModel.displayText,
                         isShowingInitialHint = viewModel.isShowingInitialHint,
                         isPhrasesLoading = viewModel.isPhrasesLoading,
@@ -175,15 +176,17 @@ fun KigHelperApp(
                     EditScreen(
                         contentPadding = innerPadding,
                         phrases = viewModel.phraseList,
+                        groups = viewModel.groupList,
                         onDelete = viewModel::deletePhrase,
-                        onMove = viewModel::movePhrase,
+                        onMove = { updatedList -> viewModel.updatePhrasesOrder(updatedList) },
                         onBack = { navController.popBackStack() },
                         onNavigateToAdd = {
                             navController.navigate(AppRoutes.addEditRoute())
                         },
                         onNavigateToEdit = { id ->
                             navController.navigate(AppRoutes.addEditRoute(id))
-                        }
+                        },
+                        onAddGroup = viewModel::addGroup
                     )
                 }
 
@@ -204,11 +207,12 @@ fun KigHelperApp(
                     AddEditPhraseScreen(
                         phrase = viewModel.findPhraseById(phraseId),
                         isEditMode = phraseId != null,
-                        onSave = { label, speech ->
+                        groups = viewModel.groupList,
+                        onSave = { label, speech, groupId ->
                             if (phraseId == null) {
-                                viewModel.addPhrase(label, speech)
+                                viewModel.addPhrase(label, speech, groupId)
                             } else {
-                                viewModel.updatePhrase(phraseId, label, speech)
+                                viewModel.updatePhrase(phraseId, label, speech, groupId)
                             }
                             navController.popBackStack()
                         },

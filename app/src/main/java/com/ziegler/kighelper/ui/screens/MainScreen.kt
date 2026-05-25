@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -45,7 +46,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 
 /**
@@ -80,6 +84,7 @@ fun MainScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     modifier: Modifier = Modifier,
     phrases: List<Phrase>,
+    groups: List<PhraseGroup> = emptyList(),
     displayText: String,
     isShowingInitialHint: Boolean,
     isPhrasesLoading: Boolean,
@@ -126,16 +131,14 @@ fun MainScreen(
 
     val isPhraseGridAtTop by remember {
         derivedStateOf {
-            phraseGridState.firstVisibleItemIndex == 0 &&
-                    phraseGridState.firstVisibleItemScrollOffset == 0
+            phraseGridState.firstVisibleItemIndex == 0 && phraseGridState.firstVisibleItemScrollOffset == 0
         }
     }
 
     val displayWeight by animateFloatAsState(
         targetValue = if (!isLandscape && isDisplayCompressed) 0.38f else 0.55f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
         ),
         label = "displayAreaWeight"
     )
@@ -145,8 +148,7 @@ fun MainScreen(
     val phraseGridNestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(
-                available: Offset,
-                source: NestedScrollSource
+                available: Offset, source: NestedScrollSource
             ): Offset {
                 if (source == NestedScrollSource.UserInput && available.y < 0f) {
                     isDisplayCompressed = true
@@ -155,6 +157,79 @@ fun MainScreen(
                 return Offset.Zero
             }
         }
+    }
+    // TODO: 第一次加载时分组信息可能还没准备好，导致分组显示异常。
+    val groupedSections = remember(phrases.toList(), groups.toList()) {
+        val defaultGroupId = PhraseGroup.DEFAULT_ID
+        val defaultGroup = groups.firstOrNull { it.id == defaultGroupId } ?: PhraseGroup(
+            defaultGroupId, PhraseGroup.DEFAULT_NAME
+        )
+
+        val distinctGroups = groups.distinctBy { it.id }.filter { it.id != defaultGroupId }
+
+        val groupById = distinctGroups.associateBy { it.id }
+
+        val grouped = phrases.groupBy { phrase ->
+            groupById[phrase.groupId] ?: defaultGroup
+        }
+
+        val activeGroups = mutableListOf<PhraseGroup>()
+
+        for (group in distinctGroups) {
+            val groupPhrases = grouped[group]
+            if (!groupPhrases.isNullOrEmpty()) {
+                activeGroups.add(group)
+            }
+        }
+
+        val defaultPhrases = grouped[defaultGroup]
+        if (!defaultPhrases.isNullOrEmpty()) {
+            activeGroups.add(defaultGroup)
+        }
+
+        val result = mutableListOf<Pair<PhraseGroup, List<Phrase>>>()
+        for (group in activeGroups.sortedBy { it.order }) {
+            val groupPhrases = grouped[group] ?: emptyList()
+            result.add(group to groupPhrases.distinctBy { it.id })
+        }
+
+        result
+    }
+
+    // 每个分组 header 在 Grid 中的全局索引
+    val groupHeaderPositions = remember(groupedSections) {
+        var offset = 0
+        val map = mutableMapOf<String, Int>()
+        for ((group, groupPhrases) in groupedSections) {
+            map[group.id] = offset
+            offset += 1 + groupPhrases.size
+        }
+        map
+    }
+
+    // 当前可见分组索引（根据 firstVisibleItemIndex 推导）
+    val currentGroupIndex by remember(groupedSections) {
+        derivedStateOf {
+            val visibleIndex = phraseGridState.firstVisibleItemIndex
+            var offset = 0
+            for ((i, entry) in groupedSections.withIndex()) {
+                val groupPhrases = entry.second
+                val groupEnd = offset + groupPhrases.size
+                if (visibleIndex in offset..groupEnd) return@derivedStateOf i
+                offset = groupEnd + 1
+            }
+            groupedSections.indices.firstOrNull() ?: 0
+        }
+    }
+
+    // 点击 tab 时触发的滚动目标
+    var scrollToGroupIndex by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(scrollToGroupIndex) {
+        val targetIndex = scrollToGroupIndex ?: return@LaunchedEffect
+        val targetGroup = groupedSections.getOrNull(targetIndex) ?: return@LaunchedEffect
+        val headerPos = groupHeaderPositions[targetGroup.first.id] ?: return@LaunchedEffect
+        phraseGridState.animateScrollToItem(headerPos)
+        scrollToGroupIndex = null
     }
 
     LaunchedEffect(effectiveDisplayText) {
@@ -168,21 +243,17 @@ fun MainScreen(
     }
 
     if (showAddPhraseDialog) {
-        AddPhraseDialog(
-            onDismiss = {
-                showAddPhraseDialog = false
-            },
-            onSave = { label, speech ->
-                onAddPhrase(label, speech)
-                showAddPhraseDialog = false
-            }
-        )
+        AddPhraseDialog(onDismiss = {
+            showAddPhraseDialog = false
+        }, onSave = { label, speech ->
+            onAddPhrase(label, speech)
+            showAddPhraseDialog = false
+        })
     }
 
     if (isLandscape) {
         Row(
-            modifier = screenModifier,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -200,25 +271,39 @@ fun MainScreen(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     showPhraseGrid -> {
-                        PhraseGrid(
-                            modifier = Modifier.fillMaxSize(),
-                            phrases = phrases,
-                            state = phraseGridState,
-                            columns = GridCells.Fixed(2),
-                            onPhraseClick = onPhraseClick,
-                            onDisplayShouldExpand = {
-                                isDisplayCompressed = false
+                        Column {
+                            if (groupedSections.size > 1) {
+                                ScrollableTabRow(
+                                    selectedTabIndex = currentGroupIndex,
+                                    modifier = Modifier.padding(horizontal = -pagePadding),
+                                    edgePadding = pagePadding
+                                ) {
+                                    groupedSections.forEachIndexed { index, (group, _) ->
+                                        Tab(
+                                            selected = currentGroupIndex == index,
+                                            onClick = { scrollToGroupIndex = index },
+                                            text = { Text(group.name) })
+                                    }
+                                }
                             }
-                        )
+
+                            PhraseGrid(
+                                modifier = Modifier.fillMaxSize(),
+                                groupedSections = groupedSections,
+                                state = phraseGridState,
+                                columns = GridCells.Fixed(2),
+                                onPhraseClick = onPhraseClick,
+                                onDisplayShouldExpand = {
+                                    isDisplayCompressed = false
+                                })
+                        }
                     }
 
                     showEmptyState -> {
                         EmptyPhraseState(
-                            modifier = Modifier.fillMaxSize(),
-                            onAddClick = {
+                            modifier = Modifier.fillMaxSize(), onAddClick = {
                                 showAddPhraseDialog = true
-                            }
-                        )
+                            })
                     }
 
                     else -> {
@@ -246,29 +331,41 @@ fun MainScreen(
 
             when {
                 showPhraseGrid -> {
-                    PhraseGrid(
-                        modifier = Modifier
-                            .weight(phraseAreaWeight)
-                            .nestedScroll(phraseGridNestedScrollConnection),
-                        phrases = phrases,
-                        state = phraseGridState,
-                        columns = GridCells.Fixed(2),
-                        onPhraseClick = onPhraseClick,
-                        onDisplayShouldExpand = {
-                            isDisplayCompressed = false
+                    Column(modifier = Modifier.weight(phraseAreaWeight)) {
+                        if (groupedSections.size > 1) {
+                            ScrollableTabRow(
+                                selectedTabIndex = currentGroupIndex, edgePadding = 0.dp
+                            ) {
+                                groupedSections.forEachIndexed { index, (group, _) ->
+                                    Tab(
+                                        selected = currentGroupIndex == index,
+                                        onClick = { scrollToGroupIndex = index },
+                                        text = { Text(group.name) })
+                                }
+                            }
                         }
-                    )
+
+                        PhraseGrid(
+                            modifier = Modifier
+                                .weight(1f)
+                                .nestedScroll(phraseGridNestedScrollConnection),
+                            groupedSections = groupedSections,
+                            state = phraseGridState,
+                            columns = GridCells.Fixed(2),
+                            onPhraseClick = onPhraseClick,
+                            onDisplayShouldExpand = {
+                                isDisplayCompressed = false
+                            })
+                    }
                 }
 
                 showEmptyState -> {
                     EmptyPhraseState(
                         modifier = Modifier
                             .weight(phraseAreaWeight)
-                            .fillMaxWidth(),
-                        onAddClick = {
+                            .fillMaxWidth(), onAddClick = {
                             showAddPhraseDialog = true
-                        }
-                    )
+                        })
                 }
 
                 else -> {
@@ -299,17 +396,14 @@ private fun DisplaySurface(
         shadowElevation = 4.dp
     ) {
         Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
+            contentAlignment = Alignment.Center, modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
             androidx.compose.animation.AnimatedContent(
-                targetState = text,
-                transitionSpec = {
+                targetState = text, transitionSpec = {
                     (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
-                },
-                label = "textAnimation"
+                }, label = "textAnimation"
             ) { targetText ->
                 Box(
                     modifier = Modifier
@@ -334,12 +428,10 @@ private fun DisplaySurface(
 
             if (text.isNotEmpty()) {
                 IconButton(
-                    onClick = onClear,
-                    modifier = Modifier
+                    onClick = onClear, modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            CircleShape
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape
                         )
                 ) {
                     Icon(
@@ -362,8 +454,7 @@ private fun LoadingPhraseState(
 
 @Composable
 private fun EmptyPhraseState(
-    onAddClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onAddClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
@@ -424,75 +515,57 @@ private fun EmptyPhraseState(
 
 @Composable
 private fun AddPhraseDialog(
-    onDismiss: () -> Unit,
-    onSave: (label: String, speech: String) -> Unit
+    onDismiss: () -> Unit, onSave: (label: String, speech: String) -> Unit
 ) {
     var label by rememberSaveable { mutableStateOf("") }
     var speech by rememberSaveable { mutableStateOf("") }
 
     val canSave = label.isNotBlank() && speech.isNotBlank()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null
+    AlertDialog(onDismissRequest = onDismiss, icon = {
+        Icon(
+            imageVector = Icons.Default.Add, contentDescription = null
+        )
+    }, title = {
+        Text("添加短语")
+    }, text = {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = label, onValueChange = {
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
-        },
-        title = {
-            Text("添加短语")
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = {
-                        label = it
-                    },
-                    label = {
-                        Text("按钮标签")
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
 
-                OutlinedTextField(
-                    value = speech,
-                    onValueChange = {
-                        speech = it
-                    },
-                    label = {
-                        Text("播报内容")
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onSave(label.trim(), speech.trim())
-                },
-                enabled = canSave
-            ) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
+            OutlinedTextField(
+                value = speech, onValueChange = {
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
+            )
         }
-    )
+    }, confirmButton = {
+        TextButton(
+            onClick = {
+                onSave(label.trim(), speech.trim())
+            }, enabled = canSave
+        ) {
+            Text("保存")
+        }
+    }, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
 }
 
 @Composable
 private fun PhraseGrid(
-    phrases: List<Phrase>,
+    groupedSections: List<Pair<PhraseGroup, List<Phrase>>>,
     state: LazyGridState,
     columns: GridCells,
     onPhraseClick: (Phrase) -> Unit,
@@ -509,31 +582,44 @@ private fun PhraseGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(
-            items = phrases,
-            key = { phrase -> phrase.id }
-        ) { phrase ->
-            Button(
-                onClick = {
-                    performButtonHaptic()
-                    onDisplayShouldExpand()
-                    onPhraseClick(phrase)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            ) {
+        groupedSections.forEach { (group, groupPhrases) ->
+            item(
+                key = "header_${group.id}", span = { GridItemSpan(maxLineSpan) }) {
                 Text(
-                    text = phrase.label,
-                    fontSize = 18.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2
+                    text = group.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        start = 4.dp, top = 12.dp, bottom = 4.dp
+                    )
                 )
+            }
+
+            items(
+                items = groupPhrases, key = { phrase -> phrase.id }) { phrase ->
+                Button(
+                    onClick = {
+                        performButtonHaptic()
+                        onDisplayShouldExpand()
+                        onPhraseClick(phrase)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Text(
+                        text = phrase.label,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2
+                    )
+                }
             }
         }
     }
