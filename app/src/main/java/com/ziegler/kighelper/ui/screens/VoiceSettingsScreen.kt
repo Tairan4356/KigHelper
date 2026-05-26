@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,6 +48,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,6 +94,7 @@ fun VoiceSettingsScreen(
     var installMessage by remember { mutableStateOf<String?>(null) }
     var presetMessage by remember { mutableStateOf<String?>(null) }
     var isInstalling by remember { mutableStateOf(false) }
+    var installProgress by remember { mutableFloatStateOf(0f) }
     var pendingInstallAction by remember { mutableStateOf<ModelInstallAction?>(null) }
     var selectedImportFormat by remember { mutableStateOf(OfflineVoiceModelFormat.VITS) }
     var showModelPicker by remember { mutableStateOf(false) }
@@ -120,11 +123,14 @@ fun VoiceSettingsScreen(
         if (uri != null) {
             showModelPicker = true
             isInstalling = true
-            installMessage = "正在导入模型压缩包（可能需要数分钟）"
+            installProgress = 0f
             coroutineScope.launch {
-                installMessage = when (val result = modelInstaller.importFromArchiveFile(
-                    archiveUri = uri, format = selectedImportFormat
-                )) {
+                installMessage = "正在导入模型压缩包（可能需要数分钟）"
+                val result = modelInstaller.importFromArchiveFile(
+                    archiveUri = uri, format = selectedImportFormat,
+                    progressCallback = { installProgress = it }
+                )
+                installMessage = when (result) {
                     is ModelInstallResult.Success -> {
                         result.modelId?.let { modelId ->
                             val status = modelManager.getModelStatus(modelId)
@@ -164,9 +170,8 @@ fun VoiceSettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            val content = context.readTextFromUri(uri)
-            presetMessage = when {
-                content == null -> "配置文件读取失败"
+            presetMessage = when (val content = context.readTextFromUri(uri)) {
+                null -> "配置文件读取失败"
                 else -> when (val result = viewModel.importProfile(content, modelManager)) {
                     VoicePresetImportResult.Success -> "配置文件已导入"
                     VoicePresetImportResult.InvalidFile -> "配置文件无效"
@@ -241,7 +246,6 @@ fun VoiceSettingsScreen(
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
                 item {
                     OfflineModelStatusCard(
-                        modelRootPath = modelManager.modelRootPath,
                         activeModelStatus = activeModelStatus,
                         installMessage = installMessage,
                         onClick = { showModelPicker = true })
@@ -391,10 +395,8 @@ fun VoiceSettingsScreen(
 
     }
 
-    val installAction = pendingInstallAction
-    if (installAction != null) {
+    pendingInstallAction?.let { installAction ->
         ModelComplianceDialog(onDismiss = { pendingInstallAction = null }, onConfirm = {
-            pendingInstallAction = null
             when (installAction) {
                 is ModelInstallAction.ImportArchive -> {
                     archiveImportLauncher.launch("*/*")
@@ -402,41 +404,44 @@ fun VoiceSettingsScreen(
 
                 is ModelInstallAction.DownloadArchive -> {
                     isInstalling = true
-                    installMessage = "正在下载并安装模型包..."
+                    installProgress = 0f
                     coroutineScope.launch {
-                        installMessage =
-                            when (val result = modelInstaller.downloadAndInstallArchive(
-                                url = downloadUrl, format = selectedImportFormat
-                            )) {
-                                is ModelInstallResult.Success -> {
-                                    result.modelId?.let { modelId ->
-                                        viewModel.updateActiveProfile(
-                                            engine = VoiceEngineType.OFFLINE_NEURAL,
-                                            modelId = modelId,
-                                            speakerId = 0
-                                        )
-                                    }
-                                    result.message
+                        installMessage = "正在下载并安装模型包..."
+                        val result = modelInstaller.downloadAndInstallArchive(
+                            url = downloadUrl, format = selectedImportFormat,
+                            progressCallback = { installProgress = it }
+                        )
+                        installMessage = when (result) {
+                            is ModelInstallResult.Success -> {
+                                result.modelId?.let { modelId ->
+                                    viewModel.updateActiveProfile(
+                                        engine = VoiceEngineType.OFFLINE_NEURAL,
+                                        modelId = modelId,
+                                        speakerId = 0
+                                    )
                                 }
-
-                                is ModelInstallResult.Partial -> {
-                                    result.modelId?.let { modelId ->
-                                        viewModel.updateActiveProfile(
-                                            engine = VoiceEngineType.OFFLINE_NEURAL,
-                                            modelId = modelId,
-                                            speakerId = 0
-                                        )
-                                    }
-                                    result.message
-                                }
-
-                                is ModelInstallResult.Failure -> result.message
+                                result.message
                             }
+
+                            is ModelInstallResult.Partial -> {
+                                result.modelId?.let { modelId ->
+                                    viewModel.updateActiveProfile(
+                                        engine = VoiceEngineType.OFFLINE_NEURAL,
+                                        modelId = modelId,
+                                        speakerId = 0
+                                    )
+                                }
+                                result.message
+                            }
+
+                            is ModelInstallResult.Failure -> result.message
+                        }
                         modelRefreshKey++
                         isInstalling = false
                     }
                 }
             }
+            pendingInstallAction = null
         })
     }
 
@@ -461,6 +466,7 @@ fun VoiceSettingsScreen(
             remoteModelCatalog = remoteModelCatalog,
             modelStatuses = modelStatuses,
             isInstalling = isInstalling,
+            installProgress = installProgress,
             installMessage = installMessage,
             selectedImportFormat = selectedImportFormat,
             downloadUrl = downloadUrl,
@@ -505,8 +511,14 @@ fun VoiceSettingsScreen(
             },
             onInstall = { entry ->
                 isInstalling = true
+                installProgress = 0f
                 coroutineScope.launch {
-                    installMessage = when (val result = modelInstaller.installRemoteModel(entry)) {
+                    installMessage = "正在下载并安装模型包..."
+                    val result = modelInstaller.installRemoteModel(
+                        entry,
+                        progressCallback = { installProgress = it }
+                    )
+                    installMessage = when (result) {
                         is ModelInstallResult.Success -> {
                             viewModel.updateActiveProfile(
                                 engine = VoiceEngineType.OFFLINE_NEURAL,
@@ -550,7 +562,6 @@ private fun EngineSelector(
 
 @Composable
 private fun OfflineModelStatusCard(
-    modelRootPath: String,
     activeModelStatus: OfflineVoiceModelStatus?,
     installMessage: String?,
     onClick: () -> Unit
@@ -577,13 +588,13 @@ private fun OfflineModelStatusCard(
                     else -> "模型未安装"
                 }, style = MaterialTheme.typography.bodySmall
             )
-            if (compatibilityIssue != null) {
-                Text(
-                    text = compatibilityIssue,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+    if (compatibilityIssue != null) {
+        Text(
+            text = compatibilityIssue,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
             if (isPartial) {
                 Text(
                     text = "缺少文本前端文件时无法把中文转换为模型 token，端侧推理会自动回退系统 TTS。",
@@ -606,6 +617,7 @@ private fun ModelPickerDialog(
     remoteModelCatalog: List<RemoteVoiceModelCatalogEntry>,
     modelStatuses: List<OfflineVoiceModelStatus>,
     isInstalling: Boolean,
+    installProgress: Float,
     installMessage: String?,
     selectedImportFormat: OfflineVoiceModelFormat,
     downloadUrl: String,
@@ -705,9 +717,20 @@ private fun ModelPickerDialog(
             }
             if (isInstalling) {
                 item {
-                    Text(
-                        text = "正在安装模型包...", style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = if (installProgress > 0) {
+                                "正在安装模型包 (${(installProgress * 100).toInt()}%)..."
+                            } else {
+                                "正在准备安装模型包..."
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        LinearProgressIndicator(
+                            progress = { installProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
             if (installMessage != null) {

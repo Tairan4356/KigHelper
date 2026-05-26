@@ -2,7 +2,6 @@ package com.ziegler.kighelper.utils
 
 import android.content.Context
 import android.net.Uri
-import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -32,80 +31,10 @@ class OfflineVoiceModelInstaller(context: Context) {
         .retryOnConnectionFailure(true)
         .build()
 
-    suspend fun importFromDirectory(treeUri: Uri): ModelInstallResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val status = modelManager.getModelStatuses().firstOrNull()
-                ?: throw IOException("没有可安装的模型配置")
-            val availableDocuments = appContext.listTreeDocuments(treeUri)
-            val sourceFiles = status.pack.sourceRequiredFiles()
-            val missingFiles = sourceFiles.filterNot { fileName ->
-                availableDocuments.any { it.name == fileName }
-            }
-            if (missingFiles.isNotEmpty()) {
-                return@withContext ModelInstallResult.Failure(
-                    "所选目录缺少文件：${missingFiles.joinToString()}"
-                )
-            }
-
-            status.directory.replaceWithEmptyDirectory()
-            sourceFiles.forEach { fileName ->
-                val document = availableDocuments.first { it.name == fileName }
-                appContext.contentResolver.openInputStream(document.uri)?.use { input ->
-                    File(status.directory, fileName).outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                } ?: throw IOException("无法读取文件：$fileName")
-            }
-            status.directory.writeModelConfig(status.pack)
-
-            ModelInstallResult.Success("模型文件已导入")
-        }.getOrElse { error ->
-            ModelInstallResult.Failure(error.message ?: "模型导入失败")
-        }
-    }
-
-    suspend fun importFromZipFile(
-        zipUri: Uri,
-        format: OfflineVoiceModelFormat
-    ): ModelInstallResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val tempDir = File(appContext.cacheDir, "voice_model_import_zip").apply {
-                deleteRecursively()
-                mkdirs()
-            }
-
-            appContext.contentResolver.openInputStream(zipUri)?.use { input ->
-                extractZipToDirectory(input, tempDir)
-            } ?: return@withContext ModelInstallResult.Failure("无法读取所选压缩包")
-
-            val importSpec = createManualImportSpec(
-                displayName = appContext.displayNameForUri(zipUri),
-                format = format,
-                tempDir = tempDir
-            )
-            val status = modelManager.registerCustomModel(
-                displayName = importSpec.displayName,
-                format = importSpec.format,
-                requiredFiles = importSpec.requiredFiles,
-                speakerCount = importSpec.speakerCount
-            )
-            val result = installExtractedModel(
-                status = status,
-                tempDir = tempDir,
-                sourceUrl = zipUri.toString(),
-                successMessage = "${status.pack.name} 已导入",
-                modelId = status.pack.id
-            )
-            tempDir.deleteRecursively()
-            result
-        }.getOrElse { error ->
-            ModelInstallResult.Failure(error.message ?: "模型压缩包导入失败")
-        }
-    }
-
     suspend fun importFromArchiveFile(
         archiveUri: Uri,
-        format: OfflineVoiceModelFormat
+        format: OfflineVoiceModelFormat,
+        progressCallback: ((Float) -> Unit)? = null
     ): ModelInstallResult = withContext(Dispatchers.IO) {
         runCatching {
             val displayName = appContext.displayNameForUri(archiveUri)
@@ -115,8 +44,17 @@ class OfflineVoiceModelInstaller(context: Context) {
                 mkdirs()
             }
 
+            val totalSize = appContext.contentResolver.query(archiveUri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getLong(0) else -1L
+            } ?: -1L
+
             appContext.contentResolver.openInputStream(archiveUri)?.use { input ->
-                extractArchiveToDirectory(input, tempDir, archiveType)
+                val progressInput = if (totalSize > 0 && progressCallback != null) {
+                    ProgressInputStream(input, totalSize, progressCallback)
+                } else {
+                    input
+                }
+                extractArchiveToDirectory(progressInput, tempDir, archiveType)
             } ?: return@withContext ModelInstallResult.Failure("无法读取所选模型压缩包")
 
             val importSpec = createManualImportSpec(
@@ -144,7 +82,10 @@ class OfflineVoiceModelInstaller(context: Context) {
         }
     }
 
-    suspend fun installRemoteModel(entry: RemoteVoiceModelCatalogEntry): ModelInstallResult =
+    suspend fun installRemoteModel(
+        entry: RemoteVoiceModelCatalogEntry,
+        progressCallback: ((Float) -> Unit)? = null
+    ): ModelInstallResult =
         withContext(Dispatchers.IO) {
             runCatching {
                 val status = modelManager.getModelStatuses().firstOrNull { it.pack.id == entry.pack.id }
@@ -161,7 +102,7 @@ class OfflineVoiceModelInstaller(context: Context) {
                     }
                     val archiveType = ArchiveType.fromFileName(archiveName) ?: ArchiveType.ZIP
                     val urls = listOf(archiveUrl, entry.sourceUrl).distinct()
-                    downloadArchiveFromAnyUrl(urls, tempDir, archiveType)
+                    downloadArchiveFromAnyUrl(urls, tempDir, archiveType, progressCallback)
                     val result = installExtractedModel(
                         status = status,
                         tempDir = tempDir,
@@ -172,9 +113,11 @@ class OfflineVoiceModelInstaller(context: Context) {
                     return@withContext result
                 }
 
-                entry.files.forEach { file ->
+                val totalFiles = entry.files.size
+                entry.files.forEachIndexed { index, file ->
                     val target = File(tempDir, file.outputName)
                     downloadFile(url = file.url, target = target)
+                    progressCallback?.invoke((index + 1).toFloat() / totalFiles)
                 }
 
                 val missingFiles = entry.pack.sourceRequiredFiles().filterNot { File(tempDir, it).exists() }
@@ -201,7 +144,8 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     suspend fun downloadAndInstallArchive(
         url: String,
-        format: OfflineVoiceModelFormat
+        format: OfflineVoiceModelFormat,
+        progressCallback: ((Float) -> Unit)? = null
     ): ModelInstallResult = withContext(Dispatchers.IO) {
         runCatching {
             val normalizedUrl = url.trim()
@@ -217,49 +161,9 @@ class OfflineVoiceModelInstaller(context: Context) {
                 deleteRecursively()
                 mkdirs()
             }
-            downloadArchiveFromAnyUrl(listOf(normalizedUrl), tempDir, archiveType)
+            downloadArchiveFromAnyUrl(listOf(normalizedUrl), tempDir, archiveType, progressCallback)
             val importSpec = createManualImportSpec(
                 displayName = archiveName,
-                format = format,
-                tempDir = tempDir
-            )
-            val status = modelManager.registerCustomModel(
-                displayName = importSpec.displayName,
-                format = importSpec.format,
-                requiredFiles = importSpec.requiredFiles,
-                speakerCount = importSpec.speakerCount
-            )
-            val result = installExtractedModel(
-                status = status,
-                tempDir = tempDir,
-                sourceUrl = normalizedUrl,
-                successMessage = "${status.pack.name} 已下载并安装",
-                modelId = status.pack.id
-            )
-            tempDir.deleteRecursively()
-            result
-        }.getOrElse { error ->
-            ModelInstallResult.Failure(error.downloadFailureMessage("模型下载失败"))
-        }
-    }
-
-    suspend fun downloadAndInstallZip(
-        url: String,
-        format: OfflineVoiceModelFormat
-    ): ModelInstallResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val normalizedUrl = url.trim()
-            if (!normalizedUrl.startsWith("https://") && !normalizedUrl.startsWith("http://")) {
-                return@withContext ModelInstallResult.Failure("请输入有效的 http 或 https 下载地址")
-            }
-
-            val tempDir = File(appContext.cacheDir, "voice_model_download").apply {
-                deleteRecursively()
-                mkdirs()
-            }
-            downloadArchiveFromAnyUrl(listOf(normalizedUrl), tempDir, ArchiveType.ZIP)
-            val importSpec = createManualImportSpec(
-                displayName = normalizedUrl.substringAfterLast('/'),
                 format = format,
                 tempDir = tempDir
             )
@@ -302,14 +206,15 @@ class OfflineVoiceModelInstaller(context: Context) {
     private fun downloadArchiveFromAnyUrl(
         urls: List<String>,
         tempDir: File,
-        archiveType: ArchiveType
+        archiveType: ArchiveType,
+        progressCallback: ((Float) -> Unit)? = null
     ) {
         var lastError: Throwable? = null
         urls.filter { it.isNotBlank() }.forEach { url ->
             repeat(DOWNLOAD_RETRY_COUNT) { attempt ->
                 tempDir.replaceWithEmptyDirectory()
                 runCatching {
-                    downloadArchiveOnce(url, tempDir, archiveType)
+                    downloadArchiveOnce(url, tempDir, archiveType, progressCallback)
                     return
                 }.onFailure { error ->
                     lastError = error
@@ -325,7 +230,8 @@ class OfflineVoiceModelInstaller(context: Context) {
     private fun downloadArchiveOnce(
         url: String,
         tempDir: File,
-        archiveType: ArchiveType
+        archiveType: ArchiveType,
+        progressCallback: ((Float) -> Unit)? = null
     ) {
         val request = Request.Builder().url(url).build()
         httpClient.executeWithRetry(request).use { response ->
@@ -337,7 +243,15 @@ class OfflineVoiceModelInstaller(context: Context) {
             if (contentLength > MAX_MODEL_ARCHIVE_BYTES) {
                 throw IOException("模型包超过 1GB，已取消安装")
             }
-            extractArchiveToDirectory(body.byteStream(), tempDir, archiveType)
+            
+            val stream = body.byteStream()
+            val progressInput = if (contentLength > 0 && progressCallback != null) {
+                ProgressInputStream(stream, contentLength, progressCallback)
+            } else {
+                stream
+            }
+            
+            extractArchiveToDirectory(progressInput, tempDir, archiveType)
         }
     }
 
@@ -500,23 +414,6 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private fun createManualImportSpec(
         displayName: String,
-        format: OfflineVoiceModelFormat
-    ): ModelImportSpec {
-        val normalizedFormat = if (format == OfflineVoiceModelFormat.UNSUPPORTED) {
-            OfflineVoiceModelFormat.VITS
-        } else {
-            format
-        }
-        return ModelImportSpec(
-            displayName = displayName,
-            format = normalizedFormat,
-            requiredFiles = normalizedFormat.defaultRequiredFiles(),
-            speakerCount = 1
-        )
-    }
-
-    private fun createManualImportSpec(
-        displayName: String,
         format: OfflineVoiceModelFormat,
         tempDir: File
     ): ModelImportSpec {
@@ -598,8 +495,7 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private fun estimateKokoroSpeakerCount(tempDir: File): Int {
         val packageText = tempDir.walkTopDown()
-            .map { it.name.lowercase() }
-            .joinToString(" ")
+            .joinToString(" ") { it.name.lowercase() }
         return when {
             "zh-en-v1_1" in packageText -> 103
             "zh-en-v1.1" in packageText -> 103
@@ -771,32 +667,6 @@ class OfflineVoiceModelInstaller(context: Context) {
         }
     }
 
-    private fun Context.listTreeDocuments(treeUri: Uri): List<TreeDocument> {
-        val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocumentId)
-        val documents = mutableListOf<TreeDocument>()
-        contentResolver.query(
-            childrenUri,
-            arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME
-            ),
-            null,
-            null,
-            null
-        )?.use { cursor ->
-            val idIndex = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-            val nameIndex = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-            while (cursor.moveToNext()) {
-                val documentId = cursor.getString(idIndex)
-                val name = cursor.getString(nameIndex)
-                val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-                documents.add(TreeDocument(name = name, uri = documentUri))
-            }
-        }
-        return documents
-    }
-
     private fun Context.displayNameForUri(uri: Uri): String {
         return contentResolver.query(
             uri,
@@ -840,14 +710,55 @@ class OfflineVoiceModelInstaller(context: Context) {
         )
     }
 
+    private class ProgressInputStream(
+        private val delegate: InputStream,
+        private val totalBytes: Long,
+        private val onProgress: (Float) -> Unit
+    ) : InputStream() {
+        private var bytesRead = 0L
+        private var lastReportedPercent = -1
+
+        override fun read(): Int {
+            val b = delegate.read()
+            if (b != -1) {
+                bytesRead++
+                report()
+            }
+            return b
+        }
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int {
+            val read = delegate.read(b, off, len)
+            if (read != -1) {
+                bytesRead += read
+                report()
+            }
+            return read
+        }
+
+        private fun report() {
+            if (totalBytes > 0) {
+                val percent = (bytesRead * 100 / totalBytes).toInt()
+                if (percent != lastReportedPercent) {
+                    lastReportedPercent = percent
+                    onProgress(bytesRead.toFloat() / totalBytes)
+                }
+            }
+        }
+
+        override fun close() = delegate.close()
+        override fun available(): Int = delegate.available()
+        override fun skip(n: Long): Long = delegate.skip(n).also {
+            if (it > 0) {
+                bytesRead += it
+                report()
+            }
+        }
+    }
+
     private fun OfflineVoiceModelPack.sourceRequiredFiles(): List<String> {
         return requiredFiles.filterNot { it == "config.json" }
     }
-
-    private data class TreeDocument(
-        val name: String,
-        val uri: Uri
-    )
 
     private data class ModelImportSpec(
         val displayName: String,
