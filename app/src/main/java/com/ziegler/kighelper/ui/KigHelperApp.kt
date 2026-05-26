@@ -83,7 +83,6 @@ fun KigHelperApp(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
-            // 顶层导航栏与页面切换方向作为一个整体移到了 ui.navigation.AppNavigationChrome.kt。
             if (showNavigation && isExpanded && !isFullscreenMain) {
                 AppNavigationRail(
                     currentRoute = currentRoute,
@@ -106,8 +105,7 @@ fun KigHelperApp(
                 NavHost(
                     navController = navController,
                     startDestination = AppRoutes.MAIN,
-                    modifier = Modifier
-                        .fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     enterTransition = {
                         slideIntoContainer(
                             towards = navSlideDirection(isPop = false),
@@ -138,6 +136,7 @@ fun KigHelperApp(
                         MainScreen(
                             contentPadding = innerPadding,
                             phrases = viewModel.phraseList,
+                            groups = viewModel.groupList,
                             displayText = viewModel.displayText,
                             isShowingInitialHint = viewModel.isShowingInitialHint,
                             isPhrasesLoading = viewModel.isPhrasesLoading,
@@ -165,9 +164,7 @@ fun KigHelperApp(
                                 }
                             },
                             onPhraseDragEnd = { dragInfo ->
-                                // 放手时用根坐标命中红色投放区；未命中则只结束拖拽，不改变短语列表。
                                 phraseDragInfo = null
-
                                 if (deleteDropTargetBounds?.contains(dragInfo.pointerPositionInRoot) == true) {
                                     viewModel.deletePhrase(dragInfo.phrase)
                                 }
@@ -202,15 +199,17 @@ fun KigHelperApp(
                         EditScreen(
                             contentPadding = innerPadding,
                             phrases = viewModel.phraseList,
+                            groups = viewModel.groupList,
                             onDelete = viewModel::deletePhrase,
-                            onMove = viewModel::movePhrase,
+                            onMove = viewModel::updatePhrasesOrder,
                             onBack = { navController.popBackStack() },
                             onNavigateToAdd = {
                                 navController.navigate(AppRoutes.addEditRoute())
                             },
                             onNavigateToEdit = { id ->
                                 navController.navigate(AppRoutes.addEditRoute(id))
-                            }
+                            },
+                            onAddGroup = viewModel::addGroup
                         )
                     }
 
@@ -231,11 +230,12 @@ fun KigHelperApp(
                         AddEditPhraseScreen(
                             phrase = viewModel.findPhraseById(phraseId),
                             isEditMode = phraseId != null,
-                            onSave = { label, speech ->
+                            groups = viewModel.groupList,
+                            onSave = { label, speech, groupId ->
                                 if (phraseId == null) {
-                                    viewModel.addPhrase(label, speech)
+                                    viewModel.addPhrase(label, speech, groupId)
                                 } else {
-                                    viewModel.updatePhrase(phraseId, label, speech)
+                                    viewModel.updatePhrase(phraseId, label, speech, groupId)
                                 }
                                 navController.popBackStack()
                             },
@@ -250,7 +250,6 @@ fun KigHelperApp(
             }
         }
 
-        // 拖拽删除区和根层拖拽副本作为一个整体移到了 ui.drag.PhraseDragOverlay.kt。
         DeleteDropTarget(
             visible = phraseDragInfo != null,
             isActive = isDeleteDropTargetActive,

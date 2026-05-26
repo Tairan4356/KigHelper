@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,6 +48,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +70,8 @@ import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
 import com.ziegler.kighelper.utils.OfflineVoiceModelStatus
 import com.ziegler.kighelper.utils.RemoteVoiceModelCatalogEntry
+import com.ziegler.kighelper.utils.KigvpkModelParams
+import com.ziegler.kighelper.utils.KigvpkParamsManager
 import java.io.File
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -90,6 +94,7 @@ fun VoiceSettingsScreen(
     var installMessage by remember { mutableStateOf<String?>(null) }
     var presetMessage by remember { mutableStateOf<String?>(null) }
     var isInstalling by remember { mutableStateOf(false) }
+    var installProgress by remember { mutableFloatStateOf(0f) }
     var pendingInstallAction by remember { mutableStateOf<ModelInstallAction?>(null) }
     var selectedImportFormat by remember { mutableStateOf(OfflineVoiceModelFormat.VITS) }
     var showModelPicker by remember { mutableStateOf(false) }
@@ -97,6 +102,19 @@ fun VoiceSettingsScreen(
     val activeModelStatus =
         modelStatuses.firstOrNull { it.pack.id == modelManager.normalizeModelId(profile.modelId) }
             ?: modelStatuses.firstOrNull()
+    val isKigvpk = activeModelStatus?.pack?.format == OfflineVoiceModelFormat.KIGVPK
+    val kigvpkParamsManager = remember(context) { KigvpkParamsManager(context) }
+    var kigvpkParams by remember(modelRefreshKey, activeModelStatus?.pack?.id) {
+        mutableStateOf(activeModelStatus?.let {
+            kigvpkParamsManager.loadDefaults(
+                it.directory, it.pack.id
+            )
+        } ?: KigvpkModelParams())
+    }
+    val displayNoiseScale = profile.kigvpkNoiseScale ?: kigvpkParams.noiseScale
+    val displayNoiseW = profile.kigvpkNoiseW ?: kigvpkParams.noiseW
+    val displayLengthScale = profile.kigvpkLengthScale ?: kigvpkParams.lengthScale
+    val displaySentenceSilenceSec = profile.kigvpkSentenceSilenceSec ?: kigvpkParams.sentenceSilenceSec
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
@@ -105,11 +123,14 @@ fun VoiceSettingsScreen(
         if (uri != null) {
             showModelPicker = true
             isInstalling = true
-            installMessage = "正在导入模型压缩包（可能需要数分钟）"
+            installProgress = 0f
             coroutineScope.launch {
-                installMessage = when (val result = modelInstaller.importFromArchiveFile(
-                    archiveUri = uri, format = selectedImportFormat
-                )) {
+                installMessage = "正在导入模型压缩包（可能需要数分钟）"
+                val result = modelInstaller.importFromArchiveFile(
+                    archiveUri = uri, format = selectedImportFormat,
+                    progressCallback = { installProgress = it }
+                )
+                installMessage = when (result) {
                     is ModelInstallResult.Success -> {
                         result.modelId?.let { modelId ->
                             val status = modelManager.getModelStatus(modelId)
@@ -149,9 +170,8 @@ fun VoiceSettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            val content = context.readTextFromUri(uri)
-            presetMessage = when {
-                content == null -> "配置文件读取失败"
+            presetMessage = when (val content = context.readTextFromUri(uri)) {
+                null -> "配置文件读取失败"
                 else -> when (val result = viewModel.importProfile(content, modelManager)) {
                     VoicePresetImportResult.Success -> "配置文件已导入"
                     VoicePresetImportResult.InvalidFile -> "配置文件无效"
@@ -226,7 +246,6 @@ fun VoiceSettingsScreen(
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
                 item {
                     OfflineModelStatusCard(
-                        modelRootPath = modelManager.modelRootPath,
                         activeModelStatus = activeModelStatus,
                         installMessage = installMessage,
                         onClick = { showModelPicker = true })
@@ -251,6 +270,7 @@ fun VoiceSettingsScreen(
                         })
                 }
             }
+
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -281,49 +301,86 @@ fun VoiceSettingsScreen(
                     Text("重置当前声线参数")
                 }
             }
-            item {
-                VoiceSlider(
-                    title = "年龄",
-                    valueText = when {
-                        profile.age < 0.35f -> "更年轻"
-                        profile.age > 0.68f -> "更成熟"
-                        else -> "自然"
-                    },
-                    value = profile.age,
-                    valueRange = 0f..1f,
-                    onValueChange = { viewModel.updateActiveProfile(age = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "语速",
-                    valueText = "${(profile.speechRate * 100).roundToInt()}%",
-                    value = profile.speechRate,
-                    valueRange = 0.75f..1.25f,
-                    onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "音高",
-                    valueText = "${(profile.pitch * 100).roundToInt()}%",
-                    value = profile.pitch,
-                    valueRange = 0.85f..1.15f,
-                    onValueChange = { viewModel.updateActiveProfile(pitch = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "温暖度",
-                    valueText = "${(profile.warmth * 100).roundToInt()}%",
-                    value = profile.warmth,
-                    valueRange = 0f..1f,
-                    onValueChange = { viewModel.updateActiveProfile(warmth = it) })
-            }
-            item {
-                VoiceSlider(
-                    title = "表现力",
-                    valueText = "${(profile.expressiveness * 100).roundToInt()}%",
-                    value = profile.expressiveness,
-                    valueRange = 0f..1f,
-                    onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
+            if (isKigvpk) {
+                item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Text("KIGVPK 参数", style = MaterialTheme.typography.labelLarge) }
+                item {
+                    VoiceSlider(
+                        title = "语调起伏",
+                        valueText = "${(displayNoiseScale * 100).roundToInt()}%",
+                        value = displayNoiseScale,
+                        valueRange = 0.3f..1.5f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseScale = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "语调力度",
+                        valueText = "${(displayNoiseW * 100).roundToInt()}%",
+                        value = displayNoiseW,
+                        valueRange = 0.3f..1.5f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseW = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "模型语速",
+                        valueText = "${(displayLengthScale * 100).roundToInt()}%",
+                        value = displayLengthScale,
+                        valueRange = 0.5f..2.0f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkLengthScale = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "句末停顿",
+                        valueText = "${(displaySentenceSilenceSec * 1000).roundToInt()}ms",
+                        value = displaySentenceSilenceSec,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkSentenceSilenceSec = it) })
+                }
+            } else {
+                item {
+                    VoiceSlider(
+                        title = "年龄",
+                        valueText = when {
+                            profile.age < 0.35f -> "更年轻"
+                            profile.age > 0.68f -> "更成熟"
+                            else -> "自然"
+                        },
+                        value = profile.age,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(age = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "语速",
+                        valueText = "${(profile.speechRate * 100).roundToInt()}%",
+                        value = profile.speechRate,
+                        valueRange = 0.75f..1.25f,
+                        onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "音高",
+                        valueText = "${(profile.pitch * 100).roundToInt()}%",
+                        value = profile.pitch,
+                        valueRange = 0.85f..1.15f,
+                        onValueChange = { viewModel.updateActiveProfile(pitch = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "温暖度",
+                        valueText = "${(profile.warmth * 100).roundToInt()}%",
+                        value = profile.warmth,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(warmth = it) })
+                }
+                item {
+                    VoiceSlider(
+                        title = "表现力",
+                        valueText = "${(profile.expressiveness * 100).roundToInt()}%",
+                        value = profile.expressiveness,
+                        valueRange = 0f..1f,
+                        onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
+                }
             }
             item {
                 Button(
@@ -338,10 +395,8 @@ fun VoiceSettingsScreen(
 
     }
 
-    val installAction = pendingInstallAction
-    if (installAction != null) {
+    pendingInstallAction?.let { installAction ->
         ModelComplianceDialog(onDismiss = { pendingInstallAction = null }, onConfirm = {
-            pendingInstallAction = null
             when (installAction) {
                 is ModelInstallAction.ImportArchive -> {
                     archiveImportLauncher.launch("*/*")
@@ -349,41 +404,44 @@ fun VoiceSettingsScreen(
 
                 is ModelInstallAction.DownloadArchive -> {
                     isInstalling = true
-                    installMessage = "正在下载并安装模型包..."
+                    installProgress = 0f
                     coroutineScope.launch {
-                        installMessage =
-                            when (val result = modelInstaller.downloadAndInstallArchive(
-                                url = downloadUrl, format = selectedImportFormat
-                            )) {
-                                is ModelInstallResult.Success -> {
-                                    result.modelId?.let { modelId ->
-                                        viewModel.updateActiveProfile(
-                                            engine = VoiceEngineType.OFFLINE_NEURAL,
-                                            modelId = modelId,
-                                            speakerId = 0
-                                        )
-                                    }
-                                    result.message
+                        installMessage = "正在下载并安装模型包..."
+                        val result = modelInstaller.downloadAndInstallArchive(
+                            url = downloadUrl, format = selectedImportFormat,
+                            progressCallback = { installProgress = it }
+                        )
+                        installMessage = when (result) {
+                            is ModelInstallResult.Success -> {
+                                result.modelId?.let { modelId ->
+                                    viewModel.updateActiveProfile(
+                                        engine = VoiceEngineType.OFFLINE_NEURAL,
+                                        modelId = modelId,
+                                        speakerId = 0
+                                    )
                                 }
-
-                                is ModelInstallResult.Partial -> {
-                                    result.modelId?.let { modelId ->
-                                        viewModel.updateActiveProfile(
-                                            engine = VoiceEngineType.OFFLINE_NEURAL,
-                                            modelId = modelId,
-                                            speakerId = 0
-                                        )
-                                    }
-                                    result.message
-                                }
-
-                                is ModelInstallResult.Failure -> result.message
+                                result.message
                             }
+
+                            is ModelInstallResult.Partial -> {
+                                result.modelId?.let { modelId ->
+                                    viewModel.updateActiveProfile(
+                                        engine = VoiceEngineType.OFFLINE_NEURAL,
+                                        modelId = modelId,
+                                        speakerId = 0
+                                    )
+                                }
+                                result.message
+                            }
+
+                            is ModelInstallResult.Failure -> result.message
+                        }
                         modelRefreshKey++
                         isInstalling = false
                     }
                 }
             }
+            pendingInstallAction = null
         })
     }
 
@@ -408,6 +466,7 @@ fun VoiceSettingsScreen(
             remoteModelCatalog = remoteModelCatalog,
             modelStatuses = modelStatuses,
             isInstalling = isInstalling,
+            installProgress = installProgress,
             installMessage = installMessage,
             selectedImportFormat = selectedImportFormat,
             downloadUrl = downloadUrl,
@@ -452,8 +511,14 @@ fun VoiceSettingsScreen(
             },
             onInstall = { entry ->
                 isInstalling = true
+                installProgress = 0f
                 coroutineScope.launch {
-                    installMessage = when (val result = modelInstaller.installRemoteModel(entry)) {
+                    installMessage = "正在下载并安装模型包..."
+                    val result = modelInstaller.installRemoteModel(
+                        entry,
+                        progressCallback = { installProgress = it }
+                    )
+                    installMessage = when (result) {
                         is ModelInstallResult.Success -> {
                             viewModel.updateActiveProfile(
                                 engine = VoiceEngineType.OFFLINE_NEURAL,
@@ -497,7 +562,6 @@ private fun EngineSelector(
 
 @Composable
 private fun OfflineModelStatusCard(
-    modelRootPath: String,
     activeModelStatus: OfflineVoiceModelStatus?,
     installMessage: String?,
     onClick: () -> Unit
@@ -524,13 +588,13 @@ private fun OfflineModelStatusCard(
                     else -> "模型未安装"
                 }, style = MaterialTheme.typography.bodySmall
             )
-            if (compatibilityIssue != null) {
-                Text(
-                    text = compatibilityIssue,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+    if (compatibilityIssue != null) {
+        Text(
+            text = compatibilityIssue,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
             if (isPartial) {
                 Text(
                     text = "缺少文本前端文件时无法把中文转换为模型 token，端侧推理会自动回退系统 TTS。",
@@ -553,6 +617,7 @@ private fun ModelPickerDialog(
     remoteModelCatalog: List<RemoteVoiceModelCatalogEntry>,
     modelStatuses: List<OfflineVoiceModelStatus>,
     isInstalling: Boolean,
+    installProgress: Float,
     installMessage: String?,
     selectedImportFormat: OfflineVoiceModelFormat,
     downloadUrl: String,
@@ -652,9 +717,20 @@ private fun ModelPickerDialog(
             }
             if (isInstalling) {
                 item {
-                    Text(
-                        text = "正在安装模型包...", style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = if (installProgress > 0) {
+                                "正在安装模型包 (${(installProgress * 100).toInt()}%)..."
+                            } else {
+                                "正在准备安装模型包..."
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        LinearProgressIndicator(
+                            progress = { installProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
             if (installMessage != null) {
@@ -751,6 +827,14 @@ private fun ImportFormatSelector(
             )
         }
     }
+
+    val kigvpk = OfflineVoiceModelFormat.KIGVPK
+    FilterChip(
+        selected = selected == kigvpk,
+        onClick = { onSelect(kigvpk) },
+        label = { Text(kigvpk.label + "（KIGTTS 训练器格式）") },
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable

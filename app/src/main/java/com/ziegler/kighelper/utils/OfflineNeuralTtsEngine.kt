@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * 使用 sherpa-onnx OfflineTts 进行本地推理，生成结果写入缓存后播放。
  */
 class OfflineNeuralTtsEngine(context: Context) {
+    private val appContext = context.applicationContext
     private val modelManager = OfflineVoiceModelManager(context)
+    private val kigvpkParamsManager = KigvpkParamsManager(context)
     private val audioCache = SpeechAudioCache(context)
     private val audioPlayer = SpeechAudioPlayer()
     private val engineDispatcher = Executors.newSingleThreadExecutor { task ->
@@ -35,16 +37,19 @@ class OfflineNeuralTtsEngine(context: Context) {
 
     private var loadedModelId: String? = null
     private var loadedTts: OfflineTts? = null
-    // native 推理失败后本次进程内熔断，避免用户连续点击反复触发同一模型初始化。
+    private var kigvpkEngine: KigvpkTtsEngine? = null
     private val failedModelIds = Collections.synchronizedSet(mutableSetOf<String>())
 
     fun speak(text: String, profile: VoiceProfile): Boolean {
-        val cachedAudio = audioCache.getIfExists(text, profile)
-        if (cachedAudio != null) {
-            return audioPlayer.play(cachedAudio)
+        val readyModel = modelManager.findReadyModel(profile.modelId)
+        val isKigvpk = readyModel?.pack?.format == OfflineVoiceModelFormat.KIGVPK
+        if (!isKigvpk) {
+            val cachedAudio = audioCache.getIfExists(text, profile)
+            if (cachedAudio != null) {
+                return audioPlayer.play(cachedAudio)
+            }
         }
 
-        val readyModel = modelManager.findReadyModel(profile.modelId)
         if (readyModel == null) {
             Log.i(TAG, "端侧 TTS 模型未就绪，回退到系统 TTS。模型目录: ${modelManager.modelRootPath}")
             return false
@@ -98,6 +103,8 @@ class OfflineNeuralTtsEngine(context: Context) {
     fun shutdown() {
         stop()
         releaseLoadedTts()
+        kigvpkEngine?.close()
+        kigvpkEngine = null
         engineScope.cancel()
         engineDispatcher.close()
     }
@@ -108,6 +115,20 @@ class OfflineNeuralTtsEngine(context: Context) {
         modelStatus: OfflineVoiceModelStatus,
         targetFile: File
     ) {
+        if (modelStatus.pack.format == OfflineVoiceModelFormat.KIGVPK) {
+            if (kigvpkEngine == null || kigvpkEngine?.packDir != modelStatus.directory) {
+                kigvpkEngine?.close()
+                kigvpkEngine = KigvpkTtsEngine(appContext, modelStatus.directory)
+            }
+            val engine = kigvpkEngine!!
+            val modelParams = kigvpkParamsManager.loadDefaults(modelStatus.directory, modelStatus.pack.id)
+            val speed = modelParams.lengthScale / profile.speechRate.coerceAtLeast(0.5f)
+            engine.setSynthesisTuning(modelParams.noiseScale, speed, modelParams.noiseW, modelParams.sentenceSilenceSec)
+            val samples = engine.synthesize(text)
+            VoiceAudioProcessor.writeWav(targetFile, samples, engine.sampleRate)
+            return
+        }
+
         val params = profile.toTtsParams()
         val speed = (1f / params.speechRate).coerceIn(0.75f, 1.35f)
 
@@ -153,6 +174,12 @@ class OfflineNeuralTtsEngine(context: Context) {
                 File(modelDir, "tokens.txt").requireReadableTextFile("tokens.txt")
                 File(modelDir, "voices.bin").requireReadableModelFile("voices.bin")
                 File(modelDir, "espeak-ng-data").requireReadableDirectory("espeak-ng-data")
+            }
+
+            OfflineVoiceModelFormat.KIGVPK -> {
+                File(modelDir, "model.onnx").requireReadableModelFile("model.onnx")
+                File(modelDir, "model.onnx.json").requireReadableTextFile("model.onnx.json")
+                File(modelDir, "phonemizer.dict").requireReadableTextFile("phonemizer.dict")
             }
 
             OfflineVoiceModelFormat.UNSUPPORTED -> error("不支持的端侧 TTS 模型格式")
@@ -233,6 +260,8 @@ class OfflineNeuralTtsEngine(context: Context) {
                     provider = "cpu"
                 )
             }
+
+            OfflineVoiceModelFormat.KIGVPK -> error("KIGVPK uses separate engine path")
 
             OfflineVoiceModelFormat.UNSUPPORTED -> error("不支持的端侧 TTS 模型格式")
         }
@@ -364,4 +393,5 @@ private fun File.resolveRuleFars(): String {
 private val OfflineVoiceModelFormat.isRuntimeSupported: Boolean
     get() = this == OfflineVoiceModelFormat.VITS ||
         this == OfflineVoiceModelFormat.PIPER ||
-        this == OfflineVoiceModelFormat.KOKORO
+        this == OfflineVoiceModelFormat.KOKORO ||
+        this == OfflineVoiceModelFormat.KIGVPK

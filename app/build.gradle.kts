@@ -14,6 +14,7 @@ android {
     defaultConfig {
         applicationId = "com.ziegler.kighelper"
         minSdk = 26
+        //noinspection OldTargetApi
         targetSdk = 36
         versionCode = 4
         versionName = "1.1.1"
@@ -26,11 +27,11 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
             ndk {
+                //noinspection ChromeOsAbiSupport
                 abiFilters += "arm64-v8a"
             }
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
             // signingConfig = signingConfigs.getByName("release")
         }
@@ -48,6 +49,9 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            pickFirsts += setOf(
+                "**/libonnxruntime.so", "**/libonnxruntime4j_jni.so"
+            )
         }
     }
 }
@@ -69,8 +73,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.okhttp)
     implementation(libs.commons.compress)
-    // Commented out to avoid duplicate library conflicts with sherpa-onnx
-    // implementation(libs.onnxruntime.android)
+    implementation(libs.onnxruntime.android)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.foundation)

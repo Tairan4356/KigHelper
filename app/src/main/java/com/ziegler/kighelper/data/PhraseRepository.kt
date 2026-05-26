@@ -16,6 +16,8 @@ import java.lang.reflect.Type
 interface PhraseRepository {
     suspend fun getPhrases(): List<Phrase>
     suspend fun savePhrases(phrases: List<Phrase>)
+    suspend fun getGroups(): List<PhraseGroup>
+    suspend fun saveGroups(groups: List<PhraseGroup>)
     suspend fun resetPhrases()
     suspend fun saveLastUsedPhrase(phrase: Phrase)
     suspend fun getLastUsedPhrase(): Phrase?
@@ -31,6 +33,7 @@ class SharedPreferencesPhraseRepository(
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val phraseListType: Type = object : TypeToken<List<Phrase>>() {}.type
+    private val groupListType: Type = object : TypeToken<List<PhraseGroup>>() {}.type
 
     /**
      * 从本地存储获取所有短语，若为空则返回默认列表
@@ -56,12 +59,28 @@ class SharedPreferencesPhraseRepository(
         }
     }
 
-    /**
-     * 清除用户数据，下一次读取会自动返回默认短语
-     */
+    override suspend fun getGroups(): List<PhraseGroup> = withContext(Dispatchers.IO) {
+        val json = prefs.getString(GROUPS_KEY, null) ?: return@withContext defaultGroups()
+
+        runCatching {
+            gson.fromJson<List<PhraseGroup>>(json, groupListType) ?: defaultGroups()
+        }.getOrElse { error ->
+            Log.w(TAG, "分组数据解析失败，已回退到默认分组", error)
+            defaultGroups()
+        }
+    }
+
+    override suspend fun saveGroups(groups: List<PhraseGroup>) = withContext(Dispatchers.IO) {
+        val json = gson.toJson(groups)
+        prefs.edit(commit = true) {
+            putString(GROUPS_KEY, json)
+        }
+    }
+
     override suspend fun resetPhrases() = withContext(Dispatchers.IO) {
         prefs.edit(commit = true) {
             remove(PHRASES_KEY)
+            remove(GROUPS_KEY)
         }
     }
 
@@ -89,7 +108,12 @@ class SharedPreferencesPhraseRepository(
         private const val TAG = "PhraseRepository"
         private const val PREFS_NAME = "aac_prefs"
         private const val PHRASES_KEY = "phrases_key"
+        private const val GROUPS_KEY = "groups_key"
         private const val LAST_PHRASE_KEY = "last_phrase_key"
+
+        private fun defaultGroups() = listOf(
+            PhraseGroup(id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0)
+        )
 
         private fun defaultPhrases() = listOf(
             Phrase(label = "你好", speech = "你好"),

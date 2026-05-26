@@ -42,7 +42,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.drag.PhraseDragInfo
 import com.ziegler.kighelper.ui.screens.main.PhraseGrid
 
@@ -78,6 +81,7 @@ fun MainScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     modifier: Modifier = Modifier,
     phrases: List<Phrase>,
+    groups: List<PhraseGroup> = emptyList(),
     displayText: String,
     isShowingInitialHint: Boolean,
     isPhrasesLoading: Boolean,
@@ -128,6 +132,43 @@ fun MainScreen(
     }
 
     val effectiveIsSubtle = isShowingInitialHint
+
+    val groupedSections = remember(phrases.toList(), groups.toList()) {
+        buildGroupedSections(phrases = phrases, groups = groups)
+    }
+
+    val groupHeaderPositions = remember(groupedSections) {
+        var offset = 0
+        val positions = mutableMapOf<String, Int>()
+        for ((group, groupPhrases) in groupedSections) {
+            positions[group.id] = offset
+            offset += 1 + groupPhrases.size
+        }
+        positions
+    }
+
+    val currentGroupIndex by remember(groupedSections) {
+        derivedStateOf {
+            val visibleIndex = phraseGridState.firstVisibleItemIndex
+            var offset = 0
+            for ((index, entry) in groupedSections.withIndex()) {
+                val groupPhrases = entry.second
+                val groupEnd = offset + groupPhrases.size
+                if (visibleIndex in offset..groupEnd) return@derivedStateOf index
+                offset = groupEnd + 1
+            }
+            groupedSections.indices.firstOrNull() ?: 0
+        }
+    }
+
+    var scrollToGroupIndex by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(scrollToGroupIndex) {
+        val targetIndex = scrollToGroupIndex ?: return@LaunchedEffect
+        val targetGroup = groupedSections.getOrNull(targetIndex) ?: return@LaunchedEffect
+        val headerPosition = groupHeaderPositions[targetGroup.first.id] ?: return@LaunchedEffect
+        phraseGridState.animateScrollToItem(headerPosition)
+        scrollToGroupIndex = null
+    }
 
     val isPhraseGridAtTop by remember {
         derivedStateOf {
@@ -209,23 +250,33 @@ fun MainScreen(
 
                 when {
                     showPhraseGrid -> {
-                        // 短语网格、加号按钮和 PhraseButton 拖拽手势作为一个整体移到了 ui.screens.main.PhraseGrid.kt。
-                        PhraseGrid(
-                            modifier = Modifier
-                                .weight(phraseAreaWeight)
-                                .nestedScroll(phraseGridNestedScrollConnection),
-                            phrases = phrases,
-                            state = phraseGridState,
-                            columns = GridCells.Fixed(2),
-                            onPhraseClick = onPhraseClick,
-                            onAddPhraseClick = onNavigateToAddPhrase,
-                            onPhraseDragStart = onPhraseDragStart,
-                            onPhraseDragMove = onPhraseDragMove,
-                            onPhraseDragEnd = onPhraseDragEnd,
-                            onDisplayShouldExpand = {
-                                isDisplayCompressed = false
-                            }
-                        )
+                        Column(modifier = Modifier.weight(phraseAreaWeight)) {
+                            GroupTabRow(
+                                groupedSections = groupedSections,
+                                currentGroupIndex = currentGroupIndex,
+                                onGroupClick = { index ->
+                                    scrollToGroupIndex = index
+                                }
+                            )
+
+                            // 短语网格、加号按钮和 PhraseButton 拖拽手势作为一个整体移到了 ui.screens.main.PhraseGrid.kt。
+                            PhraseGrid(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .nestedScroll(phraseGridNestedScrollConnection),
+                                groupedSections = groupedSections,
+                                state = phraseGridState,
+                                columns = GridCells.Fixed(2),
+                                onPhraseClick = onPhraseClick,
+                                onAddPhraseClick = onNavigateToAddPhrase,
+                                onPhraseDragStart = onPhraseDragStart,
+                                onPhraseDragMove = onPhraseDragMove,
+                                onPhraseDragEnd = onPhraseDragEnd,
+                                onDisplayShouldExpand = {
+                                    isDisplayCompressed = false
+                                }
+                            )
+                        }
                     }
 
                     showEmptyState -> {
@@ -246,6 +297,59 @@ fun MainScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun buildGroupedSections(
+    phrases: List<Phrase>,
+    groups: List<PhraseGroup>
+): List<Pair<PhraseGroup, List<Phrase>>> {
+    val defaultGroup = groups.firstOrNull { it.id == PhraseGroup.DEFAULT_ID }
+        ?: PhraseGroup(id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0)
+    val nonDefaultGroups = groups
+        .distinctBy { it.id }
+        .filterNot { it.id == PhraseGroup.DEFAULT_ID }
+        .sortedBy { it.order }
+    val groupById = nonDefaultGroups.associateBy { it.id }
+    val groupedPhrases = phrases.groupBy { phrase ->
+        groupById[phrase.groupId] ?: defaultGroup
+    }
+
+    val sections = mutableListOf<Pair<PhraseGroup, List<Phrase>>>()
+    for (group in nonDefaultGroups) {
+        val groupPhrases = groupedPhrases[group].orEmpty()
+        if (groupPhrases.isNotEmpty()) {
+            sections += group to groupPhrases.distinctBy { it.id }
+        }
+    }
+
+    val defaultPhrases = groupedPhrases[defaultGroup].orEmpty()
+    if (defaultPhrases.isNotEmpty()) {
+        sections += defaultGroup to defaultPhrases.distinctBy { it.id }
+    }
+
+    return sections
+}
+
+@Composable
+private fun GroupTabRow(
+    groupedSections: List<Pair<PhraseGroup, List<Phrase>>>,
+    currentGroupIndex: Int,
+    onGroupClick: (Int) -> Unit
+) {
+    if (groupedSections.size <= 1) return
+
+    ScrollableTabRow(
+        selectedTabIndex = currentGroupIndex.coerceIn(groupedSections.indices),
+        edgePadding = 0.dp
+    ) {
+        groupedSections.forEachIndexed { index, (group, _) ->
+            Tab(
+                selected = currentGroupIndex == index,
+                onClick = { onGroupClick(index) },
+                text = { Text(group.name) }
+            )
         }
     }
 }
@@ -317,7 +421,8 @@ private fun DisplaySurface(
                         contentDescription = "朗读"
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = null
                         )
                     }
 

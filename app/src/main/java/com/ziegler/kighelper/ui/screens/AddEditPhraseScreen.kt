@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -18,11 +22,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseGroup
 
 /**
  * 添加/编辑短语表单。
@@ -33,7 +39,8 @@ import com.ziegler.kighelper.data.Phrase
 fun AddEditPhraseScreen(
     phrase: Phrase?,
     isEditMode: Boolean,
-    onSave: (label: String, speech: String) -> Unit,
+    groups: List<PhraseGroup>,
+    onSave: (label: String, speech: String, groupId: String) -> Unit,
     onBack: () -> Unit
 ) {
     var label by rememberSaveable(phrase?.id) {
@@ -42,6 +49,12 @@ fun AddEditPhraseScreen(
     var speech by rememberSaveable(phrase?.id) {
         mutableStateOf(phrase?.speech.orEmpty())
     }
+    var selectedGroupId by rememberSaveable(phrase?.id) {
+        mutableStateOf(phrase?.groupId ?: PhraseGroup.DEFAULT_ID)
+    }
+    var groupMenuExpanded by remember { mutableStateOf(false) }
+
+    val selectedGroupName = groups.firstOrNull { it.id == selectedGroupId }?.name ?: PhraseGroup.DEFAULT_NAME
 
     Scaffold(
         topBar = {
@@ -62,6 +75,36 @@ fun AddEditPhraseScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ExposedDropdownMenuBox(
+                expanded = groupMenuExpanded,
+                onExpandedChange = { groupMenuExpanded = !groupMenuExpanded }
+            ) {
+                OutlinedTextField(
+                    value = selectedGroupName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("分组") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = groupMenuExpanded) },
+                    modifier = Modifier
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = groupMenuExpanded,
+                    onDismissRequest = { groupMenuExpanded = false }
+                ) {
+                    groups.forEach { group ->
+                        DropdownMenuItem(
+                            text = { Text(group.name) },
+                            onClick = {
+                                selectedGroupId = group.id
+                                groupMenuExpanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
+                }
+            }
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
@@ -77,7 +120,7 @@ fun AddEditPhraseScreen(
             )
             Button(
                 onClick = {
-                    onSave(label, speech)
+                    onSave(label, speech, selectedGroupId)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = label.isNotBlank() && speech.isNotBlank()

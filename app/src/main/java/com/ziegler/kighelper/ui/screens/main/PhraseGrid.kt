@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.drag.PhraseDragInfo
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 import kotlinx.coroutines.delay
@@ -53,7 +56,7 @@ private const val DragPlaceholderAlpha = 0.35f // 根层副本拖动时，原位
 
 @Composable
 internal fun PhraseGrid(
-    phrases: List<Phrase>,
+    groupedSections: List<Pair<PhraseGroup, List<Phrase>>>,
     state: LazyGridState,
     columns: GridCells,
     onPhraseClick: (Phrase) -> Unit,
@@ -66,7 +69,7 @@ internal fun PhraseGrid(
 ) {
     val performButtonHaptic = rememberPhysicalButtonHaptics()
 
-    // LazyVerticalGrid 只渲染短语按钮和末尾添加按钮；排序逻辑后续也应优先落在这里。
+    // LazyVerticalGrid 渲染分组标题、短语按钮和末尾添加按钮；拖拽手势仍集中在 PhraseButton。
     LazyVerticalGrid(
         columns = columns,
         state = state,
@@ -75,18 +78,37 @@ internal fun PhraseGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(
-            items = phrases,
-            key = { phrase -> phrase.id }
-        ) { phrase ->
-            PhraseButton(
-                phrase = phrase,
-                onPhraseClick = onPhraseClick,
-                onPhraseDragStart = onPhraseDragStart,
-                onPhraseDragMove = onPhraseDragMove,
-                onPhraseDragEnd = onPhraseDragEnd,
-                onDisplayShouldExpand = onDisplayShouldExpand
-            )
+        groupedSections.forEach { (group, groupPhrases) ->
+            item(
+                key = "header_${group.id}",
+                span = { GridItemSpan(maxLineSpan) }
+            ) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        start = 4.dp,
+                        top = 12.dp,
+                        bottom = 4.dp
+                    )
+                )
+            }
+
+            items(
+                items = groupPhrases,
+                key = { phrase -> phrase.id }
+            ) { phrase ->
+                PhraseButton(
+                    phrase = phrase,
+                    onPhraseClick = onPhraseClick,
+                    onPhraseDragStart = onPhraseDragStart,
+                    onPhraseDragMove = onPhraseDragMove,
+                    onPhraseDragEnd = onPhraseDragEnd,
+                    onDisplayShouldExpand = onDisplayShouldExpand
+                )
+            }
         }
 
         item(key = AddPhraseGridItemKey) {

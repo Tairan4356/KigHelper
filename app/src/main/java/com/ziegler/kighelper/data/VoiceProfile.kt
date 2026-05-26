@@ -19,7 +19,11 @@ data class VoiceProfile(
     val speechRate: Float = 1.0f,
     val pitch: Float = 1.0f,
     val warmth: Float = 0.5f,
-    val expressiveness: Float = 0.5f
+    val expressiveness: Float = 0.5f,
+    val kigvpkNoiseScale: Float? = null,
+    val kigvpkNoiseW: Float? = null,
+    val kigvpkLengthScale: Float? = null,
+    val kigvpkSentenceSilenceSec: Float? = null
 ) {
     fun toTtsParams(): VoiceTtsParams {
         val agePitchOffset = (0.5f - age) * 0.14f
