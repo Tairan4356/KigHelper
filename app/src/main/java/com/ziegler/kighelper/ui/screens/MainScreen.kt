@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -77,6 +78,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
@@ -110,6 +113,22 @@ fun MainScreen(
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val screenWidth = configuration.screenWidthDp
+
+    // 根据屏幕宽度动态计算卡片的字号、高度和网格列数
+    val (cardFontSize, cardHeight) = remember(screenWidth) {
+        when {
+            screenWidth < 1080 -> 14.sp to 80.dp
+            else -> 24.sp to 112.dp
+        }
+    }
+
+    val gridColumns = remember(screenWidth, isLandscape) {
+        when {
+            screenWidth < 1080 -> GridCells.Fixed(2)
+            else -> GridCells.Fixed(3)
+        }
+    }
 
     val layoutDirection = LocalLayoutDirection.current
     val pagePadding = 16.dp
@@ -234,9 +253,7 @@ fun MainScreen(
     val currentVisibleGroupIndex by remember(groupToFlatIndexMap, groupedSections) {
         derivedStateOf {
             val firstVisible = phraseGridState.firstVisibleItemIndex
-            groupToFlatIndexMap.entries
-                .lastOrNull { it.value <= firstVisible }
-                ?.key ?: 0
+            groupToFlatIndexMap.entries.lastOrNull { it.value <= firstVisible }?.key ?: 0
         }
     }
 
@@ -291,8 +308,7 @@ fun MainScreen(
             onSave = { label, speech ->
                 onUpdatePhrase(phrase, label, speech)
                 editingPhrase = null
-            }
-        )
+            })
     }
 
     if (isLandscape) {
@@ -340,7 +356,9 @@ fun MainScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 groupedSections = groupedSections,
                                 state = phraseGridState,
-                                columns = GridCells.Fixed(2),
+                                columns = gridColumns,
+                                cardFontSize = cardFontSize,
+                                cardHeight = cardHeight,
                                 onPhraseClick = onPhraseClick,
                                 onPhraseLongClick = { editingPhrase = it },
                                 onDisplayShouldExpand = {
@@ -408,7 +426,9 @@ fun MainScreen(
                                 .nestedScroll(phraseGridNestedScrollConnection),
                             groupedSections = groupedSections,
                             state = phraseGridState,
-                            columns = GridCells.Fixed(2),
+                            columns = gridColumns,
+                            cardFontSize = cardFontSize,
+                            cardHeight = cardHeight,
                             onPhraseClick = onPhraseClick,
                             onPhraseLongClick = { editingPhrase = it },
                             onDisplayShouldExpand = {
@@ -453,17 +473,13 @@ private fun GroupTabs(
     ) {
         groupedSections.forEachIndexed { index, (group, _) ->
             val selected = selectedGroupIndex == index
-            Tab(
-                selected = selected,
-                onClick = { onGroupSelected(index) },
-                text = {
-                    Text(
-                        text = group.name,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
-            )
+            Tab(selected = selected, onClick = { onGroupSelected(index) }, text = {
+                Text(
+                    text = group.name,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    style = MaterialTheme.typography.titleSmall
+                )
+            })
         }
     }
 }
@@ -483,11 +499,39 @@ private fun DisplaySurface(
         tonalElevation = 8.dp,
         shadowElevation = 4.dp
     ) {
-        Box(
+        // 2. 使用 BoxWithConstraints 动态获取当前展示区域的大小
+        BoxWithConstraints(
             contentAlignment = Alignment.Center, modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
+            val containerWidth = maxWidth
+            val containerHeight = maxHeight
+
+            // 根据可用容器大小和字数，动态缩放展示区的文字大小
+            val baseFontSize = when {
+                containerHeight < 120.dp || containerWidth < 280.dp -> {
+                    // 高度高度压缩时（滑动或超小屏）
+                    if (text.length > 20) 16.sp else 22.sp
+                }
+
+                containerHeight < 220.dp || containerWidth < 380.dp -> {
+                    // 中度压缩状态
+                    if (text.length > 20) 24.sp else 32.sp
+                }
+
+                containerHeight < 360.dp || containerWidth < 600.dp -> {
+                    // 标准手机的正常竖屏显示区域
+                    if (text.length > 20) 36.sp else 46.sp
+                }
+
+                else -> {
+                    // 平板或宽大显示区域
+                    if (text.length > 20) 44.sp else 56.sp
+                }
+            }
+            val lineHeight = baseFontSize * 1.15f
+
             androidx.compose.animation.AnimatedContent(
                 targetState = text, transitionSpec = {
                     (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
@@ -503,8 +547,8 @@ private fun DisplaySurface(
                         text = targetText,
                         style = MaterialTheme.typography.displayLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = if (targetText.length > 20) 36.sp else 48.sp,
-                            lineHeight = if (targetText.length > 20) 40.sp else 52.sp
+                            fontSize = baseFontSize,
+                            lineHeight = lineHeight
                         ),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onPrimary.copy(
@@ -622,18 +666,18 @@ private fun AddPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                    label = it
-                }, label = {
-                    Text("按钮标签")
-                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                    speech = it
-                }, label = {
-                    Text("播报内容")
-                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -653,9 +697,7 @@ private fun AddPhraseDialog(
 
 @Composable
 private fun EditPhraseDialog(
-    phrase: Phrase,
-    onDismiss: () -> Unit,
-    onSave: (label: String, speech: String) -> Unit
+    phrase: Phrase, onDismiss: () -> Unit, onSave: (label: String, speech: String) -> Unit
 ) {
     var label by rememberSaveable(phrase.id) { mutableStateOf(phrase.label) }
     var speech by rememberSaveable(phrase.id) { mutableStateOf(phrase.speech) }
@@ -674,18 +716,18 @@ private fun EditPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                    label = it
-                }, label = {
-                    Text("按钮标签")
-                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                    speech = it
-                }, label = {
-                    Text("播报内容")
-                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -712,7 +754,9 @@ private fun PhraseGrid(
     onPhraseClick: (Phrase) -> Unit,
     onPhraseLongClick: (Phrase) -> Unit,
     onDisplayShouldExpand: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cardFontSize: TextUnit = 18.sp,
+    cardHeight: Dp = 80.dp
 ) {
     val performButtonHaptic = rememberPhysicalButtonHaptics()
 
@@ -728,9 +772,7 @@ private fun PhraseGrid(
             // 如果分组数多于一个，则在每个分组上方增加一个横跨全宽的标题 Header
             if (groupedSections.size > 1) {
                 item(
-                    key = "header_${group.id}",
-                    span = { GridItemSpan(maxLineSpan) }
-                ) {
+                    key = "header_${group.id}", span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = group.name,
                         style = MaterialTheme.typography.titleMedium,
@@ -750,24 +792,19 @@ private fun PhraseGrid(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp)
+                        .height(cardHeight)
                         .clip(buttonShape)
-                        .combinedClickable(
-                            role = Role.Button,
-                            onClick = {
-                                performButtonHaptic()
-                                onDisplayShouldExpand()
-                                onPhraseClick(phrase)
-                            },
-                            onLongClick = {
-                                performButtonHaptic()
-                                onPhraseLongClick(phrase)
-                            }
-                        ),
+                        .combinedClickable(role = Role.Button, onClick = {
+                            performButtonHaptic()
+                            onDisplayShouldExpand()
+                            onPhraseClick(phrase)
+                        }, onLongClick = {
+                            performButtonHaptic()
+                            onPhraseLongClick(phrase)
+                        }),
                     shape = buttonShape,
                     color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ) {
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -776,7 +813,7 @@ private fun PhraseGrid(
                     ) {
                         Text(
                             text = phrase.label,
-                            fontSize = 18.sp,
+                            fontSize = cardFontSize,
                             textAlign = TextAlign.Center,
                             maxLines = 2
                         )
