@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
+import androidx.compose.foundation.layout.BoxWithConstraints
 
 /**
  * 自由输入界面：允许用户手动输入文字并朗读
@@ -78,28 +79,13 @@ fun InputScreen(
         WindowInsets.navigationBars.getRight(this, layoutDirection).toDp()
     }
     val safeStartPadding = maxOf(
-        contentPadding.calculateStartPadding(layoutDirection),
-        navigationStartPadding
+        contentPadding.calculateStartPadding(layoutDirection), navigationStartPadding
     )
     val safeEndPadding = maxOf(
-        contentPadding.calculateEndPadding(layoutDirection),
-        navigationEndPadding
+        contentPadding.calculateEndPadding(layoutDirection), navigationEndPadding
     )
     var navigationBottomPadding by remember { mutableStateOf(0.dp) }
     val isImeVisible = imeBottomPadding > 0.dp
-
-    val fontSize = when {
-        text.length > 60 -> if (isLandscape) 28.sp else 32.sp
-        text.length > 20 -> if (isLandscape) 34.sp else 40.sp
-        isLandscape -> 40.sp
-        else -> 48.sp
-    }
-    val lineHeight = when {
-        text.length > 60 -> if (isLandscape) 32.sp else 36.sp
-        text.length > 20 -> if (isLandscape) 38.sp else 44.sp
-        isLandscape -> 44.sp
-        else -> 52.sp
-    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -117,10 +103,49 @@ fun InputScreen(
         navigationBottomPadding
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
     ) {
+        val containerWidth = maxWidth
+        val visibleHeight = maxOf(0.dp, maxHeight - imeBottomPadding)
+        val fontSize = when {
+            visibleHeight < 150.dp || containerWidth < 280.dp -> {
+                // 超小屏幕，或横屏状态且键盘弹起时的极度压缩状态
+                when {
+                    text.length > 60 -> 18.sp
+                    text.length > 20 -> 24.sp
+                    else -> 32.sp
+                }
+            }
+
+            visibleHeight < 250.dp || containerWidth < 380.dp -> {
+                // 中度压缩状态
+                when {
+                    text.length > 60 -> 24.sp
+                    text.length > 20 -> 34.sp
+                    else -> 46.sp
+                }
+            }
+
+            visibleHeight < 400.dp || containerWidth < 600.dp -> {
+                // 标准手机无键盘或正常显示区域
+                when {
+                    text.length > 60 -> 36.sp
+                    text.length > 20 -> 54.sp
+                    else -> 76.sp
+                }
+            }
+
+            else -> {
+                when {
+                    text.length > 60 -> 48.sp
+                    text.length > 20 -> 72.sp
+                    else -> 100.sp
+                }
+            }
+        }
+        val lineHeight = fontSize * 1.15f
+
         BasicTextField(
             value = textFieldValue,
             onValueChange = { textFieldValue = it },
@@ -164,8 +189,7 @@ fun InputScreen(
                         )
                     }
                     Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center
                     ) {
                         innerTextField()
                     }
@@ -202,9 +226,7 @@ fun InputScreen(
                         performButtonHaptic()
                         onSpeak(text)
                     }
-                },
-                enabled = text.isNotBlank(),
-                shape = MaterialTheme.shapes.medium
+                }, enabled = text.isNotBlank(), shape = MaterialTheme.shapes.medium
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null
