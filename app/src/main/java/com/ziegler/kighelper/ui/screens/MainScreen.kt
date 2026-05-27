@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -40,20 +40,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,6 +62,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
+import kotlinx.coroutines.launch
 
 /**
  * 主界面：提供大字显示区域和短语快捷按钮网格。
@@ -203,15 +205,49 @@ fun MainScreen(
         result
     }
 
+    val coroutineScope = rememberCoroutineScope()
     var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    var isProgrammaticScroll by remember { mutableStateOf(false) }
+
+    // 计算每个分组在网格平铺布局中的起始平铺索引（包含分组 Header 的位置占用）
+    val groupToFlatIndexMap = remember(groupedSections) {
+        val map = mutableMapOf<Int, Int>()
+        var currentIndex = 0
+        groupedSections.forEachIndexed { index, (_, phrases) ->
+            map[index] = currentIndex
+            // 如果分组数大于 1，则会有 Header 占用 1 个网格项位置
+            val headerCount = if (groupedSections.size > 1) 1 else 0
+            currentIndex += headerCount + phrases.size
+        }
+        map
+    }
+
+    // 当前选中的 Tab 索引
     val selectedGroupIndex by remember(groupedSections, selectedGroupId) {
         derivedStateOf {
             groupedSections.indexOfFirst { (group, _) -> group.id == selectedGroupId }
                 .takeIf { it >= 0 } ?: 0
         }
     }
-    val selectedGroupedSections = remember(groupedSections, selectedGroupIndex) {
-        groupedSections.getOrNull(selectedGroupIndex)?.let(::listOf).orEmpty()
+
+    // 根据网格当前可视的第一项，反向推导当前应当高亮的分组索引（用于滚动同步 Tab）
+    val currentVisibleGroupIndex by remember(groupToFlatIndexMap, groupedSections) {
+        derivedStateOf {
+            val firstVisible = phraseGridState.firstVisibleItemIndex
+            groupToFlatIndexMap.entries
+                .lastOrNull { it.value <= firstVisible }
+                ?.key ?: 0
+        }
+    }
+
+    // 监听滚动状态更新 Tab（仅在非主动点击 Tab 触发的滚动中同步）
+    LaunchedEffect(currentVisibleGroupIndex, groupedSections) {
+        if (!isProgrammaticScroll) {
+            val targetId = groupedSections.getOrNull(currentVisibleGroupIndex)?.first?.id
+            if (targetId != null && targetId != selectedGroupId) {
+                selectedGroupId = targetId
+            }
+        }
     }
 
     LaunchedEffect(groupedSections) {
@@ -225,7 +261,6 @@ fun MainScreen(
 
     LaunchedEffect(selectedGroupId) {
         if (selectedGroupId != null) {
-            phraseGridState.scrollToItem(0)
             isDisplayCompressed = false
         }
     }
@@ -266,7 +301,7 @@ fun MainScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(2f)
                     .padding(bottom = 16.dp)
             ) {
                 DisplaySurface(
@@ -282,12 +317,20 @@ fun MainScreen(
                     showPhraseGrid -> {
                         Column {
                             if (groupedSections.size > 1) {
-                                GroupFilterChips(
+                                GroupTabs(
                                     groupedSections = groupedSections,
                                     selectedGroupIndex = selectedGroupIndex,
                                     onGroupSelected = { index ->
-                                        selectedGroupId =
-                                            groupedSections.getOrNull(index)?.first?.id
+                                        val targetId = groupedSections.getOrNull(index)?.first?.id
+                                        if (targetId != null) {
+                                            selectedGroupId = targetId
+                                            val targetFlatIndex = groupToFlatIndexMap[index] ?: 0
+                                            coroutineScope.launch {
+                                                isProgrammaticScroll = true
+                                                phraseGridState.animateScrollToItem(targetFlatIndex)
+                                                isProgrammaticScroll = false
+                                            }
+                                        }
                                     },
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
@@ -295,7 +338,7 @@ fun MainScreen(
 
                             PhraseGrid(
                                 modifier = Modifier.fillMaxSize(),
-                                groupedSections = selectedGroupedSections,
+                                groupedSections = groupedSections,
                                 state = phraseGridState,
                                 columns = GridCells.Fixed(2),
                                 onPhraseClick = onPhraseClick,
@@ -340,11 +383,20 @@ fun MainScreen(
                 showPhraseGrid -> {
                     Column(modifier = Modifier.weight(phraseAreaWeight)) {
                         if (groupedSections.size > 1) {
-                            GroupFilterChips(
+                            GroupTabs(
                                 groupedSections = groupedSections,
                                 selectedGroupIndex = selectedGroupIndex,
                                 onGroupSelected = { index ->
-                                    selectedGroupId = groupedSections.getOrNull(index)?.first?.id
+                                    val targetId = groupedSections.getOrNull(index)?.first?.id
+                                    if (targetId != null) {
+                                        selectedGroupId = targetId
+                                        val targetFlatIndex = groupToFlatIndexMap[index] ?: 0
+                                        coroutineScope.launch {
+                                            isProgrammaticScroll = true
+                                            phraseGridState.animateScrollToItem(targetFlatIndex)
+                                            isProgrammaticScroll = false
+                                        }
+                                    }
                                 },
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
@@ -354,7 +406,7 @@ fun MainScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .nestedScroll(phraseGridNestedScrollConnection),
-                            groupedSections = selectedGroupedSections,
+                            groupedSections = groupedSections,
                             state = phraseGridState,
                             columns = GridCells.Fixed(2),
                             onPhraseClick = onPhraseClick,
@@ -386,35 +438,30 @@ fun MainScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GroupFilterChips(
+private fun GroupTabs(
     groupedSections: List<Pair<PhraseGroup, List<Phrase>>>,
     selectedGroupIndex: Int,
     onGroupSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FlowRow(
+    SecondaryScrollableTabRow(
+        selectedTabIndex = selectedGroupIndex,
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        edgePadding = 16.dp,
+        divider = {} // 移除底部的默认分割线
     ) {
         groupedSections.forEachIndexed { index, (group, _) ->
             val selected = selectedGroupIndex == index
-            FilterChip(
+            Tab(
                 selected = selected,
                 onClick = { onGroupSelected(index) },
-                label = { Text(group.name) },
-                leadingIcon = if (selected) {
-                    {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(FilterChipDefaults.IconSize)
-                        )
-                    }
-                } else {
-                    null
+                text = {
+                    Text(
+                        text = group.name,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        style = MaterialTheme.typography.titleSmall
+                    )
                 }
             )
         }
@@ -677,7 +724,25 @@ private fun PhraseGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        groupedSections.forEach { (_, groupPhrases) ->
+        groupedSections.forEach { (group, groupPhrases) ->
+            // 如果分组数多于一个，则在每个分组上方增加一个横跨全宽的标题 Header
+            if (groupedSections.size > 1) {
+                item(
+                    key = "header_${group.id}",
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
+                    Text(
+                        text = group.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 8.dp)
+                    )
+                }
+            }
+
             items(
                 items = groupPhrases, key = { phrase -> phrase.id }) { phrase ->
                 val buttonShape = MaterialTheme.shapes.large
