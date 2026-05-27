@@ -63,27 +63,24 @@ fun KigHelperApp(
     val showNavigation = currentRoute in topLevelRoutes
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val isFullscreenMain = currentRoute == AppRoutes.MAIN && isLandscape
+    currentRoute == AppRoutes.MAIN && isLandscape
 
     val isExpanded = windowSize.widthSizeClass != WindowWidthSizeClass.Compact
     val density = LocalDensity.current
     val isImeVisible = WindowInsets.ime.getBottom(density) > 0
-    val showBottomBar = showNavigation &&
-        !isFullscreenMain &&
-        !isExpanded &&
-        !(currentRoute == AppRoutes.INPUT && isImeVisible)
+    val showBottomBar =
+        showNavigation && !isExpanded && !(currentRoute == AppRoutes.INPUT && isImeVisible)
 
     // 拖拽快照放在应用根层：删除区和拖拽副本都在同一层绘制，避免跨父布局 zIndex 失效。
     var phraseDragInfo by remember { mutableStateOf<PhraseDragInfo?>(null) }
     var deleteDropTargetBounds by remember { mutableStateOf<Rect?>(null) }
-    val isDeleteDropTargetActive =
-        phraseDragInfo?.let { dragInfo ->
-            deleteDropTargetBounds?.contains(dragInfo.pointerPositionInRoot)
-        } == true
+    val isDeleteDropTargetActive = phraseDragInfo?.let { dragInfo ->
+        deleteDropTargetBounds?.contains(dragInfo.pointerPositionInRoot)
+    } == true
 
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
-            if (showNavigation && isExpanded && !isFullscreenMain) {
+            if (showNavigation && isExpanded) {
                 AppNavigationRail(
                     currentRoute = currentRoute,
                     onDestinationClick = navController::navigateToTopLevelDestination
@@ -93,15 +90,13 @@ fun KigHelperApp(
             Scaffold(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxSize(),
-                bottomBar = {
+                    .fillMaxSize(), bottomBar = {
                     AppBottomBar(
                         visible = showBottomBar,
                         currentRoute = currentRoute,
                         onDestinationClick = navController::navigateToTopLevelDestination
                     )
-                }
-            ) { innerPadding ->
+                }) { innerPadding ->
                 NavHost(
                     navController = navController,
                     startDestination = AppRoutes.MAIN,
@@ -129,8 +124,7 @@ fun KigHelperApp(
                             towards = navSlideDirection(isPop = true),
                             animationSpec = tween(NavTransitionDurationMillis)
                         )
-                    }
-                ) {
+                    }) {
                     composable(AppRoutes.MAIN) {
                         val context = androidx.compose.ui.platform.LocalContext.current
                         MainScreen(
@@ -149,7 +143,9 @@ fun KigHelperApp(
                             onClearClick = {
                                 viewModel.clearDisplayText()
                                 onStop()
-                                com.ziegler.kighelper.utils.NotificationHelper.clearPhraseAndRefresh(context)
+                                com.ziegler.kighelper.utils.NotificationHelper.clearPhraseAndRefresh(
+                                    context
+                                )
                             },
                             onSpeakClick = onSpeak,
                             onNavigateToAddPhrase = {
@@ -168,31 +164,23 @@ fun KigHelperApp(
                                 if (deleteDropTargetBounds?.contains(dragInfo.pointerPositionInRoot) == true) {
                                     viewModel.deletePhrase(dragInfo.phrase)
                                 }
-                            }
-                        )
+                            })
                     }
 
                     composable(AppRoutes.INPUT) {
                         InputScreen(
-                            contentPadding = innerPadding,
-                            onSpeak = onSpeak,
-                            onStop = onStop
+                            contentPadding = innerPadding, onSpeak = onSpeak, onStop = onStop
                         )
                     }
 
                     composable(AppRoutes.EDIT) {
-                        ToolboxScreen(
-                            contentPadding = innerPadding,
-                            onNavigateToPhraseManager = {
-                                navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
-                            },
-                            onNavigateToVoiceSettings = {
-                                navController.navigate(AppRoutes.VOICE_SETTINGS)
-                            },
-                            onNavigateToAbout = {
-                                navController.navigate(AppRoutes.ABOUT)
-                            }
-                        )
+                        ToolboxScreen(contentPadding = innerPadding, onNavigateToPhraseManager = {
+                            navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
+                        }, onNavigateToVoiceSettings = {
+                            navController.navigate(AppRoutes.VOICE_SETTINGS)
+                        }, onNavigateToAbout = {
+                            navController.navigate(AppRoutes.ABOUT)
+                        })
                     }
 
                     composable(AppRoutes.PHRASE_MANAGEMENT) {
@@ -239,8 +227,7 @@ fun KigHelperApp(
                                 }
                                 navController.popBackStack()
                             },
-                            onBack = { navController.popBackStack() }
-                        )
+                            onBack = { navController.popBackStack() })
                     }
 
                     composable(AppRoutes.ABOUT) {
@@ -260,8 +247,7 @@ fun KigHelperApp(
         )
 
         DraggedPhraseOverlay(
-            dragInfo = phraseDragInfo,
-            modifier = Modifier.align(Alignment.TopStart)
+            dragInfo = phraseDragInfo, modifier = Modifier.align(Alignment.TopStart)
         )
     }
 }

@@ -33,7 +33,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Face
@@ -172,16 +171,14 @@ fun MainScreen(
 
     val isPhraseGridAtTop by remember {
         derivedStateOf {
-            phraseGridState.firstVisibleItemIndex == 0 &&
-                    phraseGridState.firstVisibleItemScrollOffset == 0
+            phraseGridState.firstVisibleItemIndex == 0 && phraseGridState.firstVisibleItemScrollOffset == 0
         }
     }
 
     val displayWeight by animateFloatAsState(
         targetValue = if (!isLandscape && isDisplayCompressed) 0.38f else 0.55f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
         ),
         label = "displayAreaWeight"
     )
@@ -191,8 +188,7 @@ fun MainScreen(
     val phraseGridNestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(
-                available: Offset,
-                source: NestedScrollSource
+                available: Offset, source: NestedScrollSource
             ): Offset {
                 if (source == NestedScrollSource.UserInput && available.y < 0f) {
                     isDisplayCompressed = true
@@ -214,23 +210,83 @@ fun MainScreen(
     }
 
     AnimatedContent(
-        targetState = isLandscape,
-        transitionSpec = {
+        targetState = isLandscape, transitionSpec = {
             // 横竖屏切换只改变主屏布局，不改变当前显示的文本状态。
-            (fadeIn(animationSpec = spring()) + scaleIn(initialScale = 0.98f))
-                .togetherWith(fadeOut(animationSpec = spring()) + scaleOut(targetScale = 0.98f))
-        },
-        label = "mainScreenOrientationLayout"
+            (fadeIn(animationSpec = spring()) + scaleIn(initialScale = 0.98f)).togetherWith(
+                fadeOut(
+                    animationSpec = spring()
+                ) + scaleOut(targetScale = 0.98f)
+            )
+        }, label = "mainScreenOrientationLayout"
     ) { landscapeFullscreen ->
         if (landscapeFullscreen) {
-            Box(modifier = fullscreenLandscapeModifier) {
-                DisplaySurface(
-                    text = effectiveDisplayText,
-                    isSubtle = effectiveIsSubtle,
-                    scrollState = scrollState,
-                    onSpeak = onSpeakClick,
-                    onClear = onClearClick
-                )
+            Row(
+                modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(2f)
+                        .padding(bottom = 16.dp)
+                ) {
+                    DisplaySurface(
+                        text = effectiveDisplayText,
+                        isSubtle = effectiveIsSubtle,
+                        scrollState = scrollState,
+                        onClear = onClearClick
+                    )
+                }
+
+                Box(modifier = Modifier.weight(1f)) {
+                    when {
+                        showPhraseGrid -> {
+                            Column {
+                                if (groupedSections.size > 1) {
+                                    ScrollableTabRow(
+                                        selectedTabIndex = currentGroupIndex,
+                                        modifier = Modifier.padding(horizontal = -pagePadding),
+                                        edgePadding = pagePadding
+                                    ) {
+                                        groupedSections.forEachIndexed { index, (group, _) ->
+                                            Tab(
+                                                selected = currentGroupIndex == index,
+                                                onClick = { scrollToGroupIndex = index },
+                                                text = { Text(group.name) })
+                                        }
+                                    }
+                                }
+
+                                PhraseGrid(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .nestedScroll(phraseGridNestedScrollConnection),
+                                    groupedSections = groupedSections,
+                                    state = phraseGridState,
+                                    columns = GridCells.Fixed(2),
+                                    onPhraseClick = onPhraseClick,
+                                    onAddPhraseClick = onNavigateToAddPhrase,
+                                    onPhraseDragStart = onPhraseDragStart,
+                                    onPhraseDragMove = onPhraseDragMove,
+                                    onPhraseDragEnd = onPhraseDragEnd,
+                                    onDisplayShouldExpand = {
+                                        isDisplayCompressed = false
+                                    })
+                            }
+                        }
+
+                        showEmptyState -> {
+                            EmptyPhraseState(
+                                modifier = Modifier.fillMaxWidth(),
+                                onAddClick = onNavigateToAddPhrase
+                            )
+                        }
+
+                        else -> {
+                            LoadingPhraseState(
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
             }
         } else {
             Column(
@@ -241,7 +297,6 @@ fun MainScreen(
                         text = effectiveDisplayText,
                         isSubtle = effectiveIsSubtle,
                         scrollState = scrollState,
-                        onSpeak = onSpeakClick,
                         onClear = onClearClick
                     )
                 }
@@ -256,8 +311,7 @@ fun MainScreen(
                                 currentGroupIndex = currentGroupIndex,
                                 onGroupClick = { index ->
                                     scrollToGroupIndex = index
-                                }
-                            )
+                                })
 
                             // 短语网格、加号按钮和 PhraseButton 拖拽手势作为一个整体移到了 ui.screens.main.PhraseGrid.kt。
                             PhraseGrid(
@@ -274,8 +328,7 @@ fun MainScreen(
                                 onPhraseDragEnd = onPhraseDragEnd,
                                 onDisplayShouldExpand = {
                                     isDisplayCompressed = false
-                                }
-                            )
+                                })
                         }
                     }
 
@@ -302,14 +355,11 @@ fun MainScreen(
 }
 
 private fun buildGroupedSections(
-    phrases: List<Phrase>,
-    groups: List<PhraseGroup>
+    phrases: List<Phrase>, groups: List<PhraseGroup>
 ): List<Pair<PhraseGroup, List<Phrase>>> {
     val defaultGroup = groups.firstOrNull { it.id == PhraseGroup.DEFAULT_ID }
         ?: PhraseGroup(id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0)
-    val nonDefaultGroups = groups
-        .distinctBy { it.id }
-        .filterNot { it.id == PhraseGroup.DEFAULT_ID }
+    val nonDefaultGroups = groups.distinctBy { it.id }.filterNot { it.id == PhraseGroup.DEFAULT_ID }
         .sortedBy { it.order }
     val groupById = nonDefaultGroups.associateBy { it.id }
     val groupedPhrases = phrases.groupBy { phrase ->
@@ -341,15 +391,13 @@ private fun GroupTabRow(
     if (groupedSections.size <= 1) return
 
     ScrollableTabRow(
-        selectedTabIndex = currentGroupIndex.coerceIn(groupedSections.indices),
-        edgePadding = 0.dp
+        selectedTabIndex = currentGroupIndex.coerceIn(groupedSections.indices), edgePadding = 0.dp
     ) {
         groupedSections.forEachIndexed { index, (group, _) ->
             Tab(
                 selected = currentGroupIndex == index,
                 onClick = { onGroupClick(index) },
-                text = { Text(group.name) }
-            )
+                text = { Text(group.name) })
         }
     }
 }
@@ -359,7 +407,6 @@ private fun DisplaySurface(
     text: String,
     isSubtle: Boolean,
     scrollState: ScrollState,
-    onSpeak: (String) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -371,17 +418,14 @@ private fun DisplaySurface(
         shadowElevation = 4.dp
     ) {
         Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
+            contentAlignment = Alignment.Center, modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            androidx.compose.animation.AnimatedContent(
-                targetState = text,
-                transitionSpec = {
+            AnimatedContent(
+                targetState = text, transitionSpec = {
                     (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
-                },
-                label = "textAnimation"
+                }, label = "textAnimation"
             ) { targetText ->
                 Box(
                     modifier = Modifier
@@ -411,24 +455,8 @@ private fun DisplaySurface(
                         .padding(2.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 复用当前声线配置朗读显示区文本，与 InputScreen 的朗读入口保持同一调用链。
                     DisplaySurfaceActionButton(
-                        onClick = {
-                            if (text.isNotBlank()) {
-                                onSpeak(text)
-                            }
-                        },
-                        contentDescription = "朗读"
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = null
-                        )
-                    }
-
-                    DisplaySurfaceActionButton(
-                        onClick = onClear,
-                        contentDescription = "清除"
+                        onClick = onClear, contentDescription = "清除"
                     ) {
                         Icon(
                             imageVector = Icons.Default.Clear,
@@ -444,22 +472,17 @@ private fun DisplaySurface(
 
 @Composable
 private fun DisplaySurfaceActionButton(
-    onClick: () -> Unit,
-    contentDescription: String,
-    content: @Composable () -> Unit
+    onClick: () -> Unit, contentDescription: String, content: @Composable () -> Unit
 ) {
     IconButton(
         onClick = onClick,
         modifier = Modifier
             .semantics { this.contentDescription = contentDescription }
             .background(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                CircleShape
-            )
-    ) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape
+            )) {
         Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(24.dp)
+            contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)
         ) {
             content()
         }
@@ -475,8 +498,7 @@ private fun LoadingPhraseState(
 
 @Composable
 private fun EmptyPhraseState(
-    onAddClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onAddClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
