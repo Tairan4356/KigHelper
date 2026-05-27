@@ -1,21 +1,24 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +30,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -34,51 +40,56 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
-import com.ziegler.kighelper.ui.drag.PhraseDragInfo
-import com.ziegler.kighelper.ui.screens.main.PhraseGrid
+import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 
 /**
  * 主界面：提供大字显示区域和短语快捷按钮网格。
  */
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(
-    contentPadding: PaddingValues = PaddingValues(0.dp),
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     phrases: List<Phrase>,
     groups: List<PhraseGroup> = emptyList(),
     displayText: String,
@@ -86,15 +97,14 @@ fun MainScreen(
     isPhrasesLoading: Boolean,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
-    onSpeakClick: (String) -> Unit,
-    onNavigateToAddPhrase: () -> Unit,
-    onPhraseDragStart: (PhraseDragInfo) -> Unit,
-    onPhraseDragMove: (PhraseDragInfo) -> Unit,
-    onPhraseDragEnd: (PhraseDragInfo) -> Unit,
+    onAddPhrase: (label: String, speech: String) -> Unit,
+    onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
 ) {
     val scrollState = rememberScrollState()
     val phraseGridState = rememberLazyGridState()
     var isDisplayCompressed by remember { mutableStateOf(false) }
+    var showAddPhraseDialog by rememberSaveable { mutableStateOf(false) }
+    var editingPhrase by remember { mutableStateOf<Phrase?>(null) }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -115,10 +125,6 @@ fun MainScreen(
             end = outerEndPadding + pagePadding,
             bottom = outerBottomPadding
         )
-    val fullscreenLandscapeModifier = modifier
-        .fillMaxSize()
-        // 横屏全屏模式隐藏了导航栏，四边使用一致边距，避免显示卡片产生偏心感。
-        .padding(pagePadding)
 
     val hasPhrases = phrases.isNotEmpty()
     val showPhraseGrid = !isPhrasesLoading && hasPhrases
@@ -128,45 +134,6 @@ fun MainScreen(
         isPhrasesLoading && isShowingInitialHint -> ""
         !hasPhrases && isShowingInitialHint -> "先添加一个常用短语吧"
         else -> displayText
-    }
-
-    val effectiveIsSubtle = isShowingInitialHint
-
-    val groupedSections = remember(phrases.toList(), groups.toList()) {
-        buildGroupedSections(phrases = phrases, groups = groups)
-    }
-
-    val groupHeaderPositions = remember(groupedSections) {
-        var offset = 0
-        val positions = mutableMapOf<String, Int>()
-        for ((group, groupPhrases) in groupedSections) {
-            positions[group.id] = offset
-            offset += 1 + groupPhrases.size
-        }
-        positions
-    }
-
-    val currentGroupIndex by remember(groupedSections) {
-        derivedStateOf {
-            val visibleIndex = phraseGridState.firstVisibleItemIndex
-            var offset = 0
-            for ((index, entry) in groupedSections.withIndex()) {
-                val groupPhrases = entry.second
-                val groupEnd = offset + groupPhrases.size
-                if (visibleIndex in offset..groupEnd) return@derivedStateOf index
-                offset = groupEnd + 1
-            }
-            groupedSections.indices.firstOrNull() ?: 0
-        }
-    }
-
-    var scrollToGroupIndex by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(scrollToGroupIndex) {
-        val targetIndex = scrollToGroupIndex ?: return@LaunchedEffect
-        val targetGroup = groupedSections.getOrNull(targetIndex) ?: return@LaunchedEffect
-        val headerPosition = groupHeaderPositions[targetGroup.first.id] ?: return@LaunchedEffect
-        phraseGridState.animateScrollToItem(headerPosition)
-        scrollToGroupIndex = null
     }
 
     val isPhraseGridAtTop by remember {
@@ -199,6 +166,70 @@ fun MainScreen(
         }
     }
 
+    val groupedSections = remember(phrases.toList(), groups.toList()) {
+        val defaultGroupId = PhraseGroup.DEFAULT_ID
+        val defaultGroup = groups.firstOrNull { it.id == defaultGroupId } ?: PhraseGroup(
+            defaultGroupId, PhraseGroup.DEFAULT_NAME
+        )
+
+        val distinctGroups = groups.distinctBy { it.id }.filter { it.id != defaultGroupId }
+
+        val groupById = distinctGroups.associateBy { it.id }
+
+        val grouped = phrases.groupBy { phrase ->
+            groupById[phrase.groupId] ?: defaultGroup
+        }
+
+        val activeGroups = mutableListOf<PhraseGroup>()
+
+        for (group in distinctGroups) {
+            val groupPhrases = grouped[group]
+            if (!groupPhrases.isNullOrEmpty()) {
+                activeGroups.add(group)
+            }
+        }
+
+        val defaultPhrases = grouped[defaultGroup]
+        if (!defaultPhrases.isNullOrEmpty()) {
+            activeGroups.add(defaultGroup)
+        }
+
+        val result = mutableListOf<Pair<PhraseGroup, List<Phrase>>>()
+        for (group in activeGroups.sortedBy { it.order }) {
+            val groupPhrases = grouped[group] ?: emptyList()
+            result.add(group to groupPhrases.distinctBy { it.id })
+        }
+
+        result
+    }
+
+    var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedGroupIndex by remember(groupedSections, selectedGroupId) {
+        derivedStateOf {
+            groupedSections.indexOfFirst { (group, _) -> group.id == selectedGroupId }
+                .takeIf { it >= 0 } ?: 0
+        }
+    }
+    val selectedGroupedSections = remember(groupedSections, selectedGroupIndex) {
+        groupedSections.getOrNull(selectedGroupIndex)?.let(::listOf).orEmpty()
+    }
+
+    LaunchedEffect(groupedSections) {
+        val currentSelectionStillExists = groupedSections.any { (group, _) ->
+            group.id == selectedGroupId
+        }
+        if (!currentSelectionStillExists) {
+            selectedGroupId = groupedSections.firstOrNull()?.first?.id
+        }
+    }
+
+    LaunchedEffect(selectedGroupId) {
+        if (selectedGroupId != null) {
+            phraseGridState.scrollToItem(0)
+            isDisplayCompressed = false
+        }
+    }
+
     LaunchedEffect(effectiveDisplayText) {
         scrollState.scrollTo(0)
     }
@@ -209,123 +240,66 @@ fun MainScreen(
         }
     }
 
-    AnimatedContent(
-        targetState = isLandscape, transitionSpec = {
-            // 横竖屏切换只改变主屏布局，不改变当前显示的文本状态。
-            (fadeIn(animationSpec = spring()) + scaleIn(initialScale = 0.98f)).togetherWith(
-                fadeOut(
-                    animationSpec = spring()
-                ) + scaleOut(targetScale = 0.98f)
-            )
-        }, label = "mainScreenOrientationLayout"
-    ) { landscapeFullscreen ->
-        if (landscapeFullscreen) {
-            Row(
-                modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(2f)
-                        .padding(bottom = 16.dp)
-                ) {
-                    DisplaySurface(
-                        text = effectiveDisplayText,
-                        isSubtle = effectiveIsSubtle,
-                        scrollState = scrollState,
-                        onClear = onClearClick
-                    )
-                }
+    if (showAddPhraseDialog) {
+        AddPhraseDialog(onDismiss = {
+            showAddPhraseDialog = false
+        }, onSave = { label, speech ->
+            onAddPhrase(label, speech)
+            showAddPhraseDialog = false
+        })
+    }
 
-                Box(modifier = Modifier.weight(1f)) {
-                    when {
-                        showPhraseGrid -> {
-                            Column {
-                                if (groupedSections.size > 1) {
-                                    ScrollableTabRow(
-                                        selectedTabIndex = currentGroupIndex,
-                                        modifier = Modifier.padding(horizontal = -pagePadding),
-                                        edgePadding = pagePadding
-                                    ) {
-                                        groupedSections.forEachIndexed { index, (group, _) ->
-                                            Tab(
-                                                selected = currentGroupIndex == index,
-                                                onClick = { scrollToGroupIndex = index },
-                                                text = { Text(group.name) })
-                                        }
-                                    }
-                                }
-
-                                PhraseGrid(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .nestedScroll(phraseGridNestedScrollConnection),
-                                    groupedSections = groupedSections,
-                                    state = phraseGridState,
-                                    columns = GridCells.Fixed(2),
-                                    onPhraseClick = onPhraseClick,
-                                    onAddPhraseClick = onNavigateToAddPhrase,
-                                    onPhraseDragStart = onPhraseDragStart,
-                                    onPhraseDragMove = onPhraseDragMove,
-                                    onPhraseDragEnd = onPhraseDragEnd,
-                                    onDisplayShouldExpand = {
-                                        isDisplayCompressed = false
-                                    })
-                            }
-                        }
-
-                        showEmptyState -> {
-                            EmptyPhraseState(
-                                modifier = Modifier.fillMaxWidth(),
-                                onAddClick = onNavigateToAddPhrase
-                            )
-                        }
-
-                        else -> {
-                            LoadingPhraseState(
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
+    editingPhrase?.let { phrase ->
+        EditPhraseDialog(
+            phrase = phrase,
+            onDismiss = { editingPhrase = null },
+            onSave = { label, speech ->
+                onUpdatePhrase(phrase, label, speech)
+                editingPhrase = null
             }
-        } else {
-            Column(
-                modifier = screenModifier
+        )
+    }
+
+    if (isLandscape) {
+        Row(
+            modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 16.dp)
             ) {
-                Box(modifier = Modifier.weight(displayWeight)) {
-                    DisplaySurface(
-                        text = effectiveDisplayText,
-                        isSubtle = effectiveIsSubtle,
-                        scrollState = scrollState,
-                        onClear = onClearClick
-                    )
-                }
+                DisplaySurface(
+                    text = effectiveDisplayText,
+                    isSubtle = isShowingInitialHint,
+                    scrollState = scrollState,
+                    onClear = onClearClick
+                )
+            }
 
-                Spacer(Modifier.height(16.dp))
-
+            Box(modifier = Modifier.weight(1f)) {
                 when {
                     showPhraseGrid -> {
-                        Column(modifier = Modifier.weight(phraseAreaWeight)) {
-                            GroupTabRow(
-                                groupedSections = groupedSections,
-                                currentGroupIndex = currentGroupIndex,
-                                onGroupClick = { index ->
-                                    scrollToGroupIndex = index
-                                })
+                        Column {
+                            if (groupedSections.size > 1) {
+                                GroupFilterChips(
+                                    groupedSections = groupedSections,
+                                    selectedGroupIndex = selectedGroupIndex,
+                                    onGroupSelected = { index ->
+                                        selectedGroupId =
+                                            groupedSections.getOrNull(index)?.first?.id
+                                    },
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
 
-                            // 短语网格、加号按钮和 PhraseButton 拖拽手势作为一个整体移到了 ui.screens.main.PhraseGrid.kt。
                             PhraseGrid(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .nestedScroll(phraseGridNestedScrollConnection),
-                                groupedSections = groupedSections,
+                                modifier = Modifier.fillMaxSize(),
+                                groupedSections = selectedGroupedSections,
                                 state = phraseGridState,
                                 columns = GridCells.Fixed(2),
                                 onPhraseClick = onPhraseClick,
-                                onAddPhraseClick = onNavigateToAddPhrase,
-                                onPhraseDragStart = onPhraseDragStart,
-                                onPhraseDragMove = onPhraseDragMove,
-                                onPhraseDragEnd = onPhraseDragEnd,
+                                onPhraseLongClick = { editingPhrase = it },
                                 onDisplayShouldExpand = {
                                     isDisplayCompressed = false
                                 })
@@ -334,70 +308,115 @@ fun MainScreen(
 
                     showEmptyState -> {
                         EmptyPhraseState(
-                            modifier = Modifier
-                                .weight(phraseAreaWeight)
-                                .fillMaxWidth(),
-                            onAddClick = onNavigateToAddPhrase
-                        )
+                            modifier = Modifier.fillMaxSize(), onAddClick = {
+                                showAddPhraseDialog = true
+                            })
                     }
 
                     else -> {
                         LoadingPhraseState(
-                            modifier = Modifier
-                                .weight(phraseAreaWeight)
-                                .fillMaxWidth()
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = screenModifier
+        ) {
+            Box(modifier = Modifier.weight(displayWeight)) {
+                DisplaySurface(
+                    text = effectiveDisplayText,
+                    isSubtle = isShowingInitialHint,
+                    scrollState = scrollState,
+                    onClear = onClearClick
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            when {
+                showPhraseGrid -> {
+                    Column(modifier = Modifier.weight(phraseAreaWeight)) {
+                        if (groupedSections.size > 1) {
+                            GroupFilterChips(
+                                groupedSections = groupedSections,
+                                selectedGroupIndex = selectedGroupIndex,
+                                onGroupSelected = { index ->
+                                    selectedGroupId = groupedSections.getOrNull(index)?.first?.id
+                                },
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
+                        PhraseGrid(
+                            modifier = Modifier
+                                .weight(1f)
+                                .nestedScroll(phraseGridNestedScrollConnection),
+                            groupedSections = selectedGroupedSections,
+                            state = phraseGridState,
+                            columns = GridCells.Fixed(2),
+                            onPhraseClick = onPhraseClick,
+                            onPhraseLongClick = { editingPhrase = it },
+                            onDisplayShouldExpand = {
+                                isDisplayCompressed = false
+                            })
+                    }
+                }
+
+                showEmptyState -> {
+                    EmptyPhraseState(
+                        modifier = Modifier
+                            .weight(phraseAreaWeight)
+                            .fillMaxWidth(), onAddClick = {
+                            showAddPhraseDialog = true
+                        })
+                }
+
+                else -> {
+                    LoadingPhraseState(
+                        modifier = Modifier
+                            .weight(phraseAreaWeight)
+                            .fillMaxWidth()
+                    )
                 }
             }
         }
     }
 }
 
-private fun buildGroupedSections(
-    phrases: List<Phrase>, groups: List<PhraseGroup>
-): List<Pair<PhraseGroup, List<Phrase>>> {
-    val defaultGroup = groups.firstOrNull { it.id == PhraseGroup.DEFAULT_ID }
-        ?: PhraseGroup(id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0)
-    val nonDefaultGroups = groups.distinctBy { it.id }.filterNot { it.id == PhraseGroup.DEFAULT_ID }
-        .sortedBy { it.order }
-    val groupById = nonDefaultGroups.associateBy { it.id }
-    val groupedPhrases = phrases.groupBy { phrase ->
-        groupById[phrase.groupId] ?: defaultGroup
-    }
-
-    val sections = mutableListOf<Pair<PhraseGroup, List<Phrase>>>()
-    for (group in nonDefaultGroups) {
-        val groupPhrases = groupedPhrases[group].orEmpty()
-        if (groupPhrases.isNotEmpty()) {
-            sections += group to groupPhrases.distinctBy { it.id }
-        }
-    }
-
-    val defaultPhrases = groupedPhrases[defaultGroup].orEmpty()
-    if (defaultPhrases.isNotEmpty()) {
-        sections += defaultGroup to defaultPhrases.distinctBy { it.id }
-    }
-
-    return sections
-}
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GroupTabRow(
+private fun GroupFilterChips(
     groupedSections: List<Pair<PhraseGroup, List<Phrase>>>,
-    currentGroupIndex: Int,
-    onGroupClick: (Int) -> Unit
+    selectedGroupIndex: Int,
+    onGroupSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    if (groupedSections.size <= 1) return
-
-    ScrollableTabRow(
-        selectedTabIndex = currentGroupIndex.coerceIn(groupedSections.indices), edgePadding = 0.dp
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         groupedSections.forEachIndexed { index, (group, _) ->
-            Tab(
-                selected = currentGroupIndex == index,
-                onClick = { onGroupClick(index) },
-                text = { Text(group.name) })
+            val selected = selectedGroupIndex == index
+            FilterChip(
+                selected = selected,
+                onClick = { onGroupSelected(index) },
+                label = { Text(group.name) },
+                leadingIcon = if (selected) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                        )
+                    }
+                } else {
+                    null
+                }
+            )
         }
     }
 }
@@ -422,7 +441,7 @@ private fun DisplaySurface(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            AnimatedContent(
+            androidx.compose.animation.AnimatedContent(
                 targetState = text, transitionSpec = {
                     (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
                 }, label = "textAnimation"
@@ -449,42 +468,20 @@ private fun DisplaySurface(
             }
 
             if (text.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
+                IconButton(
+                    onClick = onClear, modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    DisplaySurfaceActionButton(
-                        onClick = onClear, contentDescription = "清除"
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape
                         )
-                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "清除",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DisplaySurfaceActionButton(
-    onClick: () -> Unit, contentDescription: String, content: @Composable () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .semantics { this.contentDescription = contentDescription }
-            .background(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape
-            )) {
-        Box(
-            contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)
-        ) {
-            content()
         }
     }
 }
@@ -553,6 +550,174 @@ private fun EmptyPhraseState(
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
 
             Text("添加短语")
+        }
+    }
+}
+
+@Composable
+private fun AddPhraseDialog(
+    onDismiss: () -> Unit, onSave: (label: String, speech: String) -> Unit
+) {
+    var label by rememberSaveable { mutableStateOf("") }
+    var speech by rememberSaveable { mutableStateOf("") }
+
+    val canSave = label.isNotBlank() && speech.isNotBlank()
+
+    AlertDialog(onDismissRequest = onDismiss, icon = {
+        Icon(
+            imageVector = Icons.Default.Add, contentDescription = null
+        )
+    }, title = {
+        Text("添加短语")
+    }, text = {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = label, onValueChange = {
+                    label = it
+                }, label = {
+                    Text("按钮标签")
+                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = speech, onValueChange = {
+                    speech = it
+                }, label = {
+                    Text("播报内容")
+                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+            )
+        }
+    }, confirmButton = {
+        TextButton(
+            onClick = {
+                onSave(label.trim(), speech.trim())
+            }, enabled = canSave
+        ) {
+            Text("保存")
+        }
+    }, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
+}
+
+@Composable
+private fun EditPhraseDialog(
+    phrase: Phrase,
+    onDismiss: () -> Unit,
+    onSave: (label: String, speech: String) -> Unit
+) {
+    var label by rememberSaveable(phrase.id) { mutableStateOf(phrase.label) }
+    var speech by rememberSaveable(phrase.id) { mutableStateOf(phrase.speech) }
+
+    val canSave = label.isNotBlank() && speech.isNotBlank()
+
+    AlertDialog(onDismissRequest = onDismiss, icon = {
+        Icon(
+            imageVector = Icons.Default.Edit, contentDescription = null
+        )
+    }, title = {
+        Text("编辑短语")
+    }, text = {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = label, onValueChange = {
+                    label = it
+                }, label = {
+                    Text("按钮标签")
+                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = speech, onValueChange = {
+                    speech = it
+                }, label = {
+                    Text("播报内容")
+                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+            )
+        }
+    }, confirmButton = {
+        TextButton(
+            onClick = {
+                onSave(label.trim(), speech.trim())
+            }, enabled = canSave
+        ) {
+            Text("保存")
+        }
+    }, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PhraseGrid(
+    groupedSections: List<Pair<PhraseGroup, List<Phrase>>>,
+    state: LazyGridState,
+    columns: GridCells,
+    onPhraseClick: (Phrase) -> Unit,
+    onPhraseLongClick: (Phrase) -> Unit,
+    onDisplayShouldExpand: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val performButtonHaptic = rememberPhysicalButtonHaptics()
+
+    LazyVerticalGrid(
+        columns = columns,
+        state = state,
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        groupedSections.forEach { (_, groupPhrases) ->
+            items(
+                items = groupPhrases, key = { phrase -> phrase.id }) { phrase ->
+                val buttonShape = MaterialTheme.shapes.large
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .clip(buttonShape)
+                        .combinedClickable(
+                            role = Role.Button,
+                            onClick = {
+                                performButtonHaptic()
+                                onDisplayShouldExpand()
+                                onPhraseClick(phrase)
+                            },
+                            onLongClick = {
+                                performButtonHaptic()
+                                onPhraseLongClick(phrase)
+                            }
+                        ),
+                    shape = buttonShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = phrase.label,
+                            fontSize = 18.sp,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2
+                        )
+                    }
+                }
+            }
         }
     }
 }

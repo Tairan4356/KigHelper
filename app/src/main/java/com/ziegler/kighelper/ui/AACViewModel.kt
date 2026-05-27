@@ -110,13 +110,15 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         persistCurrentPhrases()
     }
 
-    fun addGroup(name: String) {
+    fun addGroup(name: String): Boolean {
         val normalizedName = name.trim()
-        if (normalizedName.isEmpty()) return
+        if (normalizedName.isEmpty()) return false
+        if (_groupList.any { it.name.equals(normalizedName, ignoreCase = true) }) return false
 
         val maxOrder = _groupList.maxOfOrNull { it.order } ?: -1
         _groupList.add(PhraseGroup(name = normalizedName, order = maxOrder + 1))
         persistCurrentGroups()
+        return true
     }
 
     fun deleteGroup(groupId: String) {
@@ -135,6 +137,7 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
     fun renameGroup(groupId: String, newName: String) {
         val normalizedName = newName.trim()
         if (normalizedName.isEmpty()) return
+        if (_groupList.any { it.id != groupId && it.name.equals(normalizedName, ignoreCase = true) }) return
 
         val index = _groupList.indexOfFirst { it.id == groupId }
         if (index != -1) {
@@ -153,6 +156,27 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         _groupList.forEachIndexed { index, group ->
             _groupList[index] = group.copy(order = index)
         }
+        persistCurrentGroups()
+    }
+
+    fun updateGroupsOrder(updatedGroups: List<PhraseGroup>) {
+        val currentGroupsById = _groupList.associateBy { it.id }
+        val orderedGroups = updatedGroups
+            .mapNotNull { updated -> currentGroupsById[updated.id]?.copy(order = 0) }
+            .distinctBy { it.id }
+            .toMutableList()
+
+        for (group in _groupList) {
+            if (orderedGroups.none { it.id == group.id }) {
+                orderedGroups.add(group)
+            }
+        }
+
+        orderedGroups.forEachIndexed { index, group ->
+            orderedGroups[index] = group.copy(order = index)
+        }
+
+        replaceGroups(ensureDefaultGroup(orderedGroups))
         persistCurrentGroups()
     }
 

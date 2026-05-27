@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +55,19 @@ fun AddEditPhraseScreen(
     }
     var groupMenuExpanded by remember { mutableStateOf(false) }
 
-    val selectedGroupName = groups.firstOrNull { it.id == selectedGroupId }?.name ?: PhraseGroup.DEFAULT_NAME
+    val groupSnapshot = groups.toList()
+    val sortedGroups = remember(groupSnapshot) {
+        groupSnapshot.distinctBy { it.id }.sortedBy { it.order }
+    }
+    val selectedGroupName = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name
+        ?: PhraseGroup.DEFAULT_NAME
+
+    LaunchedEffect(sortedGroups, selectedGroupId) {
+        if (sortedGroups.isNotEmpty() && sortedGroups.none { it.id == selectedGroupId }) {
+            selectedGroupId = sortedGroups.firstOrNull { it.id == PhraseGroup.DEFAULT_ID }?.id
+                ?: sortedGroups.first().id
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -93,7 +106,7 @@ fun AddEditPhraseScreen(
                     expanded = groupMenuExpanded,
                     onDismissRequest = { groupMenuExpanded = false }
                 ) {
-                    groups.forEach { group ->
+                    sortedGroups.forEach { group ->
                         DropdownMenuItem(
                             text = { Text(group.name) },
                             onClick = {
