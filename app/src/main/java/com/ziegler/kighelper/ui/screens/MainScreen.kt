@@ -118,6 +118,22 @@ fun MainScreen(
     // 根据屏幕宽度动态计算卡片的字号、高度和网格列数
     val (cardFontSize, cardHeight) = remember(screenWidth) {
         when {
+            screenWidth < 1080 -> 14.sp to 80.dp
+            else -> 24.sp to 112.dp
+        }
+    }
+
+    val gridColumns = remember(screenWidth, isLandscape) {
+        when {
+            screenWidth < 1080 -> GridCells.Fixed(2)
+            else -> GridCells.Fixed(3)
+        }
+    }
+    val screenWidth = configuration.screenWidthDp
+
+    // 根据屏幕宽度动态计算卡片的字号、高度和网格列数
+    val (cardFontSize, cardHeight) = remember(screenWidth) {
+        when {
             screenWidth < 360 -> 14.sp to 64.dp      // 小屏手机
             screenWidth < 600 -> 16.sp to 80.dp      // 标准手机
             screenWidth < 840 -> 20.sp to 96.dp      // 折叠屏/小平板
