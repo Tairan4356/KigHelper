@@ -1,7 +1,13 @@
 package com.ziegler.kighelper.ui.screens
 
+import android.app.Activity
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope.ResizeMode.Companion.scaleToBounds
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -13,6 +19,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,9 +64,11 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,8 +82,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,15 +93,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 import kotlinx.coroutines.launch
 
+
 /**
  * 主界面：提供大字显示区域和短语快捷按钮网格。
  */
-@OptIn(ExperimentalAnimationApi::class, ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalAnimationApi::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalSharedTransitionApi::class
+)
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
@@ -100,6 +119,8 @@ fun MainScreen(
     displayText: String,
     isShowingInitialHint: Boolean,
     isPhrasesLoading: Boolean,
+    isFullScreen: Boolean,
+    onFullScreenChange: (Boolean) -> Unit,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
     onAddPhrase: (label: String, speech: String) -> Unit,
@@ -112,11 +133,41 @@ fun MainScreen(
     var showAddPhraseDialog by rememberSaveable { mutableStateOf(false) }
     var editingPhrase by remember { mutableStateOf<Phrase?>(null) }
 
+    val view = LocalView.current
+    val context = LocalContext.current
+
+    // 监听全屏状态以隐藏/显示系统状态栏
+    DisposableEffect(isFullScreen) {
+        val window = (context as? Activity)?.window
+        if (window != null) {
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            if (isFullScreen) {
+                insetsController.hide(WindowInsetsCompat.Type.systemBars())
+                insetsController.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        onDispose {
+            val window = (context as? Activity)?.window
+            if (window != null) {
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
+    // 全屏时物理返回键拦截，退回普通状态
+    BackHandler(enabled = isFullScreen) {
+        onFullScreenChange(false)
+    }
+
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val screenWidth = configuration.screenWidthDp
 
-    // 根据屏幕宽度动态计算卡片的字号、高度和网格列数
+    // 动态计算卡片字号、高度和列数
     val (cardFontSize, cardHeight) = remember(screenWidth) {
         when {
             screenWidth < 360 -> 14.sp to 64.dp      // 小屏手机
@@ -133,15 +184,15 @@ fun MainScreen(
         }
     }
 
-    // 连续滑动状态设计
+    // 连续滑动折叠状态设计
     val minWeight = 0.35f
     val maxWeight = 0.55f
     val density = LocalDensity.current
     // 设定滑动多少 dp 会使面板完全缩到最小
-    val maxCollapseDistancePx = remember(density) { with(density) { 240.dp.toPx() } }
+    val maxCollapseDistancePx = remember(density) { with(density) { 200.dp.toPx() } }
 
     // 连续变化的滑动偏移量（0f 代表完全展开，maxCollapseDistancePx 代表完全收起）
-    var collapseOffset by remember { mutableStateOf(0f) }
+    var collapseOffset by remember { mutableFloatStateOf(0f) }
 
     // 将偏移量映射到权重
     val displayWeight = remember(collapseOffset, isLandscape) {
@@ -336,158 +387,219 @@ fun MainScreen(
             })
     }
 
-    if (isLandscape) {
-        Row(
-            modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
+    // 引入共享元素过渡容器，协调切换
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.fillMaxSize()
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(2f)
-                    .padding(bottom = 16.dp)
-            ) {
-                DisplaySurface(
-                    text = effectiveDisplayText,
-                    isSubtle = isShowingInitialHint,
-                    scrollState = scrollState,
-                    onClear = onClearClick
-                )
-            }
+            val animatedVisibilityScope = this
 
-            Box(modifier = Modifier.weight(1f)) {
-                when {
-                    showPhraseGrid -> {
-                        Column {
-                            if (groupedSections.size > 1) {
-                                GroupTabs(
-                                    groupedSections = groupedSections,
-                                    selectedGroupIndex = selectedGroupIndex,
-                                    onGroupSelected = { index ->
-                                        val targetId = groupedSections.getOrNull(index)?.first?.id
-                                        if (targetId != null) {
-                                            selectedGroupId = targetId
-                                            val targetFlatIndex = groupToFlatIndexMap[index] ?: 0
-                                            coroutineScope.launch {
-                                                isProgrammaticScroll = true
-                                                phraseGridState.animateScrollToItem(targetFlatIndex)
-                                                isProgrammaticScroll = false
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.padding(bottom = 8.dp)
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (isLandscape) {
+                    Row(
+                        modifier = screenModifier,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(2f)
+                                .padding(bottom = 16.dp)
+                        ) {
+                            DisplaySurface(
+                                text = effectiveDisplayText,
+                                isSubtle = isShowingInitialHint,
+                                scrollState = scrollState,
+                                onClear = onClearClick,
+                                onClick = { onFullScreenChange(true) },
+                                modifier = Modifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "display_surface"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    resizeMode = scaleToBounds()
                                 )
-                            }
+                            )
+                        }
 
-                            PhraseGrid(
-                                modifier = Modifier.fillMaxSize(),
-                                groupedSections = groupedSections,
-                                state = phraseGridState,
-                                columns = gridColumns,
-                                cardFontSize = cardFontSize,
-                                cardHeight = cardHeight,
-                                onPhraseClick = onPhraseClick,
-                                onPhraseLongClick = { editingPhrase = it },
-                                onDisplayShouldExpand = {
-                                    // 横屏下一般无需动画，直接重置
-                                    collapseOffset = 0f
-                                })
+                        Box(modifier = Modifier.weight(1f)) {
+                            when {
+                                showPhraseGrid -> {
+                                    Column {
+                                        if (groupedSections.size > 1) {
+                                            GroupTabs(
+                                                groupedSections = groupedSections,
+                                                selectedGroupIndex = selectedGroupIndex,
+                                                onGroupSelected = { index ->
+                                                    val targetId =
+                                                        groupedSections.getOrNull(index)?.first?.id
+                                                    if (targetId != null) {
+                                                        selectedGroupId = targetId
+                                                        val targetFlatIndex =
+                                                            groupToFlatIndexMap[index] ?: 0
+                                                        coroutineScope.launch {
+                                                            isProgrammaticScroll = true
+                                                            phraseGridState.animateScrollToItem(
+                                                                targetFlatIndex
+                                                            )
+                                                            isProgrammaticScroll = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                            )
+                                        }
+
+                                        PhraseGrid(
+                                            modifier = Modifier.fillMaxSize(),
+                                            groupedSections = groupedSections,
+                                            state = phraseGridState,
+                                            columns = gridColumns,
+                                            cardFontSize = cardFontSize,
+                                            cardHeight = cardHeight,
+                                            onPhraseClick = onPhraseClick,
+                                            onPhraseLongClick = { editingPhrase = it },
+                                            onDisplayShouldExpand = {
+                                                // 横屏下一般无需动画，直接重置
+                                                collapseOffset = 0f
+                                            })
+                                    }
+                                }
+
+                                showEmptyState -> {
+                                    EmptyPhraseState(
+                                        modifier = Modifier.fillMaxSize(), onAddClick = {
+                                            showAddPhraseDialog = true
+                                        })
+                                }
+
+                                else -> {
+                                    LoadingPhraseState(
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
                         }
                     }
+                } else {
+                    Column(
+                        modifier = screenModifier
+                    ) {
+                        Box(modifier = Modifier.weight(displayWeight)) {
+                            DisplaySurface(
+                                text = effectiveDisplayText,
+                                isSubtle = isShowingInitialHint,
+                                scrollState = scrollState,
+                                onClear = onClearClick,
+                                onClick = { onFullScreenChange(true) },
+                                modifier = Modifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "display_surface"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    resizeMode = scaleToBounds()
+                                )
+                            )
+                        }
 
-                    showEmptyState -> {
-                        EmptyPhraseState(
-                            modifier = Modifier.fillMaxSize(), onAddClick = {
-                                showAddPhraseDialog = true
-                            })
-                    }
+                        Spacer(Modifier.height(16.dp))
 
-                    else -> {
-                        LoadingPhraseState(
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        when {
+                            showPhraseGrid -> {
+                                Column(modifier = Modifier.weight(phraseAreaWeight)) {
+                                    if (groupedSections.size > 1) {
+                                        GroupTabs(
+                                            groupedSections = groupedSections,
+                                            selectedGroupIndex = selectedGroupIndex,
+                                            onGroupSelected = { index ->
+                                                val targetId =
+                                                    groupedSections.getOrNull(index)?.first?.id
+                                                if (targetId != null) {
+                                                    selectedGroupId = targetId
+                                                    val targetFlatIndex =
+                                                        groupToFlatIndexMap[index] ?: 0
+                                                    coroutineScope.launch {
+                                                        isProgrammaticScroll = true
+                                                        phraseGridState.animateScrollToItem(
+                                                            targetFlatIndex
+                                                        )
+                                                        isProgrammaticScroll = false
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                    }
+
+                                    PhraseGrid(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .nestedScroll(phraseGridNestedScrollConnection),
+                                        groupedSections = groupedSections,
+                                        state = phraseGridState,
+                                        columns = gridColumns,
+                                        cardFontSize = cardFontSize,
+                                        cardHeight = cardHeight,
+                                        onPhraseClick = onPhraseClick,
+                                        onPhraseLongClick = { editingPhrase = it },
+                                        onDisplayShouldExpand = {
+                                            // 点击卡片播报时，平滑回弹展开面板
+                                            coroutineScope.launch {
+                                                animate(
+                                                    initialValue = collapseOffset,
+                                                    targetValue = 0f,
+                                                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                                ) { value, _ ->
+                                                    collapseOffset = value
+                                                }
+                                            }
+                                        })
+                                }
+                            }
+
+                            showEmptyState -> {
+                                EmptyPhraseState(
+                                    modifier = Modifier
+                                        .weight(phraseAreaWeight)
+                                        .fillMaxWidth(),
+                                    onAddClick = { showAddPhraseDialog = true })
+                            }
+
+                            else -> {
+                                LoadingPhraseState(
+                                    modifier = Modifier
+                                        .weight(phraseAreaWeight)
+                                        .fillMaxWidth()
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-    } else {
-        Column(
-            modifier = screenModifier
+        // 全屏显示的过渡动画层
+        AnimatedVisibility(
+            visible = isFullScreen,
+            enter = fadeIn(),
+            exit = fadeOut()
         ) {
-            Box(modifier = Modifier.weight(displayWeight)) {
+            val fullscreenScrollState = rememberScrollState()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(24.dp)
+            ) {
                 DisplaySurface(
                     text = effectiveDisplayText,
                     isSubtle = isShowingInitialHint,
-                    scrollState = scrollState,
-                    onClear = onClearClick
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            when {
-                showPhraseGrid -> {
-                    Column(modifier = Modifier.weight(phraseAreaWeight)) {
-                        if (groupedSections.size > 1) {
-                            GroupTabs(
-                                groupedSections = groupedSections,
-                                selectedGroupIndex = selectedGroupIndex,
-                                onGroupSelected = { index ->
-                                    val targetId = groupedSections.getOrNull(index)?.first?.id
-                                    if (targetId != null) {
-                                        selectedGroupId = targetId
-                                        val targetFlatIndex = groupToFlatIndexMap[index] ?: 0
-                                        coroutineScope.launch {
-                                            isProgrammaticScroll = true
-                                            phraseGridState.animateScrollToItem(targetFlatIndex)
-                                            isProgrammaticScroll = false
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
-
-                        PhraseGrid(
-                            modifier = Modifier
-                                .weight(1f)
-                                .nestedScroll(phraseGridNestedScrollConnection),
-                            groupedSections = groupedSections,
-                            state = phraseGridState,
-                            columns = gridColumns,
-                            cardFontSize = cardFontSize,
-                            cardHeight = cardHeight,
-                            onPhraseClick = onPhraseClick,
-                            onPhraseLongClick = { editingPhrase = it },
-                            onDisplayShouldExpand = {
-                                // 点击卡片播报时，平滑回弹展开面板
-                                coroutineScope.launch {
-                                    animate(
-                                        initialValue = collapseOffset,
-                                        targetValue = 0f,
-                                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
-                                    ) { value, _ ->
-                                        collapseOffset = value
-                                    }
-                                }
-                            })
-                    }
-                }
-
-                showEmptyState -> {
-                    EmptyPhraseState(
-                        modifier = Modifier
-                            .weight(phraseAreaWeight)
-                            .fillMaxWidth(), onAddClick = {
-                            showAddPhraseDialog = true
-                        })
-                }
-
-                else -> {
-                    LoadingPhraseState(
-                        modifier = Modifier
-                            .weight(phraseAreaWeight)
-                            .fillMaxWidth()
+                    scrollState = fullscreenScrollState,
+                    onClear = onClearClick,
+                    onClick = { onFullScreenChange(false) }, // 点击退出全屏
+                    modifier = Modifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "display_surface"),
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        resizeMode = scaleToBounds()
                     )
-                }
+                )
             }
         }
     }
@@ -524,10 +636,19 @@ private fun DisplaySurface(
     isSubtle: Boolean,
     scrollState: ScrollState,
     onClear: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primary,
         tonalElevation = 8.dp,
@@ -547,12 +668,15 @@ private fun DisplaySurface(
                 containerHeight < 120.dp || containerWidth < 280.dp -> {
                     if (text.length > 20) 24.sp else 32.sp
                 }
+
                 containerHeight < 220.dp || containerWidth < 380.dp -> {
                     if (text.length > 20) 32.sp else 48.sp
                 }
+
                 containerHeight < 360.dp || containerWidth < 600.dp -> {
                     if (text.length > 20) 56.sp else 84.sp
                 }
+
                 else -> {
                     if (text.length > 20) 80.sp else 110.sp
                 }
@@ -693,18 +817,18 @@ private fun AddPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                label = it
-            }, label = {
-                Text("按钮标签")
-            }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                    label = it
+                }, label = {
+                    Text("按钮标签")
+                }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                speech = it
-            }, label = {
-                Text("播报内容")
-            }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                    speech = it
+                }, label = {
+                    Text("播报内容")
+                }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -743,18 +867,18 @@ private fun EditPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                label = it
-            }, label = {
-                Text("按钮标签")
-            }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                    label = it
+                }, label = {
+                    Text("按钮标签")
+                }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                speech = it
-            }, label = {
-                Text("播报内容")
-            }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                    speech = it
+                }, label = {
+                    Text("播报内容")
+                }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -831,7 +955,8 @@ private fun PhraseGrid(
                         }),
                     shape = buttonShape,
                     color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
