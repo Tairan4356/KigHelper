@@ -3,7 +3,7 @@ package com.ziegler.kighelper.ui.screens
 import android.content.res.Configuration
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,7 +51,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -73,10 +73,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ziegler.kighelper.data.Phrase
@@ -104,12 +107,89 @@ fun MainScreen(
 ) {
     val scrollState = rememberScrollState()
     val phraseGridState = rememberLazyGridState()
-    var isDisplayCompressed by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
     var showAddPhraseDialog by rememberSaveable { mutableStateOf(false) }
     var editingPhrase by remember { mutableStateOf<Phrase?>(null) }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val screenWidth = configuration.screenWidthDp
+
+    // 根据屏幕宽度动态计算卡片的字号、高度和网格列数
+    val (cardFontSize, cardHeight) = remember(screenWidth) {
+        when {
+            screenWidth < 360 -> 14.sp to 64.dp      // 小屏手机
+            screenWidth < 600 -> 16.sp to 80.dp      // 标准手机
+            screenWidth < 840 -> 20.sp to 96.dp      // 折叠屏/小平板
+            else -> 24.sp to 112.dp                  // 大屏平板
+        }
+    }
+
+    val gridColumns = remember(screenWidth, isLandscape) {
+        when {
+            screenWidth < 1080 -> GridCells.Fixed(2)
+            else -> GridCells.Fixed(3)
+        }
+    }
+
+    // 连续滑动状态设计
+    val minWeight = 0.35f
+    val maxWeight = 0.55f
+    val density = LocalDensity.current
+    // 设定滑动多少 dp 会使面板完全缩到最小
+    val maxCollapseDistancePx = remember(density) { with(density) { 240.dp.toPx() } }
+
+    // 连续变化的滑动偏移量（0f 代表完全展开，maxCollapseDistancePx 代表完全收起）
+    var collapseOffset by remember { mutableStateOf(0f) }
+
+    // 将偏移量映射到权重
+    val displayWeight = remember(collapseOffset, isLandscape) {
+        if (isLandscape) {
+            0.55f // 横屏不参与滑动收缩
+        } else {
+            val fraction = (collapseOffset / maxCollapseDistancePx).coerceIn(0f, 1f)
+            maxWeight - fraction * (maxWeight - minWeight)
+        }
+    }
+    val phraseAreaWeight = 1f - displayWeight
+
+    // 拦截滑动事件的 NestedScrollConnection
+    val phraseGridNestedScrollConnection = remember(maxCollapseDistancePx, isLandscape) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset, source: NestedScrollSource
+            ): Offset {
+                if (isLandscape) return Offset.Zero
+
+                val dy = available.y
+                return if (dy < 0f) {
+                    // 向上滑动（手指上推）：在列表滚动前，优先缩减显示面板的大小
+                    val remainingCollapse = maxCollapseDistancePx - collapseOffset
+                    if (remainingCollapse > 0f) {
+                        val consumedY = maxOf(dy, -remainingCollapse)
+                        collapseOffset -= consumedY
+                        Offset(0f, consumedY)
+                    } else {
+                        Offset.Zero
+                    }
+                } else if (dy > 0f) {
+                    // 向下滑动（手指下拖）：只有在列表滚动到最顶部后，继续向下滑动才放大显示面板
+                    val isAtTop =
+                        phraseGridState.firstVisibleItemIndex == 0 && phraseGridState.firstVisibleItemScrollOffset == 0
+                    if (isAtTop && collapseOffset > 0f) {
+                        val consumedY = minOf(dy, collapseOffset)
+                        collapseOffset -= consumedY
+                        Offset(0f, consumedY)
+                    } else {
+                        Offset.Zero
+                    }
+                } else {
+                    Offset.Zero
+                }
+            }
+        }
+    }
 
     val layoutDirection = LocalLayoutDirection.current
     val pagePadding = 16.dp
@@ -136,36 +216,6 @@ fun MainScreen(
         isPhrasesLoading && isShowingInitialHint -> ""
         !hasPhrases && isShowingInitialHint -> "先添加一个常用短语吧"
         else -> displayText
-    }
-
-    val isPhraseGridAtTop by remember {
-        derivedStateOf {
-            phraseGridState.firstVisibleItemIndex == 0 && phraseGridState.firstVisibleItemScrollOffset == 0
-        }
-    }
-
-    val displayWeight by animateFloatAsState(
-        targetValue = if (!isLandscape && isDisplayCompressed) 0.38f else 0.55f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-        ),
-        label = "displayAreaWeight"
-    )
-
-    val phraseAreaWeight = 1f - displayWeight
-
-    val phraseGridNestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(
-                available: Offset, source: NestedScrollSource
-            ): Offset {
-                if (source == NestedScrollSource.UserInput && available.y < 0f) {
-                    isDisplayCompressed = true
-                }
-
-                return Offset.Zero
-            }
-        }
     }
 
     val groupedSections = remember(phrases.toList(), groups.toList()) {
@@ -205,7 +255,6 @@ fun MainScreen(
         result
     }
 
-    val coroutineScope = rememberCoroutineScope()
     var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var isProgrammaticScroll by remember { mutableStateOf(false) }
 
@@ -234,9 +283,7 @@ fun MainScreen(
     val currentVisibleGroupIndex by remember(groupToFlatIndexMap, groupedSections) {
         derivedStateOf {
             val firstVisible = phraseGridState.firstVisibleItemIndex
-            groupToFlatIndexMap.entries
-                .lastOrNull { it.value <= firstVisible }
-                ?.key ?: 0
+            groupToFlatIndexMap.entries.lastOrNull { it.value <= firstVisible }?.key ?: 0
         }
     }
 
@@ -259,19 +306,14 @@ fun MainScreen(
         }
     }
 
-    LaunchedEffect(selectedGroupId) {
-        if (selectedGroupId != null) {
-            isDisplayCompressed = false
-        }
-    }
-
     LaunchedEffect(effectiveDisplayText) {
         scrollState.scrollTo(0)
     }
 
-    LaunchedEffect(isPhraseGridAtTop, hasPhrases, isPhrasesLoading) {
-        if (isPhrasesLoading || !hasPhrases || isPhraseGridAtTop) {
-            isDisplayCompressed = false
+    // 当空状态或加载中时，重置折叠高度
+    LaunchedEffect(isPhrasesLoading, hasPhrases) {
+        if (isPhrasesLoading || !hasPhrases) {
+            collapseOffset = 0f
         }
     }
 
@@ -291,8 +333,7 @@ fun MainScreen(
             onSave = { label, speech ->
                 onUpdatePhrase(phrase, label, speech)
                 editingPhrase = null
-            }
-        )
+            })
     }
 
     if (isLandscape) {
@@ -340,11 +381,14 @@ fun MainScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 groupedSections = groupedSections,
                                 state = phraseGridState,
-                                columns = GridCells.Fixed(2),
+                                columns = gridColumns,
+                                cardFontSize = cardFontSize,
+                                cardHeight = cardHeight,
                                 onPhraseClick = onPhraseClick,
                                 onPhraseLongClick = { editingPhrase = it },
                                 onDisplayShouldExpand = {
-                                    isDisplayCompressed = false
+                                    // 横屏下一般无需动画，直接重置
+                                    collapseOffset = 0f
                                 })
                         }
                     }
@@ -408,11 +452,22 @@ fun MainScreen(
                                 .nestedScroll(phraseGridNestedScrollConnection),
                             groupedSections = groupedSections,
                             state = phraseGridState,
-                            columns = GridCells.Fixed(2),
+                            columns = gridColumns,
+                            cardFontSize = cardFontSize,
+                            cardHeight = cardHeight,
                             onPhraseClick = onPhraseClick,
                             onPhraseLongClick = { editingPhrase = it },
                             onDisplayShouldExpand = {
-                                isDisplayCompressed = false
+                                // 点击卡片播报时，平滑回弹展开面板
+                                coroutineScope.launch {
+                                    animate(
+                                        initialValue = collapseOffset,
+                                        targetValue = 0f,
+                                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                    ) { value, _ ->
+                                        collapseOffset = value
+                                    }
+                                }
                             })
                     }
                 }
@@ -449,21 +504,16 @@ private fun GroupTabs(
         selectedTabIndex = selectedGroupIndex,
         modifier = modifier.fillMaxWidth(),
         edgePadding = 16.dp,
-        divider = {} // 移除底部的默认分割线
-    ) {
+        divider = {}) {
         groupedSections.forEachIndexed { index, (group, _) ->
             val selected = selectedGroupIndex == index
-            Tab(
-                selected = selected,
-                onClick = { onGroupSelected(index) },
-                text = {
-                    Text(
-                        text = group.name,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
-            )
+            Tab(selected = selected, onClick = { onGroupSelected(index) }, text = {
+                Text(
+                    text = group.name,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    style = MaterialTheme.typography.titleSmall
+                )
+            })
         }
     }
 }
@@ -483,11 +533,32 @@ private fun DisplaySurface(
         tonalElevation = 8.dp,
         shadowElevation = 4.dp
     ) {
-        Box(
+        // 使用 BoxWithConstraints 动态获取当前展示区域的大小
+        BoxWithConstraints(
             contentAlignment = Alignment.Center, modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
+            val containerWidth = maxWidth
+            val containerHeight = maxHeight
+
+            // 根据可用容器大小和字数，动态缩放展示区的文字大小
+            val baseFontSize = when {
+                containerHeight < 120.dp || containerWidth < 280.dp -> {
+                    if (text.length > 20) 24.sp else 32.sp
+                }
+                containerHeight < 220.dp || containerWidth < 380.dp -> {
+                    if (text.length > 20) 32.sp else 48.sp
+                }
+                containerHeight < 360.dp || containerWidth < 600.dp -> {
+                    if (text.length > 20) 56.sp else 84.sp
+                }
+                else -> {
+                    if (text.length > 20) 80.sp else 110.sp
+                }
+            }
+            val lineHeight = baseFontSize * 1.15f
+
             androidx.compose.animation.AnimatedContent(
                 targetState = text, transitionSpec = {
                     (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
@@ -503,8 +574,8 @@ private fun DisplaySurface(
                         text = targetText,
                         style = MaterialTheme.typography.displayLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = if (targetText.length > 20) 36.sp else 48.sp,
-                            lineHeight = if (targetText.length > 20) 40.sp else 52.sp
+                            fontSize = baseFontSize,
+                            lineHeight = lineHeight
                         ),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onPrimary.copy(
@@ -622,18 +693,18 @@ private fun AddPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                    label = it
-                }, label = {
-                    Text("按钮标签")
-                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                    speech = it
-                }, label = {
-                    Text("播报内容")
-                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -653,9 +724,7 @@ private fun AddPhraseDialog(
 
 @Composable
 private fun EditPhraseDialog(
-    phrase: Phrase,
-    onDismiss: () -> Unit,
-    onSave: (label: String, speech: String) -> Unit
+    phrase: Phrase, onDismiss: () -> Unit, onSave: (label: String, speech: String) -> Unit
 ) {
     var label by rememberSaveable(phrase.id) { mutableStateOf(phrase.label) }
     var speech by rememberSaveable(phrase.id) { mutableStateOf(phrase.speech) }
@@ -674,18 +743,18 @@ private fun EditPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                    label = it
-                }, label = {
-                    Text("按钮标签")
-                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                    speech = it
-                }, label = {
-                    Text("播报内容")
-                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -712,7 +781,9 @@ private fun PhraseGrid(
     onPhraseClick: (Phrase) -> Unit,
     onPhraseLongClick: (Phrase) -> Unit,
     onDisplayShouldExpand: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cardFontSize: TextUnit = 18.sp,
+    cardHeight: Dp = 80.dp
 ) {
     val performButtonHaptic = rememberPhysicalButtonHaptics()
 
@@ -728,9 +799,7 @@ private fun PhraseGrid(
             // 如果分组数多于一个，则在每个分组上方增加一个横跨全宽的标题 Header
             if (groupedSections.size > 1) {
                 item(
-                    key = "header_${group.id}",
-                    span = { GridItemSpan(maxLineSpan) }
-                ) {
+                    key = "header_${group.id}", span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = group.name,
                         style = MaterialTheme.typography.titleMedium,
@@ -750,24 +819,19 @@ private fun PhraseGrid(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp)
+                        .height(cardHeight)
                         .clip(buttonShape)
-                        .combinedClickable(
-                            role = Role.Button,
-                            onClick = {
-                                performButtonHaptic()
-                                onDisplayShouldExpand()
-                                onPhraseClick(phrase)
-                            },
-                            onLongClick = {
-                                performButtonHaptic()
-                                onPhraseLongClick(phrase)
-                            }
-                        ),
+                        .combinedClickable(role = Role.Button, onClick = {
+                            performButtonHaptic()
+                            onDisplayShouldExpand()
+                            onPhraseClick(phrase)
+                        }, onLongClick = {
+                            performButtonHaptic()
+                            onPhraseLongClick(phrase)
+                        }),
                     shape = buttonShape,
                     color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ) {
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -776,7 +840,7 @@ private fun PhraseGrid(
                     ) {
                         Text(
                             text = phrase.label,
-                            fontSize = 18.sp,
+                            fontSize = cardFontSize,
                             textAlign = TextAlign.Center,
                             maxLines = 2
                         )

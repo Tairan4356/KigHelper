@@ -1,16 +1,20 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
@@ -20,8 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,8 +36,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -70,6 +74,7 @@ fun InputScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val text = textFieldValue.text
     val performButtonHaptic = rememberPhysicalButtonHaptics()
+
     val imeBottomPadding = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationStartPadding = with(density) {
         WindowInsets.navigationBars.getLeft(this, layoutDirection).toDp()
@@ -85,41 +90,42 @@ fun InputScreen(
         contentPadding.calculateEndPadding(layoutDirection),
         navigationEndPadding
     )
-    var navigationBottomPadding by remember { mutableStateOf(0.dp) }
-    val isImeVisible = imeBottomPadding > 0.dp
 
-    val fontSize = when {
-        text.length > 60 -> if (isLandscape) 28.sp else 32.sp
-        text.length > 20 -> if (isLandscape) 34.sp else 40.sp
-        isLandscape -> 40.sp
-        else -> 48.sp
-    }
-    val lineHeight = when {
-        text.length > 60 -> if (isLandscape) 32.sp else 36.sp
-        text.length > 20 -> if (isLandscape) 38.sp else 44.sp
-        isLandscape -> 44.sp
-        else -> 52.sp
+    val actionBottomPadding = maxOf(imeBottomPadding, contentPadding.calculateBottomPadding())
+
+    val screenWidth = configuration.screenWidthDp
+    // 动态计算缩放系数与字号
+    val (fontSize, lineHeight) = remember(screenWidth, text.length, isLandscape) {
+        // 基于屏幕宽度分类设定基础缩放系数
+        val baseScale = when {
+            screenWidth < 360 -> 0.85f   // 超小屏手机
+            screenWidth < 600 -> 1.0f    // 标准手机
+            screenWidth < 840 -> 1.25f   // 折叠屏或小平板
+            else -> 1.5f                 // 大屏平板
+        }
+
+        val rawSize = when {
+            text.length > 60 -> if (isLandscape) 36 else 40
+            text.length > 20 -> if (isLandscape) 40 else 48
+            isLandscape -> 48
+            else -> 60
+        }
+        val rawLineHeight = when {
+            text.length > 60 -> if (isLandscape) 48 else 52
+            text.length > 20 -> if (isLandscape) 52 else 60
+            isLandscape -> 60
+            else -> 72
+        }
+
+        (rawSize * baseScale).sp to (rawLineHeight * baseScale).sp
     }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
 
-    LaunchedEffect(contentPadding, isImeVisible) {
-        if (!isImeVisible) {
-            navigationBottomPadding = contentPadding.calculateBottomPadding()
-        }
-    }
-
-    val actionBottomPadding = if (imeBottomPadding > navigationBottomPadding) {
-        imeBottomPadding
-    } else {
-        navigationBottomPadding
-    }
-
     Box(
-        modifier = modifier
-            .fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
         BasicTextField(
             value = textFieldValue,
@@ -163,11 +169,14 @@ fun InputScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    Box(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         innerTextField()
+                        if (text.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(if (isLandscape) 64.dp else 80.dp))
+                        }
                     }
                 }
             })
@@ -202,9 +211,7 @@ fun InputScreen(
                         performButtonHaptic()
                         onSpeak(text)
                     }
-                },
-                enabled = text.isNotBlank(),
-                shape = MaterialTheme.shapes.medium
+                }, enabled = text.isNotBlank(), shape = MaterialTheme.shapes.medium
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null
