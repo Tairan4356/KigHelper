@@ -51,8 +51,8 @@ fun AddEditPhraseScreen(
     var speech by rememberSaveable(phrase?.id) {
         mutableStateOf(phrase?.speech.orEmpty())
     }
-    var selectedGroupId by rememberSaveable(phrase?.id) {
-        mutableStateOf(phrase?.groupId ?: PhraseGroup.DEFAULT_ID)
+    var selectedGroupId by rememberSaveable(phrase?.id, initialGroupId) {
+        mutableStateOf(phrase?.groupId ?: initialGroupId ?: PhraseGroup.DEFAULT_ID)
     }
     var groupMenuExpanded by remember { mutableStateOf(false) }
 
