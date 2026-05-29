@@ -93,32 +93,26 @@ fun InputScreen(
 
     val actionBottomPadding = maxOf(imeBottomPadding, contentPadding.calculateBottomPadding())
 
-    val screenWidth = configuration.screenWidthDp
+    val smallestScreenWidth = configuration.smallestScreenWidthDp
     // 动态计算缩放系数与字号
-    val (fontSize, lineHeight) = remember(screenWidth, text.length, isLandscape) {
-        // 基于屏幕宽度分类设定基础缩放系数
-        val baseScale = when {
-            screenWidth < 360 -> 0.85f   // 超小屏手机
-            screenWidth < 600 -> 1.0f    // 标准手机
-            screenWidth < 840 -> 1.25f   // 折叠屏或小平板
-            else -> 1.5f                 // 大屏平板
+    val baseFontSize = when {
+        smallestScreenWidth < 360 -> {
+            if (text.length > 20) 24.sp else 32.sp
         }
 
-        val rawSize = when {
-            text.length > 60 -> if (isLandscape) 36 else 40
-            text.length > 20 -> if (isLandscape) 40 else 48
-            isLandscape -> 48
-            else -> 60
-        }
-        val rawLineHeight = when {
-            text.length > 60 -> if (isLandscape) 48 else 52
-            text.length > 20 -> if (isLandscape) 52 else 60
-            isLandscape -> 60
-            else -> 72
+        smallestScreenWidth < 600 -> {
+            if (text.length > 20) 32.sp else 48.sp
         }
 
-        (rawSize * baseScale).sp to (rawLineHeight * baseScale).sp
+        smallestScreenWidth < 720 -> {
+            if (text.length > 20) 56.sp else 84.sp
+        }
+
+        else -> {
+            if (text.length > 20) 80.sp else 110.sp
+        }
     }
+    val lineHeight = baseFontSize * 1.15f
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -135,7 +129,7 @@ fun InputScreen(
                 .imePadding()
                 .focusRequester(focusRequester),
             textStyle = MaterialTheme.typography.displayLarge.copy(
-                fontSize = fontSize,
+                fontSize = baseFontSize,
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = lineHeight,
                 letterSpacing = 0.sp,
@@ -159,7 +153,7 @@ fun InputScreen(
                         Text(
                             text = "请输入文字",
                             style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = fontSize,
+                                fontSize = baseFontSize,
                                 fontWeight = FontWeight.ExtraBold,
                                 lineHeight = lineHeight,
                                 letterSpacing = 0.sp

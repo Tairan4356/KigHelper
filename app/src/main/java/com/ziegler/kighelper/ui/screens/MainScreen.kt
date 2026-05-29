@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -11,10 +13,13 @@ import androidx.compose.animation.SharedTransitionScope.ResizeMode.Companion.sca
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
@@ -50,7 +55,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -86,6 +90,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,6 +101,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.ziegler.kighelper.R
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
@@ -168,12 +174,13 @@ fun MainScreen(
     val screenWidth = configuration.screenWidthDp
 
     // 动态计算卡片字号、高度和列数
-    val (cardFontSize, cardHeight) = remember(screenWidth) {
+    val smallestScreenWidth = configuration.smallestScreenWidthDp
+    val (cardFontSize, cardHeight) = remember(smallestScreenWidth) {
         when {
-            screenWidth < 360 -> 14.sp to 64.dp      // 小屏手机
-            screenWidth < 600 -> 16.sp to 80.dp      // 标准手机
-            screenWidth < 840 -> 20.sp to 96.dp      // 折叠屏/小平板
-            else -> 24.sp to 112.dp                  // 大屏平板
+            smallestScreenWidth < 360 -> 14.sp to 64.dp     // 小屏手机
+            smallestScreenWidth < 600 -> 16.sp to 80.dp     // 标准手机
+            smallestScreenWidth < 720 -> 20.sp to 96.dp     // 折叠屏/小平板 (通常 sw600dp ~ sw720dp)
+            else -> 24.sp to 112.dp                         // 大屏平板 (通常 sw720dp+)
         }
     }
 
@@ -268,6 +275,7 @@ fun MainScreen(
         !hasPhrases && isShowingInitialHint -> "先添加一个常用短语吧"
         else -> displayText
     }
+    val canEnterFullScreen = hasPhrases && !isShowingInitialHint
 
     val groupedSections = remember(phrases.toList(), groups.toList()) {
         val defaultGroupId = PhraseGroup.DEFAULT_ID
@@ -390,10 +398,16 @@ fun MainScreen(
     // 引入共享元素过渡容器，协调切换
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
+            visible = !isFullScreen,
+            modifier = Modifier.fillMaxSize(),
+            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                initialOffsetY = { it / 6 },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ),
+            exit = fadeOut(animationSpec = tween(250)) + slideOutVertically(
+                targetOffsetY = { it / 6 },
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            )
         ) {
             val animatedVisibilityScope = this
 
@@ -413,13 +427,24 @@ fun MainScreen(
                                 isSubtle = isShowingInitialHint,
                                 scrollState = scrollState,
                                 onClear = onClearClick,
-                                onClick = { onFullScreenChange(true) },
-                                modifier = Modifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = "display_surface"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    resizeMode = scaleToBounds()
-                                )
-                            )
+                                onClick = if (canEnterFullScreen) {
+                                    { onFullScreenChange(true) }
+                                } else null,
+                                smallestScreenWidth = smallestScreenWidth,
+                                modifier = Modifier
+                                    .sharedBounds(
+                                        sharedContentState = rememberSharedContentState(key = "display_surface"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        resizeMode = scaleToBounds(),
+                                        clipInOverlayDuringTransition = OverlayClip(
+                                            RoundedCornerShape(
+                                                24.dp
+                                            )
+                                        ),
+                                        enter = EnterTransition.None,
+                                        exit = ExitTransition.None
+                                    )
+                                    .clip(RoundedCornerShape(24.dp)))
                         }
 
                         Box(modifier = Modifier.weight(1f)) {
@@ -491,13 +516,24 @@ fun MainScreen(
                                 isSubtle = isShowingInitialHint,
                                 scrollState = scrollState,
                                 onClear = onClearClick,
-                                onClick = { onFullScreenChange(true) },
-                                modifier = Modifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = "display_surface"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    resizeMode = scaleToBounds()
-                                )
-                            )
+                                onClick = if (canEnterFullScreen) {
+                                    { onFullScreenChange(true) }
+                                } else null,
+                                smallestScreenWidth = smallestScreenWidth,
+                                modifier = Modifier
+                                    .sharedBounds(
+                                        sharedContentState = rememberSharedContentState(key = "display_surface"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        resizeMode = scaleToBounds(),
+                                        clipInOverlayDuringTransition = OverlayClip(
+                                            RoundedCornerShape(
+                                                24.dp
+                                            )
+                                        ),
+                                        enter = EnterTransition.None,
+                                        exit = ExitTransition.None
+                                    )
+                                    .clip(RoundedCornerShape(24.dp)))
                         }
 
                         Spacer(Modifier.height(16.dp))
@@ -578,8 +614,8 @@ fun MainScreen(
         // 全屏显示的过渡动画层
         AnimatedVisibility(
             visible = isFullScreen,
-            enter = fadeIn(),
-            exit = fadeOut()
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(250))
         ) {
             val fullscreenScrollState = rememberScrollState()
             Box(
@@ -592,13 +628,22 @@ fun MainScreen(
                     text = effectiveDisplayText,
                     isSubtle = isShowingInitialHint,
                     scrollState = fullscreenScrollState,
-                    onClear = onClearClick,
+                    onClear = {
+                        onClearClick()
+                        onFullScreenChange(false)
+                    },
                     onClick = { onFullScreenChange(false) }, // 点击退出全屏
-                    modifier = Modifier.sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = "display_surface"),
-                        animatedVisibilityScope = this@AnimatedVisibility,
-                        resizeMode = scaleToBounds()
-                    )
+                    smallestScreenWidth = smallestScreenWidth,
+                    modifier = Modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "display_surface"),
+                            animatedVisibilityScope = this@AnimatedVisibility,
+                            resizeMode = scaleToBounds(),
+                            clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(24.dp)),
+                            enter = EnterTransition.None,
+                            exit = ExitTransition.None
+                        )
+                        .clip(RoundedCornerShape(24.dp))
                 )
             }
         }
@@ -635,20 +680,21 @@ private fun DisplaySurface(
     text: String,
     isSubtle: Boolean,
     scrollState: ScrollState,
+    onClick: (() -> Unit)?,
     onClear: () -> Unit,
+    smallestScreenWidth: Int,
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
 ) {
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
+
     Surface(
         modifier = modifier
             .fillMaxSize()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            ),
+            .then(clickModifier),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primary,
         tonalElevation = 8.dp,
@@ -660,20 +706,20 @@ private fun DisplaySurface(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            val containerWidth = maxWidth
-            val containerHeight = maxHeight
+            maxWidth
+            maxHeight
 
             // 根据可用容器大小和字数，动态缩放展示区的文字大小
             val baseFontSize = when {
-                containerHeight < 120.dp || containerWidth < 280.dp -> {
+                smallestScreenWidth < 360 -> {
                     if (text.length > 20) 24.sp else 32.sp
                 }
 
-                containerHeight < 220.dp || containerWidth < 380.dp -> {
+                smallestScreenWidth < 600 -> {
                     if (text.length > 20) 32.sp else 48.sp
                 }
 
-                containerHeight < 360.dp || containerWidth < 600.dp -> {
+                smallestScreenWidth < 720 -> {
                     if (text.length > 20) 56.sp else 84.sp
                 }
 
@@ -752,7 +798,7 @@ private fun EmptyPhraseState(
             tonalElevation = 2.dp
         ) {
             Icon(
-                imageVector = Icons.Default.Face,
+                painter = painterResource(id = R.drawable.ic_bubble),
                 contentDescription = null,
                 modifier = Modifier
                     .padding(18.dp)
@@ -817,18 +863,18 @@ private fun AddPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                    label = it
-                }, label = {
-                    Text("按钮标签")
-                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                    speech = it
-                }, label = {
-                    Text("播报内容")
-                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
@@ -867,18 +913,18 @@ private fun EditPhraseDialog(
         ) {
             OutlinedTextField(
                 value = label, onValueChange = {
-                    label = it
-                }, label = {
-                    Text("按钮标签")
-                }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = it
+            }, label = {
+                Text("按钮标签")
+            }, singleLine = true, modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = speech, onValueChange = {
-                    speech = it
-                }, label = {
-                    Text("播报内容")
-                }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                speech = it
+            }, label = {
+                Text("播报内容")
+            }, modifier = Modifier.fillMaxWidth(), minLines = 3
             )
         }
     }, confirmButton = {
