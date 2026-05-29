@@ -10,8 +10,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.google.android.material.color.MaterialColors
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
+import com.ziegler.kighelper.R.color
+import com.ziegler.kighelper.R.color.ic_launcher_background
 
 /**
  * 锁屏快捷通知工具 - 支持 Live Updates
@@ -101,7 +104,7 @@ object NotificationHelper {
         )
     }
 
-    @SuppressLint("FullScreenIntentPolicy")
+    @SuppressLint("FullScreenIntentPolicy", "ResourceAsColor")
     private fun buildNotification(
         context: Context,
         pendingIntent: PendingIntent,
@@ -117,8 +120,15 @@ object NotificationHelper {
             else -> phraseSpeech
         }
 
+        // 获取动态主题颜色（如果可用），否则使用默认颜色
+        val dynamicPrimaryColor = MaterialColors.getColor(
+            context,
+            com.google.android.material.R.attr.colorOnPrimary,
+            ic_launcher_background
+        )
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_speaker)  // 使用音频图标
+            .setSmallIcon(R.drawable.ic_bubble)  // 使用音频图标
             .setContentTitle(title)  // 显示短语标签作为标题
             .setContentText(contentText)  // 显示短语内容（截断长文本）
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -126,7 +136,7 @@ object NotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .setSilent(true)
-            .setColor(ContextCompat.getColor(context, R.color.ic_launcher_background))
+            .setColor(dynamicPrimaryColor)
             // Android 14+: setOngoing(true) 必需用于 Live Updates，但用户仍可滑动关闭
             // Android 13-: setOngoing(false) 允许用户滑动关闭
             .setOngoing(Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -152,7 +162,7 @@ object NotificationHelper {
         if (!phraseSpeech.isNullOrEmpty()) {
             val replayIntent = createReplayPendingIntent(context, phraseSpeech)
             builder.addAction(
-                R.drawable.ic_speaker,
+                R.drawable.ic_bubble,
                 "重播",
                 replayIntent
             )

@@ -65,12 +65,13 @@ internal fun AppNavigationRail(
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
-                    .size(32.dp)
+                    .size(48.dp)
             ) {
-                Image(
-                    painter = painterResource(R.mipmap.ic_launcher_foreground),
+                Icon(
+                    painter = painterResource(R.drawable.ic_launcher_monochrome),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
