@@ -1,3 +1,4 @@
+// 主 AAC 界面编排：展示区、短语网格布局、全屏模式和跨组件状态。
 package com.ziegler.kighelper.ui.screens
 
 import android.app.Activity
@@ -104,9 +105,17 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.ziegler.kighelper.R
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
-import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
+import com.ziegler.kighelper.ui.screens.main.AddPhraseDialog
+import com.ziegler.kighelper.ui.screens.main.DisplaySurface
+import com.ziegler.kighelper.ui.screens.main.DisplaySurfaceLayoutMode
+import com.ziegler.kighelper.ui.screens.main.EditPhraseDialog
+import com.ziegler.kighelper.ui.screens.main.EmptyPhraseState
+import com.ziegler.kighelper.ui.screens.main.GroupTabs
+import com.ziegler.kighelper.ui.screens.main.LoadingPhraseState
+import com.ziegler.kighelper.ui.screens.main.PhraseGrid
+import com.ziegler.kighelper.ui.screens.main.buildGroupStartIndexMap
+import com.ziegler.kighelper.ui.screens.main.buildGroupedSections
 import kotlinx.coroutines.launch
-
 
 /**
  * 主界面：提供大字显示区域和短语快捷按钮网格。

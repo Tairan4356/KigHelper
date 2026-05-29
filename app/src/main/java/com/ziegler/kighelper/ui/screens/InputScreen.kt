@@ -1,3 +1,4 @@
+// 自由输入界面编排：手动输入文字、适配输入法空间并触发朗读。
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration

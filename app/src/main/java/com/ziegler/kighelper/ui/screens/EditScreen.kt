@@ -1,3 +1,4 @@
+// 短语管理界面编排：分组筛选、短语排序、分组操作和编辑入口。
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
@@ -73,9 +74,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyGridState
-import sh.calvin.reorderable.rememberReorderableLazyListState
+import com.ziegler.kighelper.ui.screens.edit.AddGroupDialog
+import com.ziegler.kighelper.ui.screens.edit.DeleteGroupDialog
+import com.ziegler.kighelper.ui.screens.edit.GroupFilterRow
+import com.ziegler.kighelper.ui.screens.edit.PhraseManagementList
+import com.ziegler.kighelper.ui.screens.phrase.buildPhraseListWithGroupOrder
+import com.ziegler.kighelper.ui.screens.phrase.effectiveGroupId
+import com.ziegler.kighelper.ui.screens.phrase.sortedVisibleGroups
 
 /**
  * 短语管理界面。
