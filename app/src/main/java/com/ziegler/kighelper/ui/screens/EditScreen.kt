@@ -1,19 +1,15 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
-import androidx.compose.animation.AnimatedVisibility
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -28,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -37,7 +32,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
@@ -74,6 +68,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
@@ -99,7 +94,7 @@ fun EditScreen(
     onDelete: (Phrase) -> Unit,
     onMove: (List<Phrase>) -> Unit,
     onBack: () -> Unit,
-    onNavigateToAdd: () -> Unit,
+    onNavigateToAdd: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
     onAddGroup: (String) -> Boolean,
     onDeleteGroup: (String) -> Unit,
@@ -108,6 +103,7 @@ fun EditScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val layoutDirection = LocalLayoutDirection.current
+    val view = LocalView.current
 
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
     val outerEndPadding = contentPadding.calculateEndPadding(layoutDirection)
@@ -119,29 +115,50 @@ fun EditScreen(
 
     val phraseSnapshot = phrases.toList()
     val groupSnapshot = groups.toList()
+
     val sortedGroups = remember(groupSnapshot) {
         ensureDefaultGroup(groupSnapshot)
             .distinctBy { it.id }
             .sortedBy { it.order }
     }
-    val knownGroupIds = remember(sortedGroups) { sortedGroups.map { it.id }.toSet() }
 
-    var selectedGroupId by rememberSaveable { mutableStateOf(PhraseGroup.DEFAULT_ID) }
-    var showAddGroupDialog by rememberSaveable { mutableStateOf(false) }
-    var groupPendingDelete by remember { mutableStateOf<PhraseGroup?>(null) }
-    var isDragging by remember { mutableStateOf(false) }
+    val knownGroupIds = remember(sortedGroups) {
+        sortedGroups.map { it.id }.toSet()
+    }
+
+    var selectedGroupId by rememberSaveable {
+        mutableStateOf(PhraseGroup.DEFAULT_ID)
+    }
+
+    var showAddGroupDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var groupPendingDelete by remember {
+        mutableStateOf<PhraseGroup?>(null)
+    }
+
+    var isDragging by remember {
+        mutableStateOf(false)
+    }
 
     val selectedGroup = sortedGroups.firstOrNull { it.id == selectedGroupId }
         ?: sortedGroups.firstOrNull()
+
     val currentGroupId = selectedGroup?.id ?: PhraseGroup.DEFAULT_ID
+
     val visiblePhrases = remember(phraseSnapshot, knownGroupIds, currentGroupId) {
         phraseSnapshot.filter { phrase ->
             phrase.effectiveGroupId(knownGroupIds) == currentGroupId
         }
     }
+
     val localPhrases = remember {
-        mutableStateListOf<Phrase>().also { it.addAll(visiblePhrases) }
+        mutableStateListOf<Phrase>().also {
+            it.addAll(visiblePhrases)
+        }
     }
+
     val currentOnMove by rememberUpdatedState(onMove)
 
     LaunchedEffect(sortedGroups, selectedGroupId) {
@@ -177,9 +194,12 @@ fun EditScreen(
 
         val item = localPhrases.removeAt(fromIdx)
         localPhrases.add(toIdx.coerceIn(0, localPhrases.size), item)
+
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
     }
 
     val lazyListState = rememberLazyListState()
+
     val reorderableLazyListState = rememberReorderableLazyListState(
         lazyListState = lazyListState
     ) { from, to ->
@@ -187,6 +207,7 @@ fun EditScreen(
     }
 
     val lazyGridState = rememberLazyGridState()
+
     val reorderableLazyGridState = rememberReorderableLazyGridState(
         lazyGridState = lazyGridState
     ) { from, to ->
@@ -197,7 +218,9 @@ fun EditScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text("管理短语") },
+                title = {
+                    Text("管理短语")
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -215,7 +238,13 @@ fun EditScreen(
                     }
 
                     if (currentGroupId != PhraseGroup.DEFAULT_ID) {
-                        IconButton(onClick = { selectedGroup?.let { groupPendingDelete = it } }) {
+                        IconButton(
+                            onClick = {
+                                selectedGroup?.let {
+                                    groupPendingDelete = it
+                                }
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "删除当前分组"
@@ -228,7 +257,9 @@ fun EditScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onNavigateToAdd,
+                onClick = {
+                    onNavigateToAdd(currentGroupId)
+                },
                 modifier = Modifier.padding(
                     start = outerStartPadding,
                     end = outerEndPadding,
@@ -253,7 +284,9 @@ fun EditScreen(
             GroupFilterRow(
                 groups = sortedGroups,
                 selectedGroupId = currentGroupId,
-                onGroupSelected = { selectedGroupId = it },
+                onGroupSelected = {
+                    selectedGroupId = it
+                },
                 modifier = Modifier.padding(
                     start = outerStartPadding + horizontalPadding,
                     top = itemSpacing,
@@ -284,24 +317,36 @@ fun EditScreen(
                     ) { _, phrase ->
                         ReorderableItem(
                             state = reorderableLazyGridState,
-                            key = phrase.id,
-                            animateItemModifier = Modifier
+                            key = phrase.id
                         ) { dragging ->
-                            val interactionSource = remember { MutableInteractionSource() }
+                            val interactionSource = remember {
+                                MutableInteractionSource()
+                            }
 
                             PhraseEditItem(
                                 phrase = phrase,
                                 groups = sortedGroups,
+                                currentGroupId = currentGroupId,
                                 isDragging = dragging,
                                 interactionSource = interactionSource,
-                                onDelete = { onDelete(phrase) },
-                                onEdit = { onNavigateToEdit(phrase.id) },
+                                onDelete = {
+                                    onDelete(phrase)
+                                },
+                                onEdit = {
+                                    onNavigateToEdit(phrase.id)
+                                },
                                 onMoveToGroup = { targetGroupId ->
+                                    localPhrases.removeAll { it.id == phrase.id }
                                     onMovePhraseToGroup(phrase.id, targetGroupId)
                                 },
                                 dragHandleModifier = Modifier.draggableHandle(
                                     interactionSource = interactionSource,
-                                    onDragStarted = { isDragging = true },
+                                    onDragStarted = {
+                                        isDragging = true
+                                        view.performHapticFeedback(
+                                            HapticFeedbackConstants.LONG_PRESS
+                                        )
+                                    },
                                     onDragStopped = {
                                         isDragging = false
                                         persistCurrentGroupOrder()
@@ -324,24 +369,36 @@ fun EditScreen(
                     ) { _, phrase ->
                         ReorderableItem(
                             state = reorderableLazyListState,
-                            key = phrase.id,
-                            animateItemModifier = Modifier
+                            key = phrase.id
                         ) { dragging ->
-                            val interactionSource = remember { MutableInteractionSource() }
+                            val interactionSource = remember {
+                                MutableInteractionSource()
+                            }
 
                             PhraseEditItem(
                                 phrase = phrase,
                                 groups = sortedGroups,
+                                currentGroupId = currentGroupId,
                                 isDragging = dragging,
                                 interactionSource = interactionSource,
-                                onDelete = { onDelete(phrase) },
-                                onEdit = { onNavigateToEdit(phrase.id) },
+                                onDelete = {
+                                    onDelete(phrase)
+                                },
+                                onEdit = {
+                                    onNavigateToEdit(phrase.id)
+                                },
                                 onMoveToGroup = { targetGroupId ->
+                                    localPhrases.removeAll { it.id == phrase.id }
                                     onMovePhraseToGroup(phrase.id, targetGroupId)
                                 },
                                 dragHandleModifier = Modifier.draggableHandle(
                                     interactionSource = interactionSource,
-                                    onDragStarted = { isDragging = true },
+                                    onDragStarted = {
+                                        isDragging = true
+                                        view.performHapticFeedback(
+                                            HapticFeedbackConstants.LONG_PRESS
+                                        )
+                                    },
                                     onDragStopped = {
                                         isDragging = false
                                         persistCurrentGroupOrder()
@@ -358,7 +415,9 @@ fun EditScreen(
     if (showAddGroupDialog) {
         AddGroupDialog(
             existingGroupNames = sortedGroups.map { it.name },
-            onDismiss = { showAddGroupDialog = false },
+            onDismiss = {
+                showAddGroupDialog = false
+            },
             onConfirm = { name ->
                 if (onAddGroup(name)) {
                     showAddGroupDialog = false
@@ -369,12 +428,21 @@ fun EditScreen(
 
     groupPendingDelete?.let { group ->
         AlertDialog(
-            onDismissRequest = { groupPendingDelete = null },
-            icon = {
-                Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+            onDismissRequest = {
+                groupPendingDelete = null
             },
-            title = { Text("删除分组") },
-            text = { Text("删除“${group.name}”后，里面的短语会移动到默认分组。") },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null
+                )
+            },
+            title = {
+                Text("删除分组")
+            },
+            text = {
+                Text("删除“${group.name}”后，里面的短语会移动到默认分组。")
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -382,11 +450,18 @@ fun EditScreen(
                         groupPendingDelete = null
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = "删除",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { groupPendingDelete = null }) {
+                TextButton(
+                    onClick = {
+                        groupPendingDelete = null
+                    }
+                ) {
                     Text("取消")
                 }
             }
@@ -409,8 +484,12 @@ private fun GroupFilterRow(
         groups.forEach { group ->
             FilterChip(
                 selected = group.id == selectedGroupId,
-                onClick = { onGroupSelected(group.id) },
-                label = { Text(group.name) }
+                onClick = {
+                    onGroupSelected(group.id)
+                },
+                label = {
+                    Text(group.name)
+                }
             )
         }
     }
@@ -422,9 +501,15 @@ private fun AddGroupDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var name by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable {
+        mutableStateOf("")
+    }
+
     val normalizedName = name.trim()
-    val isDuplicate = existingGroupNames.any { it.equals(normalizedName, ignoreCase = true) }
+
+    val isDuplicate = existingGroupNames.any {
+        it.equals(normalizedName, ignoreCase = true)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -434,12 +519,18 @@ private fun AddGroupDialog(
                 contentDescription = null
             )
         },
-        title = { Text("新建分组") },
+        title = {
+            Text("新建分组")
+        },
         text = {
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
-                label = { Text("分组名称") },
+                onValueChange = {
+                    name = it
+                },
+                label = {
+                    Text("分组名称")
+                },
                 isError = isDuplicate,
                 supportingText = {
                     if (isDuplicate) {
@@ -452,7 +543,9 @@ private fun AddGroupDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(normalizedName) },
+                onClick = {
+                    onConfirm(normalizedName)
+                },
                 enabled = normalizedName.isNotBlank() && !isDuplicate
             ) {
                 Text("创建")
@@ -471,6 +564,7 @@ private fun AddGroupDialog(
 private fun PhraseEditItem(
     phrase: Phrase,
     groups: List<PhraseGroup>,
+    currentGroupId: String,
     isDragging: Boolean,
     interactionSource: MutableInteractionSource,
     onDelete: () -> Unit,
@@ -480,13 +574,40 @@ private fun PhraseEditItem(
 ) {
     val cardElevation by animateDpAsState(
         targetValue = if (isDragging) 10.dp else 1.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "phraseCardElevation"
     )
-    var menuExpanded by remember { mutableStateOf(false) }
+
+    val cardScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.015f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "phraseCardScale"
+    )
+
+    var menuExpanded by remember {
+        mutableStateOf(false)
+    }
+
+    val targetGroups = remember(groups, currentGroupId) {
+        groups.filter { group ->
+            group.id != currentGroupId
+        }
+    }
 
     Card(
         onClick = onEdit,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+            },
         interactionSource = interactionSource,
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -541,26 +662,45 @@ private fun PhraseEditItem(
                 )
             }
 
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "更多"
-                )
-            }
-
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
-            ) {
-                groups.forEach { group ->
-                    DropdownMenuItem(
-                        text = { Text(group.name) },
-                        enabled = group.id != phrase.groupId,
-                        onClick = {
-                            onMoveToGroup(group.id)
-                            menuExpanded = false
-                        }
+            Box {
+                IconButton(
+                    onClick = {
+                        menuExpanded = true
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "更多"
                     )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = {
+                        menuExpanded = false
+                    }
+                ) {
+                    if (targetGroups.isEmpty()) {
+                        DropdownMenuItem(
+                            text = {
+                                Text("没有可移动的分组")
+                            },
+                            enabled = false,
+                            onClick = {}
+                        )
+                    } else {
+                        targetGroups.forEach { group ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(moveToGroupMenuText(group))
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onMoveToGroup(group.id)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -585,6 +725,18 @@ private fun Phrase.effectiveGroupId(knownGroupIds: Set<String>): String {
     return groupId.takeIf { it in knownGroupIds } ?: PhraseGroup.DEFAULT_ID
 }
 
+private fun moveToGroupMenuText(group: PhraseGroup): String {
+    val name = group.name.trim()
+
+    val label = if (name.endsWith("分组")) {
+        name
+    } else {
+        "$name 分组"
+    }
+
+    return "移动到 $label"
+}
+
 private fun buildPhraseListWithGroupOrder(
     allPhrases: List<Phrase>,
     groups: List<PhraseGroup>,
@@ -597,12 +749,16 @@ private fun buildPhraseListWithGroupOrder(
 
     for (group in groups) {
         if (group.id == reorderedGroupId) {
-            result.addAll(reorderedPhrases.map { it.copy(groupId = reorderedGroupId) })
+            result.addAll(
+                reorderedPhrases.map {
+                    it.copy(groupId = reorderedGroupId)
+                }
+            )
         } else {
             result.addAll(
                 allPhrases.filter { phrase ->
                     phrase.id !in reorderedIds &&
-                        phrase.effectiveGroupId(knownGroupIds) == group.id
+                            phrase.effectiveGroupId(knownGroupIds) == group.id
                 }
             )
         }

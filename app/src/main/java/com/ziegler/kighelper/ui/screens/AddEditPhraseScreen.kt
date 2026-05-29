@@ -41,6 +41,7 @@ fun AddEditPhraseScreen(
     phrase: Phrase?,
     isEditMode: Boolean,
     groups: List<PhraseGroup>,
+    initialGroupId: String? = null,
     onSave: (label: String, speech: String, groupId: String) -> Unit,
     onBack: () -> Unit
 ) {

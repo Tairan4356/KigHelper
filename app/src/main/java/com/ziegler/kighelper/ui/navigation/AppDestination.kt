@@ -1,5 +1,6 @@
 package com.ziegler.kighelper.ui.navigation
 
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
@@ -21,14 +22,21 @@ object AppRoutes {
 
     const val ADD_EDIT = "add_edit"
     const val PHRASE_ID_ARG = "id"
-    const val ADD_EDIT_PATTERN = "$ADD_EDIT?$PHRASE_ID_ARG={$PHRASE_ID_ARG}"
+    const val GROUP_ID_ARG = "groupId"
+    const val ADD_EDIT_PATTERN =
+        "$ADD_EDIT?$PHRASE_ID_ARG={$PHRASE_ID_ARG}&$GROUP_ID_ARG={$GROUP_ID_ARG}"
 
-    fun addEditRoute(phraseId: String? = null): String {
-        return if (phraseId == null) {
-            ADD_EDIT
-        } else {
-            "$ADD_EDIT?$PHRASE_ID_ARG=$phraseId"
+    fun addEditRoute(phraseId: String? = null, groupId: String? = null): String {
+        val queryParams = buildList {
+            phraseId?.let {
+                add("$PHRASE_ID_ARG=${Uri.encode(it)}")
+            }
+            groupId?.let {
+                add("$GROUP_ID_ARG=${Uri.encode(it)}")
+            }
         }
+
+        return if (queryParams.isEmpty()) ADD_EDIT else "$ADD_EDIT?${queryParams.joinToString("&")}"
     }
 }
 

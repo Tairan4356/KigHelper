@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -164,8 +165,8 @@ fun KigHelperApp(
                         onDelete = viewModel::deletePhrase,
                         onMove = { updatedList -> viewModel.updatePhrasesOrder(updatedList) },
                         onBack = { navController.popBackStack() },
-                        onNavigateToAdd = {
-                            navController.navigate(AppRoutes.addEditRoute())
+                        onNavigateToAdd = { groupId ->
+                            navController.navigate(AppRoutes.addEditRoute(groupId = groupId))
                         },
                         onNavigateToEdit = { id ->
                             navController.navigate(AppRoutes.addEditRoute(id))
@@ -186,14 +187,28 @@ fun KigHelperApp(
 
                 composable(
                     route = AppRoutes.ADD_EDIT_PATTERN,
-                    arguments = listOf(navArgument(AppRoutes.PHRASE_ID_ARG) { nullable = true })
+                    arguments = listOf(
+                        navArgument(AppRoutes.PHRASE_ID_ARG) {
+                            nullable = true
+                            type = NavType.StringType
+                            defaultValue = null
+                        },
+                        navArgument(AppRoutes.GROUP_ID_ARG) {
+                            nullable = true
+                            type = NavType.StringType
+                            defaultValue = null
+                        }
+                    )
                 ) { backStackEntry ->
                     val phraseId = backStackEntry.arguments?.getString(AppRoutes.PHRASE_ID_ARG)
+                    val initialGroupId =
+                        backStackEntry.arguments?.getString(AppRoutes.GROUP_ID_ARG)
 
                     AddEditPhraseScreen(
                         phrase = viewModel.findPhraseById(phraseId),
                         isEditMode = phraseId != null,
                         groups = viewModel.groupList,
+                        initialGroupId = initialGroupId,
                         onSave = { label, speech, groupId ->
                             if (phraseId == null) {
                                 viewModel.addPhrase(label, speech, groupId)
