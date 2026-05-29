@@ -1,10 +1,8 @@
+// 音色设置界面：展示设置项并把模型、预设相关实际操作委托给后端动作函数。
 package com.ziegler.kighelper.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.FileProvider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,8 +61,13 @@ import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.VoiceProfile
 import com.ziegler.kighelper.data.VoiceEngineType
 import com.ziegler.kighelper.ui.VoiceViewModel
-import com.ziegler.kighelper.ui.VoicePresetImportResult
-import com.ziegler.kighelper.utils.ModelInstallResult
+import com.ziegler.kighelper.ui.screens.voice.ModelInstallAction
+import com.ziegler.kighelper.ui.screens.voice.deleteVoiceModel
+import com.ziegler.kighelper.ui.screens.voice.downloadModelArchive
+import com.ziegler.kighelper.ui.screens.voice.importModelArchive
+import com.ziegler.kighelper.ui.screens.voice.importVoicePresetConfig
+import com.ziegler.kighelper.ui.screens.voice.installRemoteVoiceModel
+import com.ziegler.kighelper.ui.screens.voice.shareVoicePresetFile
 import com.ziegler.kighelper.utils.OfflineVoiceModelInstaller
 import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
@@ -72,7 +75,6 @@ import com.ziegler.kighelper.utils.OfflineVoiceModelStatus
 import com.ziegler.kighelper.utils.RemoteVoiceModelCatalogEntry
 import com.ziegler.kighelper.utils.KigvpkModelParams
 import com.ziegler.kighelper.utils.KigvpkParamsManager
-import java.io.File
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -104,12 +106,12 @@ fun VoiceSettingsScreen(
             ?: modelStatuses.firstOrNull()
     val isKigvpk = activeModelStatus?.pack?.format == OfflineVoiceModelFormat.KIGVPK
     val kigvpkParamsManager = remember(context) { KigvpkParamsManager(context) }
-    var kigvpkParams by remember(modelRefreshKey, activeModelStatus?.pack?.id) {
-        mutableStateOf(activeModelStatus?.let {
+    val kigvpkParams = remember(modelRefreshKey, activeModelStatus?.pack?.id) {
+        activeModelStatus?.let {
             kigvpkParamsManager.loadDefaults(
                 it.directory, it.pack.id
             )
-        } ?: KigvpkModelParams())
+        } ?: KigvpkModelParams()
     }
     val displayNoiseScale = profile.kigvpkNoiseScale ?: kigvpkParams.noiseScale
     val displayNoiseW = profile.kigvpkNoiseW ?: kigvpkParams.noiseW
@@ -119,46 +121,26 @@ fun VoiceSettingsScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    ) { uri ->
         if (uri != null) {
             showModelPicker = true
             isInstalling = true
             installProgress = 0f
             coroutineScope.launch {
                 installMessage = "正在导入模型压缩包（可能需要数分钟）"
-                val result = modelInstaller.importFromArchiveFile(
-                    archiveUri = uri, format = selectedImportFormat,
-                    progressCallback = { installProgress = it }
+                val result = importModelArchive(
+                    archiveUri = uri,
+                    format = selectedImportFormat,
+                    installer = modelInstaller,
+                    modelManager = modelManager,
+                    viewModel = viewModel,
+                    currentSpeakerId = profile.speakerId,
+                    onProgress = { installProgress = it }
                 )
-                installMessage = when (result) {
-                    is ModelInstallResult.Success -> {
-                        result.modelId?.let { modelId ->
-                            val status = modelManager.getModelStatus(modelId)
-                            viewModel.updateActiveProfile(
-                                engine = VoiceEngineType.OFFLINE_NEURAL,
-                                modelId = modelId,
-                                speakerId = profile.speakerId.coerceIn(
-                                    0, (status?.pack?.speakerCount ?: 1) - 1
-                                )
-                            )
-                        }
-                        result.message
-                    }
-
-                    is ModelInstallResult.Partial -> {
-                        result.modelId?.let { modelId ->
-                            viewModel.updateActiveProfile(
-                                engine = VoiceEngineType.OFFLINE_NEURAL,
-                                modelId = modelId,
-                                speakerId = 0
-                            )
-                        }
-                        result.message
-                    }
-
-                    is ModelInstallResult.Failure -> result.message
+                installMessage = result.message
+                if (result.shouldRefreshModels) {
+                    modelRefreshKey++
                 }
-                modelRefreshKey++
                 isInstalling = false
             }
         } else {
@@ -168,19 +150,14 @@ fun VoiceSettingsScreen(
     }
     val configImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
+    ) { uri ->
         if (uri != null) {
-            presetMessage = when (val content = context.readTextFromUri(uri)) {
-                null -> "配置文件读取失败"
-                else -> when (val result = viewModel.importProfile(content, modelManager)) {
-                    VoicePresetImportResult.Success -> "配置文件已导入"
-                    VoicePresetImportResult.InvalidFile -> "配置文件无效"
-                    is VoicePresetImportResult.MissingModel -> {
-                        val modelName = result.modelName ?: result.modelId ?: "未知模型"
-                        "预设引用的端侧模型未安装或不可用：$modelName。请先安装对应模型后再导入。"
-                    }
-                }
-            }
+            presetMessage = importVoicePresetConfig(
+                context = context,
+                uri = uri,
+                viewModel = viewModel,
+                modelManager = modelManager
+            )
         }
     }
 
@@ -407,36 +384,17 @@ fun VoiceSettingsScreen(
                     installProgress = 0f
                     coroutineScope.launch {
                         installMessage = "正在下载并安装模型包..."
-                        val result = modelInstaller.downloadAndInstallArchive(
-                            url = downloadUrl, format = selectedImportFormat,
-                            progressCallback = { installProgress = it }
+                        val result = downloadModelArchive(
+                            url = downloadUrl,
+                            format = selectedImportFormat,
+                            installer = modelInstaller,
+                            viewModel = viewModel,
+                            onProgress = { installProgress = it }
                         )
-                        installMessage = when (result) {
-                            is ModelInstallResult.Success -> {
-                                result.modelId?.let { modelId ->
-                                    viewModel.updateActiveProfile(
-                                        engine = VoiceEngineType.OFFLINE_NEURAL,
-                                        modelId = modelId,
-                                        speakerId = 0
-                                    )
-                                }
-                                result.message
-                            }
-
-                            is ModelInstallResult.Partial -> {
-                                result.modelId?.let { modelId ->
-                                    viewModel.updateActiveProfile(
-                                        engine = VoiceEngineType.OFFLINE_NEURAL,
-                                        modelId = modelId,
-                                        speakerId = 0
-                                    )
-                                }
-                                result.message
-                            }
-
-                            is ModelInstallResult.Failure -> result.message
+                        installMessage = result.message
+                        if (result.shouldRefreshModels) {
+                            modelRefreshKey++
                         }
-                        modelRefreshKey++
                         isInstalling = false
                     }
                 }
@@ -492,21 +450,15 @@ fun VoiceSettingsScreen(
                 showModelPicker = false
             },
             onDeleteModel = { status ->
-                val deleted = modelManager.deleteModel(status.pack.id)
-                if (deleted) {
-                    installMessage = "${status.pack.name} 已删除"
+                val result = deleteVoiceModel(
+                    status = status,
+                    modelManager = modelManager,
+                    viewModel = viewModel,
+                    activeModelId = profile.modelId
+                )
+                installMessage = result.message
+                if (result.shouldRefreshModels) {
                     modelRefreshKey++
-                    if (profile.modelId == status.pack.id) {
-                        val fallback = modelManager.getModelStatuses()
-                            .firstOrNull { it.pack.id != status.pack.id }
-                        viewModel.updateActiveProfile(
-                            engine = VoiceEngineType.OFFLINE_NEURAL,
-                            modelId = fallback?.pack?.id,
-                            speakerId = 0
-                        )
-                    }
-                } else {
-                    installMessage = "${status.pack.name} 删除失败"
                 }
             },
             onInstall = { entry ->
@@ -514,26 +466,17 @@ fun VoiceSettingsScreen(
                 installProgress = 0f
                 coroutineScope.launch {
                     installMessage = "正在下载并安装模型包..."
-                    val result = modelInstaller.installRemoteModel(
-                        entry,
-                        progressCallback = { installProgress = it }
+                    val result = installRemoteVoiceModel(
+                        entry = entry,
+                        installer = modelInstaller,
+                        viewModel = viewModel,
+                        currentSpeakerId = profile.speakerId,
+                        onProgress = { installProgress = it }
                     )
-                    installMessage = when (result) {
-                        is ModelInstallResult.Success -> {
-                            viewModel.updateActiveProfile(
-                                engine = VoiceEngineType.OFFLINE_NEURAL,
-                                modelId = entry.pack.id,
-                                speakerId = profile.speakerId.coerceIn(
-                                    0, entry.pack.speakerCount - 1
-                                )
-                            )
-                            result.message
-                        }
-
-                        is ModelInstallResult.Partial -> result.message
-                        is ModelInstallResult.Failure -> result.message
+                    installMessage = result.message
+                    if (result.shouldRefreshModels) {
+                        modelRefreshKey++
                     }
-                    modelRefreshKey++
                     isInstalling = false
                 }
             })
@@ -917,11 +860,6 @@ private fun ModelComplianceDialog(
     })
 }
 
-private sealed class ModelInstallAction {
-    data object ImportArchive : ModelInstallAction()
-    data object DownloadArchive : ModelInstallAction()
-}
-
 @Composable
 private fun VoicePresetSummaryCard(
     activeProfile: VoiceProfile, importMessage: String?, onClick: () -> Unit
@@ -1066,33 +1004,6 @@ private fun VoiceSlider(
             value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps
         )
     }
-}
-
-private fun android.content.Context.shareVoicePresetFile(title: String, content: String) {
-    val safeName =
-        title.replace(Regex("[^A-Za-z0-9_\\-\\u4e00-\\u9fa5]"), "_").ifBlank { "voice_preset" }
-    val file = File(cacheDir, "voice_presets/$safeName.kigvoice.json").apply {
-        parentFile?.mkdirs()
-        writeText(content, Charsets.UTF_8)
-    }
-    val uri = FileProvider.getUriForFile(
-        this, "$packageName.fileprovider", file
-    )
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "application/json"
-        putExtra(Intent.EXTRA_SUBJECT, "KigHelper 音色预设：$title")
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    startActivity(Intent.createChooser(intent, "分享音色配置文件"))
-}
-
-private fun android.content.Context.readTextFromUri(uri: Uri): String? {
-    return runCatching {
-        contentResolver.openInputStream(uri)?.use { input ->
-            input.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        }
-    }.getOrNull()
 }
 
 private const val PREVIEW_TEXT = "这是当前自定义音色的试听效果。"

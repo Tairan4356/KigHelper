@@ -1,8 +1,7 @@
+// 自由输入界面编排：手动输入文字、适配输入法空间并触发朗读。
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +45,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -93,15 +93,15 @@ fun InputScreen(
 
     val actionBottomPadding = maxOf(imeBottomPadding, contentPadding.calculateBottomPadding())
 
-    val screenWidth = configuration.screenWidthDp
+    val screenWidth = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     // 动态计算缩放系数与字号
     val (fontSize, lineHeight) = remember(screenWidth, text.length, isLandscape) {
         // 基于屏幕宽度分类设定基础缩放系数
         val baseScale = when {
-            screenWidth < 360 -> 0.85f   // 超小屏手机
-            screenWidth < 600 -> 1.0f    // 标准手机
-            screenWidth < 840 -> 1.25f   // 折叠屏或小平板
-            else -> 1.5f                 // 大屏平板
+            screenWidth < 360.dp -> 0.85f
+            screenWidth < 600.dp -> 1.0f
+            screenWidth < 840.dp -> 1.25f
+            else -> 1.5f
         }
 
         val rawSize = when {
