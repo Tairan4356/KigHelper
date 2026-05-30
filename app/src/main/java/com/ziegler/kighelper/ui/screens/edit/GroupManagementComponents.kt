@@ -25,11 +25,16 @@ import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.PhraseGroup
 
 /**
- * 显示所有分组的筛选 Chip，并把选中分组 id 回传给管理页。
+ * 分组筛选组件，使用 FlowRow 实现横向流式布局，适应不同屏幕宽度。
+ *
+ * @param groups 可选的分组列表
+ * @param selectedGroupId 当前选中的分组 id，用于设置 FilterChip 的选中状态
+ * @param onGroupSelected 分组选择事件回调，参数为被选中的分组 id
+ * @param modifier 可选的修饰符，用于调整组件布局
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun GroupFilterRow(
+fun GroupFilterRow(
     groups: List<PhraseGroup>,
     selectedGroupId: String,
     onGroupSelected: (String) -> Unit,
@@ -43,25 +48,39 @@ internal fun GroupFilterRow(
         groups.forEach { group ->
             FilterChip(
                 selected = group.id == selectedGroupId,
-                onClick = { onGroupSelected(group.id) },
-                label = { Text(group.name) }
+                onClick = {
+                    onGroupSelected(group.id)
+                },
+                label = {
+                    Text(group.name)
+                }
             )
         }
     }
 }
 
 /**
- * 新建分组弹窗，负责输入校验和同名分组提示。
+ * 新建分组对话框，包含输入框和重复名称检查。
+ *
+ * @param existingGroupNames 已有分组名称列表，用于检查重复
+ * @param onDismiss 取消事件回调
+ * @param onConfirm 确认事件回调，参数为新分组名称
  */
 @Composable
-internal fun AddGroupDialog(
+fun AddGroupDialog(
     existingGroupNames: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var name by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable {
+        mutableStateOf("")
+    }
+
     val normalizedName = name.trim()
-    val isDuplicate = existingGroupNames.any { it.equals(normalizedName, ignoreCase = true) }
+
+    val isDuplicate = existingGroupNames.any {
+        it.equals(normalizedName, ignoreCase = true)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -71,12 +90,18 @@ internal fun AddGroupDialog(
                 contentDescription = null
             )
         },
-        title = { Text("新建分组") },
+        title = {
+            Text("新建分组")
+        },
         text = {
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
-                label = { Text("分组名称") },
+                onValueChange = {
+                    name = it
+                },
+                label = {
+                    Text("分组名称")
+                },
                 isError = isDuplicate,
                 supportingText = {
                     if (isDuplicate) {
@@ -89,7 +114,9 @@ internal fun AddGroupDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(normalizedName) },
+                onClick = {
+                    onConfirm(normalizedName)
+                },
                 enabled = normalizedName.isNotBlank() && !isDuplicate
             ) {
                 Text("创建")
@@ -104,13 +131,15 @@ internal fun AddGroupDialog(
 }
 
 /**
- * 删除分组确认弹窗，明确提示组内短语会回到默认分组。
+ * 删除分组确认对话框，提示用户删除分组后短语会移动到默认分组。
+ *
+ * @param group 要删除的分组对象，用于显示分组名称
+ * @param onDismiss 取消事件回调
+ * @param onConfirm 确认事件回调，执行删除操作
  */
 @Composable
 internal fun DeleteGroupDialog(
-    group: PhraseGroup,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    group: PhraseGroup, onDismiss: () -> Unit, onConfirm: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -128,6 +157,5 @@ internal fun DeleteGroupDialog(
             TextButton(onClick = onDismiss) {
                 Text("取消")
             }
-        }
-    )
+        })
 }

@@ -18,6 +18,7 @@ foundation = "1.11.1"
 commonsCompress = "1.28.0"
 reorderable = "3.1.0"
 onnxruntimeAndroid = "1.24.3"
+material = "1.14.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -47,6 +48,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3",
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -26,76 +26,21 @@ import com.ziegler.kighelper.data.Phrase
  */
 @Composable
 internal fun AddPhraseDialog(
-    onDismiss: () -> Unit,
-    onSave: (label: String, speech: String) -> Unit
+    onDismiss: () -> Unit, onSave: (label: String, speech: String) -> Unit
 ) {
     var label by rememberSaveable { mutableStateOf("") }
     var speech by rememberSaveable { mutableStateOf("") }
     val canSave = label.isNotBlank() && speech.isNotBlank()
 
-    PhraseFormDialog(
-        title = "添加短语",
-        confirmText = "保存",
-        icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
-        label = label,
-        speech = speech,
-        canSave = canSave,
-        onLabelChange = { label = it },
-        onSpeechChange = { speech = it },
-        onDismiss = onDismiss,
-        onSave = { onSave(label.trim(), speech.trim()) }
-    )
-}
-
-/**
- * 在主界面短语网格中长按后，用于更新已有短语的弹窗。
- */
-@Composable
-internal fun EditPhraseDialog(
-    phrase: Phrase,
-    onDismiss: () -> Unit,
-    onSave: (label: String, speech: String) -> Unit
-) {
-    var label by rememberSaveable(phrase.id) { mutableStateOf(phrase.label) }
-    var speech by rememberSaveable(phrase.id) { mutableStateOf(phrase.speech) }
-    val canSave = label.isNotBlank() && speech.isNotBlank()
-
-    PhraseFormDialog(
-        title = "编辑短语",
-        confirmText = "保存",
-        icon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
-        label = label,
-        speech = speech,
-        canSave = canSave,
-        onLabelChange = { label = it },
-        onSpeechChange = { speech = it },
-        onDismiss = onDismiss,
-        onSave = { onSave(label.trim(), speech.trim()) }
-    )
-}
-
-@Composable
-private fun PhraseFormDialog(
-    title: String,
-    confirmText: String,
-    icon: @Composable () -> Unit,
-    label: String,
-    speech: String,
-    canSave: Boolean,
-    onLabelChange: (String) -> Unit,
-    onSpeechChange: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit
-) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = icon,
-        title = { Text(title) },
+        icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
+        title = { Text("添加短语") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = label,
-                    onValueChange = onLabelChange,
+                    onValueChange = { label = it },
                     label = { Text("按钮标签") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -103,7 +48,7 @@ private fun PhraseFormDialog(
 
                 OutlinedTextField(
                     value = speech,
-                    onValueChange = onSpeechChange,
+                    onValueChange = { speech = it },
                     label = { Text("播报内容") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3
@@ -112,16 +57,62 @@ private fun PhraseFormDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = onSave,
-                enabled = canSave
+                onClick = { onSave(label.trim(), speech.trim()) }, enabled = canSave
             ) {
-                Text(confirmText)
+                Text("保存")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("取消")
             }
-        }
-    )
+        })
+}
+
+/**
+ * 在主界面短语网格中长按后，用于更新已有短语的弹窗。
+ */
+@Composable
+internal fun EditPhraseDialog(
+    phrase: Phrase, onDismiss: () -> Unit, onSave: (label: String, speech: String) -> Unit
+) {
+    var label by rememberSaveable(phrase.id) { mutableStateOf(phrase.label) }
+    var speech by rememberSaveable(phrase.id) { mutableStateOf(phrase.speech) }
+    val canSave = label.isNotBlank() && speech.isNotBlank()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
+        title = { Text("编辑短语") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text("按钮标签") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = speech,
+                    onValueChange = { speech = it },
+                    label = { Text("播报内容") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(label.trim(), speech.trim()) }, enabled = canSave
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        })
 }

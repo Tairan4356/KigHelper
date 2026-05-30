@@ -98,15 +98,15 @@ fun InputScreen(
     // 动态计算缩放系数与字号
     val baseFontSize = when {
         smallestScreenWidth < 360 -> {
-            if (text.length > 20) 24.sp else 32.sp
+            if (text.length > 20) 32.sp else 56.sp
         }
 
         smallestScreenWidth < 600 -> {
-            if (text.length > 20) 32.sp else 48.sp
+            if (text.length > 20) 56.sp else 72.sp
         }
 
         smallestScreenWidth < 720 -> {
-            if (text.length > 20) 56.sp else 84.sp
+            if (text.length > 20) 72.sp else 84.sp
         }
 
         else -> {

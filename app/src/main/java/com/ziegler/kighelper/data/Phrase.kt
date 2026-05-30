@@ -9,7 +9,7 @@ data class PhraseGroup(
 ) {
     companion object {
         const val DEFAULT_ID = "default"
-        const val DEFAULT_NAME = "常用"
+        const val DEFAULT_NAME = "默认分组"
     }
 }
 

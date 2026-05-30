@@ -39,8 +39,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 
 /**
- * 应用导航根容器。
- * 负责 NavHost、响应式导航栏，以及页面间的事件分发。
+ * 应用的主入口 Composable，负责设置导航和整体布局。
+ * @param windowSize 当前窗口的大小分类，用于响应式布局。
+ * @param viewModel 负责管理短语数据和相关逻辑的 ViewModel。
+ * @param voiceViewModel 负责管理语音设置的 ViewModel。
+ * @param onSpeak 当需要朗读文本时调用的回调函数。
+ * @param onStop 当需要停止朗读时调用的回调函数。
+ * @param onPhraseSpoken 当一个短语被朗读后调用的回调函数，默认为空实现。
  */
 @Composable
 fun KigHelperApp(
@@ -136,7 +141,6 @@ fun KigHelperApp(
                             )
                         },
                         onAddPhrase = viewModel::addPhrase,
-                        onDeletePhrase = viewModel::deletePhrase,
                         onUpdatePhrase = { phrase, label, speech ->
                             viewModel.updatePhrase(phrase.id, label, speech)
                         })
