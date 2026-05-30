@@ -1,8 +1,7 @@
+// 自由输入界面编排：手动输入文字、适配输入法空间并触发朗读。
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +45,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -95,7 +95,7 @@ fun InputScreen(
 
     val smallestScreenWidth = configuration.smallestScreenWidthDp
     // 动态计算缩放系数与字号
-    val baseFontSize = when {
+    val fontSize = when {
         smallestScreenWidth < 360 -> {
             if (text.length > 20) 24.sp else 32.sp
         }
@@ -112,7 +112,7 @@ fun InputScreen(
             if (text.length > 20) 80.sp else 110.sp
         }
     }
-    val lineHeight = baseFontSize * 1.15f
+    val lineHeight = fontSize * 1.15f
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -129,7 +129,7 @@ fun InputScreen(
                 .imePadding()
                 .focusRequester(focusRequester),
             textStyle = MaterialTheme.typography.displayLarge.copy(
-                fontSize = baseFontSize,
+                fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = lineHeight,
                 letterSpacing = 0.sp,
@@ -153,7 +153,7 @@ fun InputScreen(
                         Text(
                             text = "请输入文字",
                             style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = baseFontSize,
+                                fontSize = fontSize,
                                 fontWeight = FontWeight.ExtraBold,
                                 lineHeight = lineHeight,
                                 letterSpacing = 0.sp

@@ -136,6 +136,7 @@ fun KigHelperApp(
                             )
                         },
                         onAddPhrase = viewModel::addPhrase,
+                        onDeletePhrase = viewModel::deletePhrase,
                         onUpdatePhrase = { phrase, label, speech ->
                             viewModel.updatePhrase(phrase.id, label, speech)
                         })
@@ -252,4 +253,3 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection(
         AnimatedContentTransitionScope.SlideDirection.Left
     }
 }
-
