@@ -10,7 +10,6 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.google.android.material.color.MaterialColors
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
 import com.ziegler.kighelper.R.color.ic_launcher_background
@@ -120,11 +119,11 @@ object NotificationHelper {
         }
 
         // 获取动态主题颜色（如果可用），否则使用默认颜色
-        val dynamicPrimaryColor = MaterialColors.getColor(
-            context,
-            com.google.android.material.R.attr.colorOnPrimary,
-            ic_launcher_background
-        )
+        val dynamicPrimaryColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.getColor(context, android.R.color.system_accent1_600)
+        } else {
+            ContextCompat.getColor(context, R.color.ic_launcher_background)
+        }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_bubble)  // 使用音频图标

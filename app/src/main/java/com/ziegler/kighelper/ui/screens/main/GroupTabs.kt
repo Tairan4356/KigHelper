@@ -23,27 +23,20 @@ internal fun GroupTabs(
     onGroupSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (groupedSections.size <= 1) return
-
     SecondaryScrollableTabRow(
         selectedTabIndex = selectedGroupIndex,
         modifier = modifier.fillMaxWidth(),
         edgePadding = 16.dp,
-        divider = {}
-    ) {
+        divider = {}) {
         groupedSections.forEachIndexed { index, (group, _) ->
             val selected = selectedGroupIndex == index
-            Tab(
-                selected = selected,
-                onClick = { onGroupSelected(index) },
-                text = {
-                    Text(
-                        text = group.name,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
-            )
+            Tab(selected = selected, onClick = { onGroupSelected(index) }, text = {
+                Text(
+                    text = group.name,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    style = MaterialTheme.typography.titleSmall
+                )
+            })
         }
     }
 }
