@@ -43,13 +43,19 @@ import androidx.compose.ui.unit.sp
  * 展示区布局策略：普通横竖屏分别控制换行倾向，全屏模式允许更充分地使用空间。
  */
 internal enum class DisplaySurfaceLayoutMode {
-    Portrait,
-    Landscape,
-    Fullscreen
+    Portrait, Landscape, Fullscreen
 }
 
 /**
  * 以响应式字号显示当前 AAC 文本，并提供清除按钮。
+ *
+ * @param text 当前展示文本
+ * @param isSubtle 当前文本是否提示性（即默认提示语或用户输入但未提交的文本），提示性文本会降低不透明度
+ * @param scrollState 展示区滚动状态，由外部持有以在文本更新时保持滚动位置
+ * @param onClear 点击清除按钮的回调
+ * @param modifier 可选的修饰符
+ * @param layoutMode 展示区布局模式，影响字体大小计算和行数限制
+ * @param onClick 可选的点击回调，提供时展示区整体可点击
  */
 @Composable
 internal fun DisplaySurface(
@@ -71,8 +77,7 @@ internal fun DisplaySurface(
         shadowElevation = 4.dp
     ) {
         BoxWithConstraints(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
+            contentAlignment = Alignment.Center, modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
@@ -82,11 +87,9 @@ internal fun DisplaySurface(
             val contentPadding = layoutMode.contentPadding
 
             AnimatedContent(
-                targetState = text,
-                transitionSpec = {
+                targetState = text, transitionSpec = {
                     (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
-                },
-                label = "textAnimation"
+                }, label = "textAnimation"
             ) { targetText ->
                 val baseFontSize = rememberDisplayFontSize(
                     text = targetText,
@@ -97,22 +100,19 @@ internal fun DisplaySurface(
                 )
                 val lineHeight = baseFontSize * DisplayLineHeightMultiplier
 
-                val currentTextIsHint = targetText == "点击下面按钮文字在此显示" ||
-                        targetText == "先添加一个常用短语吧" ||
-                        (targetText == text && isSubtle)
+                val currentTextIsHint =
+                    targetText == "点击下面按钮文字在此显示" || targetText == "先添加一个常用短语吧" || (targetText == text && isSubtle)
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(contentPadding)
-                        .verticalScroll(scrollState),
-                    contentAlignment = Alignment.Center
+                        .verticalScroll(scrollState), contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = targetText,
                         style = displayTextStyle.copy(
-                            fontSize = baseFontSize,
-                            lineHeight = lineHeight
+                            fontSize = baseFontSize, lineHeight = lineHeight
                         ),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onPrimary.copy(
@@ -124,12 +124,10 @@ internal fun DisplaySurface(
 
             if (text.isNotEmpty()) {
                 IconButton(
-                    onClick = onClear,
-                    modifier = Modifier
+                    onClick = onClear, modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            CircleShape
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape
                         )
                 ) {
                     Icon(
@@ -145,6 +143,13 @@ internal fun DisplaySurface(
 
 /**
  * 通过 TextMeasurer 实测文本布局，并用二分搜索找到不溢出且换行合理的最大字号。
+ *
+ * @param text 待测量文本
+ * @param containerWidth 可用宽度
+ * @param containerHeight 可用高度
+ * @param baseStyle 字体样式基准，字号会在此基础上调整
+ * @param layoutMode 展示区布局模式，影响行数限制
+ * @return 适合在给定容器和布局模式下展示文本的最大字号
  */
 @Composable
 private fun rememberDisplayFontSize(
@@ -182,19 +187,13 @@ private fun rememberDisplayFontSize(
                 val candidate = (low + high) / 2f
                 val candidateSize = candidate.sp
                 val layoutResult = textMeasurer.measure(
-                    text = text,
-                    style = baseStyle.copy(
+                    text = text, style = baseStyle.copy(
                         fontSize = candidateSize,
                         lineHeight = candidateSize * DisplayLineHeightMultiplier
-                    ),
-                    constraints = Constraints(maxWidth = maxWidthPx)
+                    ), constraints = Constraints(maxWidth = maxWidthPx)
                 )
 
-                if (
-                    layoutResult.size.width <= maxWidthPx &&
-                    layoutResult.size.height <= maxHeightPx &&
-                    layoutResult.lineCount <= layoutRules.maxLineCount
-                ) {
+                if (layoutResult.size.width <= maxWidthPx && layoutResult.size.height <= maxHeightPx && layoutResult.lineCount <= layoutRules.maxLineCount) {
                     low = candidate
                 } else {
                     high = candidate

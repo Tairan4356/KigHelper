@@ -42,8 +42,7 @@ internal fun LoadingPhraseState(
  */
 @Composable
 internal fun EmptyPhraseState(
-    onAddClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onAddClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier

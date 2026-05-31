@@ -35,8 +35,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +54,11 @@ import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 
 /**
  * 自由输入界面：允许用户手动输入文字并朗读
+ *
+ * @param modifier 外部传入的修饰符
+ * @param contentPadding 来自父布局的内边距
+ * @param onSpeak 触发朗读的回调，传入当前文本
+ * @param onStop 触发停止朗读的回调
  */
 @Composable
 fun InputScreen(
@@ -97,15 +101,15 @@ fun InputScreen(
     // 动态计算缩放系数与字号
     val fontSize = when {
         smallestScreenWidth < 360 -> {
-            if (text.length > 20) 24.sp else 32.sp
+            if (text.length > 20) 32.sp else 56.sp
         }
 
         smallestScreenWidth < 600 -> {
-            if (text.length > 20) 32.sp else 48.sp
+            if (text.length > 20) 56.sp else 72.sp
         }
 
         smallestScreenWidth < 720 -> {
-            if (text.length > 20) 56.sp else 84.sp
+            if (text.length > 20) 72.sp else 84.sp
         }
 
         else -> {

@@ -34,7 +34,7 @@ import com.ziegler.kighelper.data.PhraseGroup
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun GroupFilterRow(
+internal fun GroupFilterRow(
     groups: List<PhraseGroup>,
     selectedGroupId: String,
     onGroupSelected: (String) -> Unit,
@@ -48,13 +48,8 @@ fun GroupFilterRow(
         groups.forEach { group ->
             FilterChip(
                 selected = group.id == selectedGroupId,
-                onClick = {
-                    onGroupSelected(group.id)
-                },
-                label = {
-                    Text(group.name)
-                }
-            )
+                onClick = { onGroupSelected(group.id) },
+                label = { Text(group.name) })
         }
     }
 }
@@ -67,67 +62,43 @@ fun GroupFilterRow(
  * @param onConfirm 确认事件回调，参数为新分组名称
  */
 @Composable
-fun AddGroupDialog(
-    existingGroupNames: List<String>,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+internal fun AddGroupDialog(
+    existingGroupNames: List<String>, onDismiss: () -> Unit, onConfirm: (String) -> Unit
 ) {
-    var name by rememberSaveable {
-        mutableStateOf("")
-    }
-
+    var name by rememberSaveable { mutableStateOf("") }
     val normalizedName = name.trim()
+    val isDuplicate = existingGroupNames.any { it.equals(normalizedName, ignoreCase = true) }
 
-    val isDuplicate = existingGroupNames.any {
-        it.equals(normalizedName, ignoreCase = true)
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Folder,
-                contentDescription = null
-            )
-        },
-        title = {
-            Text("新建分组")
-        },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                },
-                label = {
-                    Text("分组名称")
-                },
-                isError = isDuplicate,
-                supportingText = {
-                    if (isDuplicate) {
-                        Text("已经有同名分组")
-                    }
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(normalizedName)
-                },
-                enabled = normalizedName.isNotBlank() && !isDuplicate
-            ) {
-                Text("创建")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
+    AlertDialog(onDismissRequest = onDismiss, icon = {
+        Icon(
+            imageVector = Icons.Default.Folder, contentDescription = null
+        )
+    }, title = { Text("新建分组") }, text = {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("分组名称") },
+            isError = isDuplicate,
+            supportingText = {
+                if (isDuplicate) {
+                    Text("已经有同名分组")
+                }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }, confirmButton = {
+        TextButton(
+            onClick = { onConfirm(normalizedName) },
+            enabled = normalizedName.isNotBlank() && !isDuplicate
+        ) {
+            Text("创建")
         }
-    )
+    }, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
 }
 
 /**

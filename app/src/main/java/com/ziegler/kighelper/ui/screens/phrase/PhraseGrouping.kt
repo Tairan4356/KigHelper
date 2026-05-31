@@ -65,16 +65,12 @@ internal fun buildPhraseListWithGroupOrder(
 
     for (group in groups) {
         if (group.id == reorderedGroupId) {
-            result.addAll(
-                reorderedPhrases.map {
-                    it.copy(groupId = reorderedGroupId)
-                }
-            )
+            result.addAll(reorderedPhrases.map { it.copy(groupId = reorderedGroupId) })
         } else {
             result.addAll(
                 allPhrases.filter { phrase ->
                     phrase.id !in reorderedIds &&
-                            phrase.effectiveGroupId(knownGroupIds) == group.id
+                        phrase.effectiveGroupId(knownGroupIds) == group.id
                 }
             )
         }

@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
-import com.ziegler.kighelper.R.color.ic_launcher_background
 
 /**
  * 锁屏快捷通知工具 - 支持 Live Updates

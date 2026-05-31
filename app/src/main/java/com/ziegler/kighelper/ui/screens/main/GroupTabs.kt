@@ -15,6 +15,11 @@ import com.ziegler.kighelper.data.PhraseGroup
 
 /**
  * 为每个可见短语分组渲染一个标签，并高亮当前可见段落。
+ *
+ * @param groupedSections 已分组的短语列表，每个分组包含一个 [PhraseGroup] 和对应的短语列表。
+ * @param selectedGroupIndex 当前选中的分组索引。
+ * @param onGroupSelected 当用户点击标签时调用的回调函数，传递被选中的分组索引。
+ * @param modifier 可选的 [Modifier]，用于调整组件的布局和样式。
  */
 @Composable
 internal fun GroupTabs(
@@ -23,6 +28,8 @@ internal fun GroupTabs(
     onGroupSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (groupedSections.size <= 1) return
+
     SecondaryScrollableTabRow(
         selectedTabIndex = selectedGroupIndex,
         modifier = modifier.fillMaxWidth(),
