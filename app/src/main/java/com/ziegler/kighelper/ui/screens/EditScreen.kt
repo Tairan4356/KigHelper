@@ -2,7 +2,9 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -186,7 +188,9 @@ fun EditScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onNavigateToAdd,
+                onClick = {
+                    onNavigateToAdd(currentGroupId)
+                },
                 modifier = Modifier.padding(
                     start = outerStartPadding,
                     end = outerEndPadding,

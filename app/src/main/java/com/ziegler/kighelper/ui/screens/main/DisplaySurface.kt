@@ -80,14 +80,6 @@ internal fun DisplaySurface(
                 fontWeight = FontWeight.Bold
             )
             val contentPadding = layoutMode.contentPadding
-            val baseFontSize = rememberDisplayFontSize(
-                text = text,
-                containerWidth = maxWidth - contentPadding * 2,
-                containerHeight = maxHeight - contentPadding * 2,
-                baseStyle = displayTextStyle,
-                layoutMode = layoutMode
-            )
-            val lineHeight = baseFontSize * DisplayLineHeightMultiplier
 
             AnimatedContent(
                 targetState = text,
@@ -96,6 +88,19 @@ internal fun DisplaySurface(
                 },
                 label = "textAnimation"
             ) { targetText ->
+                val baseFontSize = rememberDisplayFontSize(
+                    text = targetText,
+                    containerWidth = maxWidth - contentPadding * 2,
+                    containerHeight = maxHeight - contentPadding * 2,
+                    baseStyle = displayTextStyle,
+                    layoutMode = layoutMode
+                )
+                val lineHeight = baseFontSize * DisplayLineHeightMultiplier
+
+                val currentTextIsHint = targetText == "点击下面按钮文字在此显示" ||
+                        targetText == "先添加一个常用短语吧" ||
+                        (targetText == text && isSubtle)
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -111,7 +116,7 @@ internal fun DisplaySurface(
                         ),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onPrimary.copy(
-                            alpha = if (isSubtle) 0.55f else 1f
+                            alpha = if (currentTextIsHint) 0.55f else 1f
                         )
                     )
                 }

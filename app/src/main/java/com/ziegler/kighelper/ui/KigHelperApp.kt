@@ -2,17 +2,22 @@ package com.ziegler.kighelper.ui
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -33,15 +38,12 @@ import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
 import com.ziegler.kighelper.ui.screens.ToolboxScreen
 import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 
 /**
  * 应用导航根容器。
  * 负责 NavHost、响应式导航栏，以及页面间的事件分发。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun KigHelperApp(
     windowSize: WindowSizeClass,
@@ -56,12 +58,10 @@ fun KigHelperApp(
     val currentRoute = navBackStackEntry?.destination?.route ?: AppRoutes.MAIN
 
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
-
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
-
     val isExpanded = windowSize.widthSizeClass != WindowWidthSizeClass.Compact
-    val density = LocalDensity.current
-    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
+    val isImeVisible = WindowInsets.isImeVisible
+
     val showBottomBar =
         showNavigation && !isExpanded && !(currentRoute == AppRoutes.INPUT && isImeVisible)
 
@@ -112,14 +112,21 @@ fun KigHelperApp(
                     )
                 }) {
                 composable(AppRoutes.MAIN) {
-                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val context = LocalContext.current
+
+                    val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
+                    val groups by viewModel.groupList.collectAsStateWithLifecycle()
+                    val isPhrasesLoading by viewModel.isPhrasesLoading.collectAsStateWithLifecycle()
+
+                    val displayState by viewModel.displayState.collectAsStateWithLifecycle()
+
                     MainScreen(
                         contentPadding = innerPadding,
-                        phrases = viewModel.phraseList,
-                        groups = viewModel.groupList,
-                        displayText = viewModel.displayText,
-                        isShowingInitialHint = viewModel.isShowingInitialHint,
-                        isPhrasesLoading = viewModel.isPhrasesLoading,
+                        phrases = phrases,
+                        groups = groups,
+                        displayText = displayState.text,
+                        isShowingInitialHint = displayState.isInitialHint,
+                        isPhrasesLoading = isPhrasesLoading,
                         isFullScreen = isFullScreen,
                         onFullScreenChange = { isFullScreen = it },
                         onPhraseClick = { phrase ->
@@ -159,10 +166,13 @@ fun KigHelperApp(
                 }
 
                 composable(AppRoutes.PHRASE_MANAGEMENT) {
+                    val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
+                    val groups by viewModel.groupList.collectAsStateWithLifecycle()
+
                     EditScreen(
                         contentPadding = innerPadding,
-                        phrases = viewModel.phraseList,
-                        groups = viewModel.groupList,
+                        phrases = phrases,
+                        groups = groups,
                         onDelete = viewModel::deletePhrase,
                         onMove = { updatedList -> viewModel.updatePhrasesOrder(updatedList) },
                         onBack = { navController.popBackStack() },
@@ -188,27 +198,25 @@ fun KigHelperApp(
 
                 composable(
                     route = AppRoutes.ADD_EDIT_PATTERN,
-                    arguments = listOf(
-                        navArgument(AppRoutes.PHRASE_ID_ARG) {
-                            nullable = true
-                            type = NavType.StringType
-                            defaultValue = null
-                        },
-                        navArgument(AppRoutes.GROUP_ID_ARG) {
-                            nullable = true
-                            type = NavType.StringType
-                            defaultValue = null
-                        }
-                    )
+                    arguments = listOf(navArgument(AppRoutes.PHRASE_ID_ARG) {
+                        nullable = true
+                        type = NavType.StringType
+                        defaultValue = null
+                    }, navArgument(AppRoutes.GROUP_ID_ARG) {
+                        nullable = true
+                        type = NavType.StringType
+                        defaultValue = null
+                    })
                 ) { backStackEntry ->
                     val phraseId = backStackEntry.arguments?.getString(AppRoutes.PHRASE_ID_ARG)
-                    val initialGroupId =
-                        backStackEntry.arguments?.getString(AppRoutes.GROUP_ID_ARG)
+                    val initialGroupId = backStackEntry.arguments?.getString(AppRoutes.GROUP_ID_ARG)
+
+                    val groups by viewModel.groupList.collectAsStateWithLifecycle()
 
                     AddEditPhraseScreen(
                         phrase = viewModel.findPhraseById(phraseId),
                         isEditMode = phraseId != null,
-                        groups = viewModel.groupList,
+                        groups = groups,
                         initialGroupId = initialGroupId,
                         onSave = { label, speech, groupId ->
                             if (phraseId == null) {

@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.gson)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.material)
     implementation(libs.okhttp)
     implementation(libs.commons.compress)
     implementation(libs.onnxruntime.android)

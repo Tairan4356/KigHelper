@@ -1,42 +1,36 @@
 package com.ziegler.kighelper.ui
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.ziegler.kighelper.data.DisplayState
 import com.ziegler.kighelper.data.Phrase
-import com.ziegler.kighelper.data.PhraseData
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.data.PhraseShare
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
  * 核心业务逻辑层，负责短语列表的加载、编辑和持久化。
  */
 class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
-    private val initialHint = "点击下面按钮文字在此显示"
-    private val _phraseList = mutableStateListOf<Phrase>()
-    private val _groupList = mutableStateListOf<PhraseGroup>()
+    private val _displayState = MutableStateFlow(DisplayState())
+    val displayState: StateFlow<DisplayState> = _displayState.asStateFlow()
 
     // 对 UI 暴露只读列表，避免页面直接修改业务状态
-    val phraseList: List<Phrase>
-        get() = _phraseList
+    private val _phraseList = MutableStateFlow<List<Phrase>>(emptyList())
+    val phraseList: StateFlow<List<Phrase>> = _phraseList.asStateFlow()
 
-    val groupList: List<PhraseGroup>
-        get() = _groupList
+    private val _groupList = MutableStateFlow<List<PhraseGroup>>(emptyList())
+    val groupList: StateFlow<List<PhraseGroup>> = _groupList.asStateFlow()
 
-    var isPhrasesLoading by mutableStateOf(true)
-        private set
+    private val _isPhrasesLoading = MutableStateFlow(true)
+    val isPhrasesLoading: StateFlow<Boolean> = _isPhrasesLoading.asStateFlow()
 
-    var displayText by mutableStateOf(initialHint)
-        private set
-
-    var isShowingInitialHint by mutableStateOf(true)
-        private set
+    private val _isShowingInitialHint = MutableStateFlow(true)
+    val isShowingInitialHint: StateFlow<Boolean> = _isShowingInitialHint.asStateFlow()
 
     init {
         loadPhrases()
@@ -44,15 +38,14 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
 
     private fun loadPhrases() {
         viewModelScope.launch {
-            isPhrasesLoading = true
-
+            _isPhrasesLoading.value = true
             try {
                 val groups = repository.getGroups()
                 val phrases = repository.getPhrases()
-                replaceGroups(ensureDefaultGroup(groups))
-                replacePhrases(phrases)
+                _groupList.value = ensureDefaultGroup(groups)
+                _phraseList.value = phrases
             } finally {
-                isPhrasesLoading = false
+                _isPhrasesLoading.value = false
             }
         }
     }
@@ -62,14 +55,14 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         val normalizedSpeech = speech.trim()
         if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
 
-        _phraseList.add(Phrase(label = normalizedLabel, speech = normalizedSpeech, groupId = groupId))
+        val newPhrase = Phrase(label = normalizedLabel, speech = normalizedSpeech, groupId = groupId)
+        _phraseList.value = _phraseList.value + newPhrase
         persistCurrentPhrases()
     }
 
     fun deletePhrase(phrase: Phrase) {
-        if (_phraseList.remove(phrase)) {
-            persistCurrentPhrases()
-        }
+        _phraseList.value = _phraseList.value - phrase
+        persistCurrentPhrases()
     }
 
     fun updatePhrase(id: String, newLabel: String, newSpeech: String, newGroupId: String? = null) {
@@ -77,106 +70,119 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         val normalizedSpeech = newSpeech.trim()
         if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
 
-        val index = _phraseList.indexOfFirst { it.id == id }
-        if (index != -1) {
-            _phraseList[index] = _phraseList[index].copy(
-                label = normalizedLabel,
-                speech = normalizedSpeech,
-                groupId = newGroupId ?: _phraseList[index].groupId
-            )
-            persistCurrentPhrases()
+        _phraseList.value = _phraseList.value.map { phrase ->
+            if (phrase.id == id) {
+                phrase.copy(
+                    label = normalizedLabel,
+                    speech = normalizedSpeech,
+                    groupId = newGroupId ?: phrase.groupId
+                )
+            } else {
+                phrase
+            }
         }
+        persistCurrentPhrases()
     }
 
     /**
      * 调整短语顺序
      */
     fun movePhrase(fromIndex: Int, toIndex: Int) {
+        val currentList = _phraseList.value.toMutableList()
         if (fromIndex == toIndex) return
-        if (fromIndex !in _phraseList.indices || toIndex !in _phraseList.indices) return
+        if (fromIndex !in currentList.indices || toIndex !in currentList.indices) return
 
-        val item = _phraseList.removeAt(fromIndex)
-        _phraseList.add(toIndex, item)
+        val item = currentList.removeAt(fromIndex)
+        currentList.add(toIndex, item)
+        _phraseList.value = currentList
 
         persistCurrentPhrases()
     }
 
     fun movePhraseToGroup(phraseId: String, targetGroupId: String) {
-        val index = _phraseList.indexOfFirst { it.id == phraseId }
-        if (index == -1) return
-        if (_phraseList[index].groupId == targetGroupId) return
-
-        _phraseList[index] = _phraseList[index].copy(groupId = targetGroupId)
+        _phraseList.value = _phraseList.value.map { phrase ->
+            if (phrase.id == phraseId) {
+                phrase.copy(groupId = targetGroupId)
+            } else {
+                phrase
+            }
+        }
         persistCurrentPhrases()
     }
 
     fun addGroup(name: String): Boolean {
         val normalizedName = name.trim()
         if (normalizedName.isEmpty()) return false
-        if (_groupList.any { it.name.equals(normalizedName, ignoreCase = true) }) return false
+        if (_groupList.value.any { it.name.equals(normalizedName, ignoreCase = true) }) return false
 
-        val maxOrder = _groupList.maxOfOrNull { it.order } ?: -1
-        _groupList.add(PhraseGroup(name = normalizedName, order = maxOrder + 1))
+        val maxOrder = _groupList.value.maxOfOrNull { it.order } ?: -1
+        _groupList.value = _groupList.value + PhraseGroup(name = normalizedName, order = maxOrder + 1)
         persistCurrentGroups()
         return true
     }
 
     fun deleteGroup(groupId: String) {
         if (groupId == PhraseGroup.DEFAULT_ID) return
-        if (_groupList.removeIf { it.id == groupId }) {
-            _phraseList.forEachIndexed { index, phrase ->
-                if (phrase.groupId == groupId) {
-                    _phraseList[index] = phrase.copy(groupId = PhraseGroup.DEFAULT_ID)
-                }
+
+        _groupList.value = _groupList.value.filter { it.id != groupId }
+        _phraseList.value = _phraseList.value.map { phrase ->
+            if (phrase.groupId == groupId) {
+                phrase.copy(groupId = PhraseGroup.DEFAULT_ID)
+            } else {
+                phrase
             }
-            persistCurrentGroups()
-            persistCurrentPhrases()
         }
+        persistCurrentGroups()
+        persistCurrentPhrases()
     }
 
     fun renameGroup(groupId: String, newName: String) {
         val normalizedName = newName.trim()
         if (normalizedName.isEmpty()) return
-        if (_groupList.any { it.id != groupId && it.name.equals(normalizedName, ignoreCase = true) }) return
+        if (_groupList.value.any { it.id != groupId && it.name.equals(normalizedName, ignoreCase = true) }) return
 
-        val index = _groupList.indexOfFirst { it.id == groupId }
-        if (index != -1) {
-            _groupList[index] = _groupList[index].copy(name = normalizedName)
-            persistCurrentGroups()
+        _groupList.value = _groupList.value.map { group ->
+            if (group.id == groupId) {
+                group.copy(name = normalizedName)
+            } else {
+                group
+            }
         }
+        persistCurrentGroups()
     }
 
     fun moveGroup(fromIndex: Int, toIndex: Int) {
+        val currentList = _groupList.value.toMutableList()
         if (fromIndex == toIndex) return
-        if (fromIndex !in _groupList.indices || toIndex !in _groupList.indices) return
+        if (fromIndex !in currentList.indices || toIndex !in currentList.indices) return
 
-        val item = _groupList.removeAt(fromIndex)
-        _groupList.add(toIndex, item)
+        val item = currentList.removeAt(fromIndex)
+        currentList.add(toIndex, item)
 
-        _groupList.forEachIndexed { index, group ->
-            _groupList[index] = group.copy(order = index)
+        _groupList.value = currentList.mapIndexed { index, group ->
+            group.copy(order = index)
         }
         persistCurrentGroups()
     }
 
     fun updateGroupsOrder(updatedGroups: List<PhraseGroup>) {
-        val currentGroupsById = _groupList.associateBy { it.id }
+        val currentGroupsById = _groupList.value.associateBy { it.id }
         val orderedGroups = updatedGroups
-            .mapNotNull { updated -> currentGroupsById[updated.id]?.copy(order = 0) }
+            .mapNotNull { updated -> currentGroupsById[updated.id] }
             .distinctBy { it.id }
             .toMutableList()
 
-        for (group in _groupList) {
+        for (group in _groupList.value) {
             if (orderedGroups.none { it.id == group.id }) {
                 orderedGroups.add(group)
             }
         }
 
-        orderedGroups.forEachIndexed { index, group ->
-            orderedGroups[index] = group.copy(order = index)
+        val finalizedList = orderedGroups.mapIndexed { index, group ->
+            group.copy(order = index)
         }
 
-        replaceGroups(ensureDefaultGroup(orderedGroups))
+        _groupList.value = ensureDefaultGroup(finalizedList)
         persistCurrentGroups()
     }
 
@@ -184,17 +190,21 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
      * 按 id 查找短语，供编辑页初始化表单使用
      */
     fun findPhraseById(id: String?): Phrase? {
-        return _phraseList.firstOrNull { it.id == id }
+        return _phraseList.value.firstOrNull { it.id == id }
     }
 
     fun showPhrase(phrase: Phrase) {
-        displayText = phrase.speech
-        isShowingInitialHint = false
+        _displayState.value = DisplayState(
+            text = phrase.speech,
+            isInitialHint = false
+        )
     }
 
     fun clearDisplayText() {
-        displayText = ""
-        isShowingInitialHint = false
+        _displayState.value = DisplayState(
+            text = "",
+            isInitialHint = false
+        )
     }
 
     /**
@@ -213,33 +223,19 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         return repository.getLastUsedPhrase()
     }
 
-    /**
-     * 恢复默认短语
-     */
-    fun resetToDefault() {
-        viewModelScope.launch {
-            isPhrasesLoading = true
-
-            try {
-                repository.resetPhrases()
-                replaceGroups(ensureDefaultGroup(repository.getGroups()))
-                replacePhrases(repository.getPhrases())
-            } finally {
-                isPhrasesLoading = false
-            }
-        }
-    }
-
     fun exportAll(): String {
-        return PhraseShare.export(_groupList.toList(), _phraseList.toList())
+        return PhraseShare.export(_groupList.value, _phraseList.value)
     }
 
     fun importData(content: String): Boolean {
         val data = PhraseShare.import(content) ?: return false
 
-        val existingGroupIds = _groupList.map { it.id }.toMutableSet()
-        val existingPhraseIds = _phraseList.map { it.id }.toMutableSet()
-        val existingGroupNames = _groupList.map { it.name }.toMutableSet()
+        val currentGroups = _groupList.value.toMutableList()
+        val currentPhrases = _phraseList.value.toMutableList()
+
+        val existingGroupIds = currentGroups.map { it.id }.toMutableSet()
+        val existingPhraseIds = currentPhrases.map { it.id }.toMutableSet()
+        val existingGroupNames = currentGroups.map { it.name }.toMutableSet()
 
         for (group in data.groups) {
             if (group.id in existingGroupIds) continue
@@ -249,7 +245,7 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
                 name = "${group.name} ($suffix)"
                 suffix++
             }
-            _groupList.add(group.copy(name = name))
+            currentGroups.add(group.copy(name = name))
             existingGroupIds.add(group.id)
             existingGroupNames.add(name)
         }
@@ -257,9 +253,12 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
         for (phrase in data.phrases) {
             if (phrase.id in existingPhraseIds) continue
             val targetGroupId = if (phrase.groupId in existingGroupIds) phrase.groupId else PhraseGroup.DEFAULT_ID
-            _phraseList.add(phrase.copy(groupId = targetGroupId))
+            currentPhrases.add(phrase.copy(groupId = targetGroupId))
             existingPhraseIds.add(phrase.id)
         }
+
+        _groupList.value = currentGroups
+        _phraseList.value = currentPhrases
 
         persistCurrentGroups()
         persistCurrentPhrases()
@@ -270,27 +269,17 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
      * 将当前内存中的列表同步到持久化存储
      */
     private fun persistCurrentPhrases() {
-        val snapshot = _phraseList.toList()
+        val snapshot = _phraseList.value
         viewModelScope.launch {
             repository.savePhrases(snapshot)
         }
     }
 
     private fun persistCurrentGroups() {
-        val snapshot = _groupList.toList()
+        val snapshot = _groupList.value
         viewModelScope.launch {
             repository.saveGroups(snapshot)
         }
-    }
-
-    private fun replacePhrases(phrases: List<Phrase>) {
-        _phraseList.clear()
-        _phraseList.addAll(phrases)
-    }
-
-    private fun replaceGroups(groups: List<PhraseGroup>) {
-        _groupList.clear()
-        _groupList.addAll(groups)
     }
 
     private fun ensureDefaultGroup(groups: List<PhraseGroup>): List<PhraseGroup> {
@@ -305,23 +294,7 @@ class AACViewModel(private val repository: PhraseRepository) : ViewModel() {
      * 更新全部短语的排列顺序与分组合规性（用于拖拽排序后的统一同步）
      */
     fun updatePhrasesOrder(updatedPhrases: List<Phrase>) {
-        _phraseList.clear()
-        _phraseList.addAll(updatedPhrases)
+        _phraseList.value = updatedPhrases
         persistCurrentPhrases()
-    }
-}
-/**
- * ViewModel 工厂，负责把仓库实现注入到 ViewModel。
- */
-class AACViewModelFactory(
-    private val repository: PhraseRepository
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(AACViewModel::class.java)) {
-            return AACViewModel(repository) as T
-        }
-
-        throw IllegalArgumentException("未知的 ViewModel 类型: ${modelClass.name}")
     }
 }

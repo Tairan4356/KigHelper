@@ -12,8 +12,6 @@ import androidx.activity.viewModels
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
 import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
 import com.ziegler.kighelper.ui.AACViewModel
@@ -27,7 +25,6 @@ import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
 import com.ziegler.kighelper.utils.WindowConfig
-import kotlinx.coroutines.launch
 
 /**
  * 应用主入口
