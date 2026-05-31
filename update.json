@@ -1,6 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "1.1.1",
-  "updateContent": "1. 优化了页面布局\n2. 卡片管理拖动排序\n3. 更新了语音推理引擎\n4. 修复了已知问题\n感谢@yulexun和@iMallpa的代码贡献",
+  "versionCode": 5,
+  "versionName": "1.1.2",
+  "updateContent": "1. 短语支持分组管理\n2. 主页卡片可以长按编辑\n3. 支持KIGVPK格式声音模型\n4. 通知胶囊/状态栏上岛\n5. 优化了界面交互\n感谢@yulexun、@iMallpa、@LHT02和@1MLightyears的代码贡献\n\n因为作者疏忽导致原签名文件丢失，使用新版本需要卸载旧版本并重新安装，造成不便请谅解",
   "downloadUrl": "https://tairan4356.github.io/KigHelper/"
 }

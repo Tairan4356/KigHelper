@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KigHelper | 娃娃的神之嘴 - 专为 Kiger 设计的辅助沟通工具</title>
+    <link rel="icon" type="image/png" href="favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,13 +20,12 @@
     </style>
 </head>
 <body class="text-gray-800">
-
 <!-- Header / Hero Section -->
 <header class="hero-gradient text-white py-16 px-6 text-center">
     <div class="max-w-4xl mx-auto">
         <h1 class="text-5xl font-extrabold mb-4 tracking-tight text-white drop-shadow-sm">
-            KigHelper</h1>
-        <p class="text-2xl mb-6 opacity-95 font-light">娃娃的神之嘴</p>
+            KigHelper | 娃娃的神之嘴</h1>
+        <p class="text-2xl mb-6 opacity-95 font-light">送给 Kiger 的辅助沟通工具</p>
 
         <!-- Badges -->
         <div class="flex justify-center gap-3 mb-10 flex-wrap">
@@ -37,17 +37,17 @@
 
         <!-- Download Buttons -->
         <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <a href="https://github.com/Tairan4356/KigHelper/releases/download/v1.1.1/KigHelper-v1.1.1.apk"
+            <a href="https://github.com/Tairan4356/KigHelper/releases/download/v1.1.2/KigHelper-v1.1.2.apk"
                class="bg-white text-pink-500 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-transform shadow-xl flex items-center justify-center">
                 <i class="fas fa-download mr-3"></i>立即下载 (GitHub)
             </a>
-            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/v1.1.1/KigHelper-v1.1.1.apk"
+            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/v1.1.2/KigHelper-v1.1.2.apk"
                class="bg-pink-900/20 backdrop-blur text-white border border-white/30 px-8 py-4 rounded-2xl font-bold hover:bg-pink-900/30 transition flex items-center justify-center">
                 <i class="fas fa-rocket mr-3"></i>国内镜像 (Gitee)
             </a>
         </div>
 
-        <div class="flex justify-center gap-6">
+        <div class="flex justify-center gap-6 flex-wrap">
             <a href="https://github.com/Tairan4356/KigHelper"
                class="text-white/80 hover:text-white transition flex items-center">
                 <i class="fab fa-github mr-2 text-xl"></i> GitHub 仓库
@@ -55,6 +55,10 @@
             <a href="https://space.bilibili.com/353197379" target="_blank"
                class="text-white/80 hover:text-white transition flex items-center">
                 <i class="fab fa-bilibili mr-2 text-xl"></i> 作者 B 站
+            </a>
+            <a href="https://qm.qq.com/cgi-bin/qm/qr?k=1103795582" target="_blank"
+               class="text-white/80 hover:text-white transition flex items-center">
+                <i class="fab fa-qq mr-2 text-xl"></i> 内测反馈群 (1103795582)
             </a>
         </div>
     </div>
@@ -77,15 +81,15 @@
         <div class="flex flex-col md:flex-row items-center gap-12">
             <div class="flex-1">
                 <h2 class="text-3xl font-bold mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
-                    🌟 锁屏显示：最懂你的痛点</h2>
+                    🌟 锁屏显示：点亮屏幕直接使用</h2>
                 <p class="text-gray-600 leading-relaxed mb-6">
                     在变娃状态下，指纹识别和面部解锁几乎完全失效。在嘈杂的漫展或外景现场，频繁输入密码解锁手机极其痛苦。
                 </p>
                 <div class="bg-pink-50 p-6 rounded-2xl border border-pink-100">
                     <p class="font-bold text-pink-900 mb-2 italic text-lg">
-                        “无需解锁手机，点亮屏幕即可直接使用。”</p>
-                    <p class="text-sm text-pink-700">深度适配 <b>ShowWhenLocked</b>
-                        窗口管理，点击即呼应，真正做到“即开即说”。</p>
+                        “无需解锁，最懂你的痛点”</p>
+                    <p class="text-sm text-pink-700">
+                        请授予软件在锁屏时显示的权限，部分厂商可能需要悬浮窗或应用上层权限</p>
                 </div>
             </div>
             <div class="flex-1 flex justify-center gap-6">
@@ -100,6 +104,52 @@
     </div>
 </section>
 
+<!-- Core Highlight: Voice Model Import (Sherpa-Onnx) -->
+<section class="py-16 px-6 bg-pink-50/10 border-t border-b border-pink-100/50">
+    <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col md:flex-row-reverse items-center gap-12">
+            <div class="flex-1">
+                <h2 class="text-3xl font-bold mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
+                    🎙️ 离线语音：变娃也能开口说话</h2>
+                <p class="text-gray-600 leading-relaxed mb-6">
+                    无需联网，不依赖第三方云端，完全离线运行保护隐私。集成 <b>Sherpa-Onnx</b>
+                    引擎，支持在本地导入离线语音模型，赋予你的角色独特的发音质感。
+                </p>
+                <div class="space-y-4">
+                    <div class="bg-white p-5 rounded-2xl border border-pink-100 shadow-sm flex items-start gap-4">
+                        <div class="bg-pink-100 text-pink-500 rounded-lg p-2 mt-1">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-1">多维度声线微调</h4>
+                            <p class="text-sm text-gray-500 leading-relaxed">
+                                提供针对语调、语速、起伏度等多参数的细致调节，支持各种语流波动细节，还原理想的人设声音表现。</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-pink-100 shadow-sm flex items-start gap-4">
+                        <div class="bg-pink-100 text-pink-500 rounded-lg p-2 mt-1">
+                            <i class="fas fa-file-import"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-1">自由导入专属模型</h4>
+                            <p class="text-sm text-gray-500 leading-relaxed">兼容主流的 VITS
+                                模型。用户可自行放置 Onnx
+                                文件与配置文件，无需复杂编码，即可在应用中轻松加载私人定制的特制声线。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 flex justify-center">
+                <div class="screenshot-container">
+                    <img src="screenshots/voice.jpg" alt="语音设置与微调界面"
+                         class="screenshot-img"
+                         onerror="this.src='https://placehold.co/240x480?text=Voice+Settings+Screenshot'">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Features Grid -->
 <section class="py-16 px-6 bg-pink-50/30">
     <div class="max-w-5xl mx-auto text-center mb-12">
@@ -108,19 +158,21 @@
     <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
         <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-pink-100">
             <div class="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center text-pink-500 text-xl mb-6 mx-auto md:mx-0">
-                <i class="fas fa-comment-dots"></i>
+                <i class="fas fa-bell"></i>
             </div>
-            <h3 class="text-xl font-bold mb-3">一键呼应</h3>
-            <p class="text-gray-500 text-sm leading-relaxed">预设卡片一键触发巨型文字 +
-                语音朗读，在喧闹中也能清晰传达意图。</p>
+            <h3 class="text-xl font-bold mb-3">实况通知与状态栏上岛</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">
+                常驻后台时自动转换为静默实况通知，兼容各品牌系统的灵动岛、状态栏胶囊等设计，实现“秒回”应用。
+            </p>
         </div>
         <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-pink-100">
             <div class="bg-rose-100 w-12 h-12 rounded-xl flex items-center justify-center text-rose-500 text-xl mb-6 mx-auto md:mx-0">
-                <i class="fas fa-bell"></i>
+                <i class="fas fa-comment-dots"></i>
             </div>
-            <h3 class="text-xl font-bold mb-3">常驻通知</h3>
+            <h3 class="text-xl font-bold mb-3">短语分组</h3>
             <p class="text-gray-500 text-sm leading-relaxed">
-                后台运行时自动开启静默通知，通过下拉通知栏实现“秒回”应用。</p>
+                支持用户自定义短语分组，快速切换不同场景的常用语库，满足漫展、外景、日常等多样化沟通需求。
+            </p>
         </div>
         <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-pink-100">
             <div class="bg-fuchsia-100 w-12 h-12 rounded-xl flex items-center justify-center text-fuchsia-500 text-xl mb-6 mx-auto md:mx-0">
@@ -129,6 +181,39 @@
             <h3 class="text-xl font-bold mb-3">动态配色</h3>
             <p class="text-gray-500 text-sm leading-relaxed">基于 Material 3 开发，支持 Android 12+
                 动态壁纸取色，美观且现代化。</p>
+        </div>
+    </div>
+</section>
+
+<!-- Community Section -->
+<section class="py-16 px-6 bg-white">
+    <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-3xl font-bold mb-6 text-pink-600">
+            <i class="fas fa-users mr-3"></i>同好交流群
+        </h2>
+        <p class="text-gray-600 max-w-2xl mx-auto mb-10 text-sm md:text-base">
+            欢迎加入官方群组，这里可供 Kiger 同好交流使用体验、反馈新需求，或者分享和讨论你调制的专属角色离线语音声线。
+        </p>
+        <div class="flex flex-col md:flex-row items-center justify-center gap-10 bg-pink-50/50 p-8 rounded-3xl border border-pink-100 max-w-2xl mx-auto">
+            <div class="w-44 h-44 bg-white p-3 rounded-2xl shadow-sm border border-pink-100 flex flex-col justify-between items-center">
+                <img src="qrcode.jpg" alt="QQ群二维码"
+                     class="w-36 h-36 object-cover rounded-lg"
+                     onerror="this.src='https://placehold.co/150x150?text=QQ+Group+QR'">
+                <span class="text-[10px] text-gray-400 mt-1">手机 QQ 扫码加群</span>
+            </div>
+            <div class="text-left flex-1 space-y-4 w-full">
+                <div>
+                    <h4 class="font-bold text-gray-800 text-lg">KigHelper 内测反馈群</h4>
+                    <p class="text-sm text-gray-500 mt-1">
+                        群号：<span
+                            class="font-mono bg-pink-100 text-pink-600 px-2 py-0.5 rounded font-bold text-sm">1103795582</span>
+                    </p>
+                </div>
+                <a href="https://qm.qq.com/q/qqN05HHWDK" target="_blank"
+                   class="inline-flex items-center justify-center bg-pink-500 hover:bg-pink-600 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all text-sm w-full sm:w-auto">
+                    <i class="fab fa-qq mr-2"></i>一键唤醒 QQ 加群
+                </a>
+            </div>
         </div>
     </div>
 </section>
@@ -150,12 +235,70 @@
             </div>
             <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
                 <i class="far fa-circle text-pink-500"></i>
-                <span>短语分组与分类管理</span>
+                <span>自定义偏好设置</span>
             </div>
             <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
                 <i class="far fa-circle text-pink-500"></i>
-                <span>自定义偏好设置</span>
+                <span>多语言支持</span>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contributors Section -->
+<section class="py-16 px-6 bg-pink-50/20 border-t border-pink-100/30">
+    <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-3xl font-bold mb-6 text-pink-600">
+            <i class="fas fa-handshake mr-3"></i>特别鸣谢与贡献者
+        </h2>
+        <p class="text-gray-600 max-w-2xl mx-auto mb-10 text-sm">
+            感谢以下伙伴通过代码提交、问题反馈或意见建议等方式对 KigHelper 提供的无私帮助（排名不分先后）
+        </p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 max-w-4xl mx-auto justify-center">
+            <a href="https://github.com/Tairan4356" target="_blank"
+               class="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col items-center hover:scale-105 hover:border-pink-300 hover:shadow-md transition-all group">
+                <img src="https://github.com/Tairan4356.png" alt="Tairan4356"
+                     class="w-14 h-14 rounded-full border-2 border-pink-100 mb-2 object-cover"
+                     onerror="this.src='https://placehold.co/100x100?text=Kig'">
+                <h4 class="font-bold text-gray-700 text-xs group-hover:text-pink-500 transition-colors">
+                    Tairan4356</h4>
+            </a>
+
+            <a href="https://github.com/yulexun" target="_blank"
+               class="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col items-center hover:scale-105 hover:border-pink-300 hover:shadow-md transition-all group">
+                <img src="https://github.com/yulexun.png" alt="yulexun"
+                     class="w-14 h-14 rounded-full border-2 border-pink-100 mb-2 object-cover"
+                     onerror="this.src='https://placehold.co/100x100?text=User'">
+                <h4 class="font-bold text-gray-700 text-xs group-hover:text-pink-500 transition-colors">
+                    yulexun</h4>
+            </a>
+
+            <a href="https://github.com/iMallpa" target="_blank"
+               class="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col items-center hover:scale-105 hover:border-pink-300 hover:shadow-md transition-all group">
+                <img src="https://github.com/iMallpa.png" alt="iMallpa"
+                     class="w-14 h-14 rounded-full border-2 border-pink-100 mb-2 object-cover"
+                     onerror="this.src='https://placehold.co/100x100?text=User'">
+                <h4 class="font-bold text-gray-700 text-xs group-hover:text-pink-500 transition-colors">
+                    iMallpa</h4>
+            </a>
+
+            <a href="https://github.com/LHT02" target="_blank"
+               class="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col items-center hover:scale-105 hover:border-pink-300 hover:shadow-md transition-all group">
+                <img src="https://github.com/LHT02.png" alt="LHT02"
+                     class="w-14 h-14 rounded-full border-2 border-pink-100 mb-2 object-cover"
+                     onerror="this.src='https://placehold.co/100x100?text=User'">
+                <h4 class="font-bold text-gray-700 text-xs group-hover:text-pink-500 transition-colors">
+                    LHT02</h4>
+            </a>
+
+            <a href="https://github.com/1MLightyears" target="_blank"
+               class="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col items-center hover:scale-105 hover:border-pink-300 hover:shadow-md transition-all group">
+                <img src="https://github.com/1MLightyears.png" alt="1MLightyears"
+                     class="w-14 h-14 rounded-full border-2 border-pink-100 mb-2 object-cover"
+                     onerror="this.src='https://placehold.co/100x100?text=User'">
+                <h4 class="font-bold text-gray-700 text-xs group-hover:text-pink-500 transition-colors">
+                    1MLightyears</h4>
+            </a>
         </div>
     </div>
 </section>
