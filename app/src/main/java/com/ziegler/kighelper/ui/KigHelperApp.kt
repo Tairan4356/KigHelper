@@ -52,7 +52,7 @@ import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 @Composable
 fun KigHelperApp(
     windowSize: WindowSizeClass,
-    viewModel: AACViewModel,
+    viewModel: MainViewModel,
     voiceViewModel: VoiceViewModel,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,

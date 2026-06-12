@@ -14,8 +14,8 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
 import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
-import com.ziegler.kighelper.ui.AACViewModel
-import com.ziegler.kighelper.ui.AACViewModelFactory
+import com.ziegler.kighelper.ui.MainViewModel
+import com.ziegler.kighelper.ui.MainViewModelFactory
 import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.VoiceViewModel
 import com.ziegler.kighelper.ui.VoiceViewModelFactory
@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
     private val voiceProfileRepository by lazy {
         SharedPreferencesVoiceProfileRepository(applicationContext)
     }
-    private val viewModel: AACViewModel by viewModels {
-        AACViewModelFactory(phraseRepository)
+    private val viewModel: MainViewModel by viewModels {
+        MainViewModelFactory(phraseRepository)
     }
     private val voiceViewModel: VoiceViewModel by viewModels {
         VoiceViewModelFactory(voiceProfileRepository)
