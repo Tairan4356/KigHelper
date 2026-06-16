@@ -1,20 +1,25 @@
 package com.ziegler.kighelper.ui
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * 主 ViewModel，协调 PhraseViewModel、GroupViewModel 和 DisplayViewModel
+ * 使用 @HiltViewModel 注解，支持依赖注入
  */
-class MainViewModel(
-    private val phraseViewModel: PhraseViewModel,
-    private val groupViewModel: GroupViewModel,
-    private val displayViewModel: DisplayViewModel
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val phraseRepository: PhraseRepository
 ) : ViewModel() {
+
+    private val phraseViewModel = PhraseViewModel(phraseRepository)
+    private val groupViewModel = GroupViewModel(phraseRepository)
+    private val displayViewModel = DisplayViewModel()
 
     val phraseList get() = phraseViewModel.phraseList
     val groupList get() = groupViewModel.groupList
@@ -99,23 +104,5 @@ class MainViewModel(
         val groupsImported = groupViewModel.importGroups(content)
         val phrasesImported = phraseViewModel.importData(content, groupList.value)
         return groupsImported || phrasesImported
-    }
-}
-
-/**
- * MainViewModel 工厂
- */
-class MainViewModelFactory(
-    private val phraseRepository: PhraseRepository
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            val phraseViewModel = PhraseViewModel(phraseRepository)
-            val groupViewModel = GroupViewModel(phraseRepository)
-            val displayViewModel = DisplayViewModel()
-            return MainViewModel(phraseViewModel, groupViewModel, displayViewModel) as T
-        }
-        throw IllegalArgumentException("未知的 ViewModel 类型: ${modelClass.name}")
     }
 }

@@ -12,39 +12,33 @@ import androidx.activity.viewModels
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.content.ContextCompat
-import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
-import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
-import com.ziegler.kighelper.ui.MainViewModel
-import com.ziegler.kighelper.ui.MainViewModelFactory
 import com.ziegler.kighelper.ui.KigHelperApp
+import com.ziegler.kighelper.ui.MainViewModel
 import com.ziegler.kighelper.ui.VoiceViewModel
-import com.ziegler.kighelper.ui.VoiceViewModelFactory
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
 import com.ziegler.kighelper.utils.WindowConfig
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * 应用主入口
  * 负责：生命周期管理、权限申请、TTS 初始化、锁屏通知协调
+ * 使用 @AndroidEntryPoint 启用 Hilt 依赖注入
  */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private lateinit var ttsManager: TTSManager
+
+    @Inject
+    lateinit var ttsManager: TTSManager
+
     private var screenReceiverRegistered = false
-    private val phraseRepository by lazy {
-        SharedPreferencesPhraseRepository(applicationContext)
-    }
-    private val voiceProfileRepository by lazy {
-        SharedPreferencesVoiceProfileRepository(applicationContext)
-    }
-    private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory(phraseRepository)
-    }
-    private val voiceViewModel: VoiceViewModel by viewModels {
-        VoiceViewModelFactory(voiceProfileRepository)
-    }
+
+    private val viewModel: MainViewModel by viewModels()
+    private val voiceViewModel: VoiceViewModel by viewModels()
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -67,8 +61,6 @@ class MainActivity : ComponentActivity() {
         startService(Intent(this, TaskRemovedCleanupService::class.java))
         registerScreenReceiver()
         WindowConfig.setup(this) // 配置锁屏窗口权限
-
-        ttsManager = TTSManager(this)
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)

@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.DEFAULT_PROFILE_ID
 import com.ziegler.kighelper.data.VoiceEngineType
@@ -13,9 +12,16 @@ import com.ziegler.kighelper.data.VoicePresetShare
 import com.ziegler.kighelper.data.VoiceProfile
 import com.ziegler.kighelper.data.VoiceProfileRepository
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class VoiceViewModel(
+/**
+ * 语音设置 ViewModel
+ * 使用 @HiltViewModel 注解，支持依赖注入
+ */
+@HiltViewModel
+class VoiceViewModel @Inject constructor(
     private val repository: VoiceProfileRepository
 ) : ViewModel() {
     private val _profiles = mutableStateListOf<VoiceProfile>()
@@ -191,17 +197,4 @@ sealed class VoicePresetImportResult {
     data object Success : VoicePresetImportResult()
     data object InvalidFile : VoicePresetImportResult()
     data class MissingModel(val modelName: String?, val modelId: String?) : VoicePresetImportResult()
-}
-
-class VoiceViewModelFactory(
-    private val repository: VoiceProfileRepository
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(VoiceViewModel::class.java)) {
-            return VoiceViewModel(repository) as T
-        }
-
-        throw IllegalArgumentException("未知的 ViewModel 类型: ${modelClass.name}")
-    }
 }
