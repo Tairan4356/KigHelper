@@ -12,36 +12,39 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.R
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 锁屏快捷通知工具 - 支持 Live Updates
  * 负责创建静默通知，让用户在后台或锁屏时快速回到主界面。
  * 通知会显示在通知中心的 Live Updates 区域。
  */
-object NotificationHelper {
-            /**
-             * 清除当前通知短语内容，并刷新通知为默认提示。
-             */
-            fun clearPhraseAndRefresh(context: Context) {
-                currentPhraseLabel = null
-                currentPhraseSpeech = null
-                showSilentLockScreenNotification(context, null, null)
-            }
-    private const val CHANNEL_ID = "aac_silent_channel"
-    private const val NOTIFICATION_ID = 888
-    private const val REPLAY_REQUEST_CODE = 100
-    
+@Singleton
+class NotificationHelper @Inject constructor(
+    @androidx.annotation.MainThread private val context: Context
+) {
+    private val appContext = context.applicationContext
+
     // 存储当前的短语文本，用于更新通知
-    private var currentPhraseLabel: String? = null  // 显示用的标签
-    private var currentPhraseSpeech: String? = null  // TTS 播放用的内容
+    private var currentPhraseLabel: String? = null
+    private var currentPhraseSpeech: String? = null
+
+    /**
+     * 清除当前通知短语内容，并刷新通知为默认提示。
+     */
+    fun clearPhraseAndRefresh() {
+        currentPhraseLabel = null
+        currentPhraseSpeech = null
+        showSilentLockScreenNotification(null, null)
+    }
 
     @SuppressLint("FullScreenIntentPolicy", "MissingPermission")
-    fun showSilentLockScreenNotification(context: Context, phraseLabel: String? = null, phraseSpeech: String? = null) {
-        val appContext = context.applicationContext
+    fun showSilentLockScreenNotification(phraseLabel: String? = null, phraseSpeech: String? = null) {
         val notificationManager = appContext.notificationManager()
 
         notificationManager.createNotificationChannel(createNotificationChannel())
-        
+
         // 更新当前短语文本
         if (phraseLabel != null) {
             currentPhraseLabel = phraseLabel
@@ -63,15 +66,14 @@ object NotificationHelper {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
-    fun recreateSilentLockScreenNotification(context: Context) {
-        cancelNotification(context)
-        showSilentLockScreenNotification(context, currentPhraseLabel, currentPhraseSpeech)
+    fun recreateSilentLockScreenNotification() {
+        cancelNotification()
+        showSilentLockScreenNotification(currentPhraseLabel, currentPhraseSpeech)
     }
 
-    fun cancelNotification(context: Context) {
-        context.applicationContext.notificationManager().cancel(NOTIFICATION_ID)
+    fun cancelNotification() {
+        appContext.notificationManager().cancel(NOTIFICATION_ID)
     }
-
 
     private fun createNotificationChannel(): NotificationChannel {
         return NotificationChannel(
@@ -113,7 +115,6 @@ object NotificationHelper {
         // 内容文本显示完整短语，如果太长则截断
         val contentText = when {
             phraseSpeech.isNullOrEmpty() -> "点击返回主界面"
-//            phraseSpeech.length > 40 -> phraseSpeech.take(37) + "..."
             else -> phraseSpeech
         }
 
@@ -165,22 +166,6 @@ object NotificationHelper {
             )
         }
 
-//        // 按钮2：打开应用（与通知点击一致，确保都能在锁屏上启动 Activity）
-//        val openAppIntent = Intent(context, MainActivity::class.java).apply {
-//            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-//        }
-//        val openAppPendingIntent = PendingIntent.getActivity(
-//            context,
-//            1, // unique request code for action button
-//            openAppIntent,
-//            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-//        )
-//        builder.addAction(
-//            R.drawable.ic_launcher_foreground,
-//            "打开应用",
-//            openAppPendingIntent
-//        )
-
         return builder.build()
     }
 
@@ -204,5 +189,11 @@ object NotificationHelper {
 
     private fun Context.notificationManager(): NotificationManager {
         return getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "aac_silent_channel"
+        private const val NOTIFICATION_ID = 888
+        private const val REPLAY_REQUEST_CODE = 100
     }
 }

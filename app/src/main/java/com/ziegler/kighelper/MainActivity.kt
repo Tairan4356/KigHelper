@@ -35,6 +35,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var ttsManager: TTSManager
 
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
+
     private var screenReceiverRegistered = false
 
     private val viewModel: MainViewModel by viewModels()
@@ -43,7 +46,7 @@ class MainActivity : ComponentActivity() {
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_SCREEN_OFF) {
-                NotificationHelper.recreateSilentLockScreenNotification(context)
+                notificationHelper.recreateSilentLockScreenNotification()
             }
         }
     }
@@ -72,13 +75,13 @@ class MainActivity : ComponentActivity() {
                     windowSize = windowSizeClass,
                     viewModel = viewModel,
                     voiceViewModel = voiceViewModel,
+                    notificationHelper = notificationHelper,
                     onSpeak = { text -> ttsManager.speak(text, voiceViewModel.activeProfile) },
                     onStop = { ttsManager.stop() },
                     onPhraseSpoken = { phrase ->
                         // 当短语被使用时更新通知
                         // 传递 label 用于显示，speech 用于 TTS 播放
-                        NotificationHelper.showSilentLockScreenNotification(
-                            this@MainActivity,
+                        notificationHelper.showSilentLockScreenNotification(
                             phraseLabel = phrase.label,
                             phraseSpeech = phrase.speech
                         )
@@ -90,17 +93,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        NotificationHelper.cancelNotification(this)
+        notificationHelper.cancelNotification()
     }
 
     override fun onStop() {
         super.onStop()
-        NotificationHelper.showSilentLockScreenNotification(this)
+        notificationHelper.showSilentLockScreenNotification()
     }
 
     override fun onDestroy() {
-        NotificationHelper.clearPhraseAndRefresh(this)
-        NotificationHelper.cancelNotification(this)
+        notificationHelper.clearPhraseAndRefresh()
+        notificationHelper.cancelNotification()
         stopService(Intent(this, TaskRemovedCleanupService::class.java))
         if (screenReceiverRegistered) {
             unregisterReceiver(screenReceiver)

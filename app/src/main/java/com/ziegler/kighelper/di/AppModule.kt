@@ -5,6 +5,7 @@ import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
 import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
 import com.ziegler.kighelper.data.VoiceProfileRepository
+import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
 import dagger.Module
 import dagger.Provides
@@ -42,5 +43,13 @@ object AppModule {
         @ApplicationContext context: Context
     ): TTSManager {
         return TTSManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationHelper(
+        @ApplicationContext context: Context
+    ): NotificationHelper {
+        return NotificationHelper(context)
     }
 }

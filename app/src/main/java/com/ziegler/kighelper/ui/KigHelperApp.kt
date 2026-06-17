@@ -38,12 +38,14 @@ import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
 import com.ziegler.kighelper.ui.screens.ToolboxScreen
 import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
+import com.ziegler.kighelper.utils.NotificationHelper
 
 /**
  * 应用的主入口 Composable，负责设置导航和整体布局。
  * @param windowSize 当前窗口的大小分类，用于响应式布局。
  * @param viewModel 负责管理短语数据和相关逻辑的 ViewModel。
  * @param voiceViewModel 负责管理语音设置的 ViewModel。
+ * @param notificationHelper 通知管理器，用于处理锁屏通知。
  * @param onSpeak 当需要朗读文本时调用的回调函数。
  * @param onStop 当需要停止朗读时调用的回调函数。
  * @param onPhraseSpoken 当一个短语被朗读后调用的回调函数，默认为空实现。
@@ -54,6 +56,7 @@ fun KigHelperApp(
     windowSize: WindowSizeClass,
     viewModel: MainViewModel,
     voiceViewModel: VoiceViewModel,
+    notificationHelper: NotificationHelper,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
     onPhraseSpoken: (Phrase) -> Unit = {}
@@ -143,9 +146,7 @@ fun KigHelperApp(
                         onClearClick = {
                             viewModel.clearDisplayText()
                             onStop()
-                            com.ziegler.kighelper.utils.NotificationHelper.clearPhraseAndRefresh(
-                                context
-                            )
+                            notificationHelper.clearPhraseAndRefresh()
                         },
                         onAddPhrase = viewModel::addPhrase,
                         onDeletePhrase = viewModel::deletePhrase,
