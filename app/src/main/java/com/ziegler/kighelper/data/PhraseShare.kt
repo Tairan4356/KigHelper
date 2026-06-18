@@ -7,9 +7,7 @@ object PhraseShare {
     private const val SCHEMA_VERSION = 1
 
     fun export(
-        groups: List<PhraseGroup>,
-        phrases: List<Phrase>,
-        gson: Gson = Gson()
+        groups: List<PhraseGroup>, phrases: List<Phrase>, gson: Gson = Gson()
     ): String {
         return gson.toJson(
             PhraseData(
@@ -36,14 +34,12 @@ object PhraseShare {
                         id = UUID.randomUUID().toString(),
                         groupId = findMappedGroupId(it.groupId, data.groups)
                     )
-                }
-            )
+                })
         }.getOrNull()
     }
 
     private fun findMappedGroupId(
-        originalGroupId: String,
-        originalGroups: List<PhraseGroup>
+        originalGroupId: String, originalGroups: List<PhraseGroup>
     ): String {
         val groupIndex = originalGroups.indexOfFirst { it.id == originalGroupId }
         return if (groupIndex == -1) PhraseGroup.DEFAULT_ID else originalGroupId

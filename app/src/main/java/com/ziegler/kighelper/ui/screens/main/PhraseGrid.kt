@@ -175,7 +175,8 @@ private fun PhraseButton(
                 }),
             shape = buttonShape,
             color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

@@ -33,7 +33,7 @@ class GroupViewModel(private val repository: PhraseRepository) : ViewModel() {
         if (_groupList.value.any { it.name.equals(normalizedName, ignoreCase = true) }) return false
 
         val maxOrder = _groupList.value.maxOfOrNull { it.order } ?: -1
-        _groupList.value = _groupList.value + PhraseGroup(name = normalizedName, order = maxOrder + 1)
+        _groupList.value += PhraseGroup(name = normalizedName, order = maxOrder + 1)
         persistCurrentGroups()
         return true
     }
@@ -48,7 +48,11 @@ class GroupViewModel(private val repository: PhraseRepository) : ViewModel() {
     fun renameGroup(groupId: String, newName: String) {
         val normalizedName = newName.trim()
         if (normalizedName.isEmpty()) return
-        if (_groupList.value.any { it.id != groupId && it.name.equals(normalizedName, ignoreCase = true) }) return
+        if (_groupList.value.any {
+                it.id != groupId && it.name.equals(
+                    normalizedName, ignoreCase = true
+                )
+            }) return
 
         _groupList.value = _groupList.value.map { group ->
             if (group.id == groupId) {
@@ -76,10 +80,8 @@ class GroupViewModel(private val repository: PhraseRepository) : ViewModel() {
 
     fun updateGroupsOrder(updatedGroups: List<PhraseGroup>) {
         val currentGroupsById = _groupList.value.associateBy { it.id }
-        val orderedGroups = updatedGroups
-            .mapNotNull { updated -> currentGroupsById[updated.id] }
-            .distinctBy { it.id }
-            .toMutableList()
+        val orderedGroups = updatedGroups.mapNotNull { updated -> currentGroupsById[updated.id] }
+            .distinctBy { it.id }.toMutableList()
 
         for (group in _groupList.value) {
             if (orderedGroups.none { it.id == group.id }) {
@@ -124,7 +126,11 @@ class GroupViewModel(private val repository: PhraseRepository) : ViewModel() {
         return if (groups.any { it.id == PhraseGroup.DEFAULT_ID }) {
             groups
         } else {
-            listOf(PhraseGroup(id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0)) + groups
+            listOf(
+                PhraseGroup(
+                    id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0
+                )
+            ) + groups
         }
     }
 

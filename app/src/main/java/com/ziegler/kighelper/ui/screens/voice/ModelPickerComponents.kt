@@ -34,21 +34,17 @@ import com.ziegler.kighelper.utils.RemoteVoiceModelCatalogEntry
  */
 @Composable
 fun OfflineModelStatusCard(
-    activeModelStatus: OfflineVoiceModelStatus?,
-    installMessage: String?,
-    onClick: () -> Unit
+    activeModelStatus: OfflineVoiceModelStatus?, installMessage: String?, onClick: () -> Unit
 ) {
     val isReady = activeModelStatus?.isReady == true
     val isPartial = activeModelStatus?.isPartiallyInstalled == true
     val compatibilityIssue = activeModelStatus?.runtimeCompatibilityIssue
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
+        modifier = Modifier.fillMaxWidth(), onClick = onClick
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = "点击选择或导入模型",
@@ -60,8 +56,7 @@ fun OfflineModelStatusCard(
                     isReady -> "当前模型：${activeModelStatus.pack.name} · ${activeModelStatus.pack.format.label}"
                     isPartial -> "已导入 ONNX 权重，但缺少：${activeModelStatus.missingFiles.joinToString()}"
                     else -> "模型未安装"
-                },
-                style = MaterialTheme.typography.bodySmall
+                }, style = MaterialTheme.typography.bodySmall
             )
             if (compatibilityIssue != null) {
                 Text(
@@ -78,8 +73,7 @@ fun OfflineModelStatusCard(
             }
             if (installMessage != null) {
                 Text(
-                    text = installMessage,
-                    style = MaterialTheme.typography.bodySmall
+                    text = installMessage, style = MaterialTheme.typography.bodySmall
                 )
             }
         }
@@ -109,139 +103,129 @@ fun ModelPickerDialog(
     onDeleteModel: (OfflineVoiceModelStatus) -> Unit,
     onInstall: (RemoteVoiceModelCatalogEntry) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择端侧模型") },
-        text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("选择端侧模型") }, text = {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item {
+                Text(
+                    text = "端侧引擎使用Sherpa-ONNX，支持VITS、Piper和Kokoro格式的模型包。",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            items(remoteModelCatalog, key = { it.pack.id }) { entry ->
+                val status = modelStatuses.firstOrNull { it.pack.id == entry.pack.id }
+                RemoteModelItem(
+                    entry = entry,
+                    selected = entry.pack.id == activeModelId,
+                    installed = status?.isReady == true,
+                    partiallyInstalled = status?.isPartiallyInstalled == true,
+                    isInstalling = isInstalling,
+                    onSelect = { onSelect(entry) },
+                    onInstall = { onInstall(entry) })
+            }
+            val remoteModelIds = remoteModelCatalog.map { it.pack.id }.toSet()
+            val customModelStatuses = modelStatuses.filter { it.pack.id !in remoteModelIds }
+            if (customModelStatuses.isNotEmpty()) {
                 item {
                     Text(
-                        text = "端侧引擎使用Sherpa-ONNX，支持VITS、Piper和Kokoro格式的模型包。",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                items(remoteModelCatalog, key = { it.pack.id }) { entry ->
-                    val status = modelStatuses.firstOrNull { it.pack.id == entry.pack.id }
-                    RemoteModelItem(
-                        entry = entry,
-                        selected = entry.pack.id == activeModelId,
-                        installed = status?.isReady == true,
-                        partiallyInstalled = status?.isPartiallyInstalled == true,
-                        isInstalling = isInstalling,
-                        onSelect = { onSelect(entry) },
-                        onInstall = { onInstall(entry) }
-                    )
-                }
-                val remoteModelIds = remoteModelCatalog.map { it.pack.id }.toSet()
-                val customModelStatuses = modelStatuses.filter { it.pack.id !in remoteModelIds }
-                if (customModelStatuses.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "用户导入模型",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    items(customModelStatuses, key = { it.pack.id }) { status ->
-                        ImportedModelItem(
-                            status = status,
-                            selected = status.pack.id == activeModelId,
-                            isInstalling = isInstalling,
-                            onSelect = { onSelectStatus(status) },
-                            onDelete = { onDeleteModel(status) }
-                        )
-                    }
-                }
-                item {
-                    Text(
-                        text = "手动安装",
+                        text = "用户导入模型",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                item {
-                    Text(
-                        text = "模型格式（格式错误的模型可能会导致程序崩溃）",
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                items(customModelStatuses, key = { it.pack.id }) { status ->
+                    ImportedModelItem(
+                        status = status,
+                        selected = status.pack.id == activeModelId,
+                        isInstalling = isInstalling,
+                        onSelect = { onSelectStatus(status) },
+                        onDelete = { onDeleteModel(status) })
                 }
-                item {
-                    ImportFormatSelector(
-                        selected = selectedImportFormat,
-                        onSelect = onImportFormatSelect
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        value = downloadUrl,
-                        onValueChange = onDownloadUrlChange,
-                        label = { Text("模型压缩包下载地址") },
+            }
+            item {
+                Text(
+                    text = "手动安装",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            item {
+                Text(
+                    text = "模型格式（格式错误的模型可能会导致程序崩溃）",
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+            item {
+                ImportFormatSelector(
+                    selected = selectedImportFormat, onSelect = onImportFormatSelect
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = downloadUrl,
+                    onValueChange = onDownloadUrlChange,
+                    label = { Text("模型压缩包下载地址") },
+                    enabled = !isInstalling,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onImportClick,
                         enabled = !isInstalling,
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = onImportClick,
-                            enabled = !isInstalling,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("导入压缩包")
-                        }
-                        OutlinedButton(
-                            onClick = onDownloadClick,
-                            enabled = !isInstalling,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("下载压缩包")
-                        }
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("导入压缩包")
                     }
-                }
-                if (isInstalling) {
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = if (installProgress > 0) {
-                                    "正在安装模型包 (${(installProgress * 100).toInt()}%)..."
-                                } else {
-                                    "正在准备安装模型包..."
-                                },
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            LinearProgressIndicator(
-                                progress = { installProgress },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
-                if (installMessage != null) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = installMessage,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
+                    OutlinedButton(
+                        onClick = onDownloadClick,
+                        enabled = !isInstalling,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("下载压缩包")
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+            if (isInstalling) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = if (installProgress > 0) {
+                                "正在安装模型包 (${(installProgress * 100).toInt()}%)..."
+                            } else {
+                                "正在准备安装模型包..."
+                            }, style = MaterialTheme.typography.bodySmall
+                        )
+                        LinearProgressIndicator(
+                            progress = { installProgress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+            if (installMessage != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = installMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
             }
         }
-    )
+    }, confirmButton = {
+        TextButton(onClick = onDismiss) {
+            Text("关闭")
+        }
+    })
 }
 
 /**
@@ -285,8 +269,7 @@ fun ImportedModelItem(
                 Text(if (selected) "已选择" else "选择")
             }
             IconButton(
-                onClick = onDelete,
-                enabled = !isInstalling
+                onClick = onDelete, enabled = !isInstalling
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
@@ -312,14 +295,12 @@ fun RemoteModelItem(
     onInstall: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
+        modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -368,26 +349,19 @@ fun RemoteModelItem(
  */
 @Composable
 fun ModelComplianceDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onDismiss: () -> Unit, onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("模型使用合规声明") },
-        text = {
-            Text(
-                "继续操作前，请确认你导入或下载的模型来源合法，许可允许在本应用中离线端侧推理，并且不包含未经授权的声音克隆或受限制数据。"
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("我已确认")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("模型使用合规声明") }, text = {
+        Text(
+            "继续操作前，请确认你导入或下载的模型来源合法，许可允许在本应用中离线端侧推理，并且不包含未经授权的声音克隆或受限制数据。"
+        )
+    }, confirmButton = {
+        TextButton(onClick = onConfirm) {
+            Text("我已确认")
         }
-    )
+    }, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
 }

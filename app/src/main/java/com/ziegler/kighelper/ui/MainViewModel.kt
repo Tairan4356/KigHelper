@@ -1,11 +1,9 @@
 package com.ziegler.kighelper.ui
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**

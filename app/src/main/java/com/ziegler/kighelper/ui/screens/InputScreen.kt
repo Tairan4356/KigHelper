@@ -87,12 +87,10 @@ fun InputScreen(
         WindowInsets.navigationBars.getRight(this, layoutDirection).toDp()
     }
     val safeStartPadding = maxOf(
-        contentPadding.calculateStartPadding(layoutDirection),
-        navigationStartPadding
+        contentPadding.calculateStartPadding(layoutDirection), navigationStartPadding
     )
     val safeEndPadding = maxOf(
-        contentPadding.calculateEndPadding(layoutDirection),
-        navigationEndPadding
+        contentPadding.calculateEndPadding(layoutDirection), navigationEndPadding
     )
 
     val actionBottomPadding = maxOf(imeBottomPadding, contentPadding.calculateBottomPadding())

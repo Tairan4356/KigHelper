@@ -40,13 +40,14 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         val normalizedSpeech = speech.trim()
         if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
 
-        val newPhrase = Phrase(label = normalizedLabel, speech = normalizedSpeech, groupId = groupId)
-        _phraseList.value = _phraseList.value + newPhrase
+        val newPhrase =
+            Phrase(label = normalizedLabel, speech = normalizedSpeech, groupId = groupId)
+        _phraseList.value += newPhrase
         persistCurrentPhrases()
     }
 
     fun deletePhrase(phrase: Phrase) {
-        _phraseList.value = _phraseList.value - phrase
+        _phraseList.value -= phrase
         persistCurrentPhrases()
     }
 
@@ -115,7 +116,9 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         return com.ziegler.kighelper.data.PhraseShare.export(groups, _phraseList.value)
     }
 
-    fun importData(content: String, existingGroups: List<com.ziegler.kighelper.data.PhraseGroup>): Boolean {
+    fun importData(
+        content: String, existingGroups: List<com.ziegler.kighelper.data.PhraseGroup>
+    ): Boolean {
         val data = com.ziegler.kighelper.data.PhraseShare.import(content) ?: return false
 
         val currentPhrases = _phraseList.value.toMutableList()
@@ -124,7 +127,8 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
 
         for (phrase in data.phrases) {
             if (phrase.id in existingPhraseIds) continue
-            val targetGroupId = if (phrase.groupId in existingGroupIds) phrase.groupId else "default"
+            val targetGroupId =
+                if (phrase.groupId in existingGroupIds) phrase.groupId else "default"
             currentPhrases.add(phrase.copy(groupId = targetGroupId))
             existingPhraseIds.add(phrase.id)
         }

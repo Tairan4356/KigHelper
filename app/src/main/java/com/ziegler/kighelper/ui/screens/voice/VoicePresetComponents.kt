@@ -33,17 +33,14 @@ import com.ziegler.kighelper.data.VoiceProfile
  */
 @Composable
 fun VoicePresetSummaryCard(
-    activeProfile: VoiceProfile,
-    importMessage: String?,
-    onClick: () -> Unit
+    activeProfile: VoiceProfile, importMessage: String?, onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = "选择或导入声线预设",
@@ -84,38 +81,31 @@ fun VoicePresetPickerDialog(
     onDuplicate: () -> Unit,
     onDelete: (String) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择声线预设") },
-        text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(profiles, key = { it.id }) { item ->
-                    VoicePresetItem(
-                        profile = item,
-                        selected = item.id == activeProfileId,
-                        canDelete = canDelete,
-                        onClick = { onSelect(item.id) },
-                        onDelete = { onDelete(item.id) }
-                    )
-                }
-                item {
-                    OutlinedButton(
-                        onClick = onDuplicate,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("复制当前预设")
-                    }
-                }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("选择声线预设") }, text = {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(profiles, key = { it.id }) { item ->
+                VoicePresetItem(
+                    profile = item,
+                    selected = item.id == activeProfileId,
+                    canDelete = canDelete,
+                    onClick = { onSelect(item.id) },
+                    onDelete = { onDelete(item.id) })
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+            item {
+                OutlinedButton(
+                    onClick = onDuplicate, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("复制当前预设")
+                }
             }
         }
-    )
+    }, confirmButton = {
+        TextButton(onClick = onDismiss) {
+            Text("关闭")
+        }
+    })
 }
 
 /**
@@ -130,9 +120,7 @@ fun VoicePresetItem(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
+        modifier = Modifier.fillMaxWidth(), onClick = onClick, colors = CardDefaults.cardColors(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
@@ -141,8 +129,7 @@ fun VoicePresetItem(
         )
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(profile.name, style = MaterialTheme.typography.titleMedium)
@@ -153,8 +140,7 @@ fun VoicePresetItem(
                 )
             }
             IconButton(
-                onClick = onDelete,
-                enabled = canDelete
+                onClick = onDelete, enabled = canDelete
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,

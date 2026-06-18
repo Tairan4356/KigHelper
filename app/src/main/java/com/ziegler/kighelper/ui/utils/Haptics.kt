@@ -25,10 +25,9 @@ fun rememberPhysicalButtonHaptics(): () -> Unit {
                         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     }
 
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                        vibrator.areAllPrimitivesSupported(
-                            VibrationEffect.Composition.PRIMITIVE_CLICK
-                        ) -> {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && vibrator.areAllPrimitivesSupported(
+                        VibrationEffect.Composition.PRIMITIVE_CLICK
+                    ) -> {
                         vibrator.vibrate(
                             VibrationEffect.startComposition()
                                 .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.85f)
@@ -55,7 +54,6 @@ private fun Context.defaultVibrator(): Vibrator? {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         getSystemService(VibratorManager::class.java)?.defaultVibrator
     } else {
-        @Suppress("DEPRECATION")
-        getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        @Suppress("DEPRECATION") getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 }

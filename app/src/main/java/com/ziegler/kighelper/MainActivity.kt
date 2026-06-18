@@ -16,6 +16,7 @@ import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.MainViewModel
 import com.ziegler.kighelper.ui.VoiceViewModel
 import com.ziegler.kighelper.ui.components.PermissionHandler
+import com.ziegler.kighelper.ui.components.PreviewDialog
 import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.NotificationHelper
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
             KigHelperTheme {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
                 UpdateHandler() // 处理版本更新提示
+                PreviewDialog() // 开发版本提示
 
                 KigHelperApp(
                     windowSize = windowSizeClass,
@@ -82,11 +84,9 @@ class MainActivity : ComponentActivity() {
                         // 当短语被使用时更新通知
                         // 传递 label 用于显示，speech 用于 TTS 播放
                         notificationHelper.showSilentLockScreenNotification(
-                            phraseLabel = phrase.label,
-                            phraseSpeech = phrase.speech
+                            phraseLabel = phrase.label, phraseSpeech = phrase.speech
                         )
-                    }
-                )
+                    })
             }
         }
     }

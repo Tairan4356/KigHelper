@@ -20,12 +20,10 @@ import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
  */
 @Composable
 fun EngineSelector(
-    selected: VoiceEngineType,
-    onSelect: (VoiceEngineType) -> Unit
+    selected: VoiceEngineType, onSelect: (VoiceEngineType) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         VoiceEngineType.entries.forEach { engine ->
             FilterChip(
@@ -64,10 +62,7 @@ fun VoiceSlider(
             )
         }
         Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            steps = steps
+            value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps
         )
     }
 }
@@ -77,12 +72,10 @@ fun VoiceSlider(
  */
 @Composable
 fun ImportFormatSelector(
-    selected: OfflineVoiceModelFormat,
-    onSelect: (OfflineVoiceModelFormat) -> Unit
+    selected: OfflineVoiceModelFormat, onSelect: (OfflineVoiceModelFormat) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         listOf(
             OfflineVoiceModelFormat.VITS,

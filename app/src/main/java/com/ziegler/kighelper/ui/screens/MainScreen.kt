@@ -116,10 +116,12 @@ fun MainScreen(
 
     // 显示对话框
     if (state.showAddPhraseDialog) {
-        AddPhraseDialog(onDismiss = { state.showAddPhraseDialog = false }, onSave = { label, speech ->
-            onAddPhrase(label, speech)
-            state.showAddPhraseDialog = false
-        })
+        AddPhraseDialog(
+            onDismiss = { state.showAddPhraseDialog = false },
+            onSave = { label, speech ->
+                onAddPhrase(label, speech)
+                state.showAddPhraseDialog = false
+            })
     }
 
     state.editingPhrase?.let { phrase ->

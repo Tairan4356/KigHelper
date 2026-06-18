@@ -54,9 +54,7 @@ import com.ziegler.kighelper.ui.screens.phrase.sortedVisibleGroups
  * 当前版本按分组筛选后只在组内排序，避免 header 和短语混排造成拖拽闪烁。
  */
 @OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalFoundationApi::class,
-    ExperimentalLayoutApi::class
+    ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class
 )
 @Composable
 fun EditScreen(
@@ -97,8 +95,8 @@ fun EditScreen(
     var groupPendingDelete by remember { mutableStateOf<PhraseGroup?>(null) }
     var isDragging by remember { mutableStateOf(false) }
 
-    val selectedGroup = sortedGroups.firstOrNull { it.id == selectedGroupId }
-        ?: sortedGroups.firstOrNull()
+    val selectedGroup =
+        sortedGroups.firstOrNull { it.id == selectedGroupId } ?: sortedGroups.firstOrNull()
 
     val currentGroupId = selectedGroup?.id ?: PhraseGroup.DEFAULT_ID
 
@@ -152,60 +150,50 @@ fun EditScreen(
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text("管理短语")
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showAddGroupDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Folder,
-                            contentDescription = "新建分组"
-                        )
-                    }
-
-                    if (currentGroupId != PhraseGroup.DEFAULT_ID) {
-                        IconButton(onClick = { selectedGroup?.let { groupPendingDelete = it } }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "删除当前分组"
-                            )
-                        }
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    onNavigateToAdd(currentGroupId)
-                },
-                modifier = Modifier.padding(
-                    start = outerStartPadding,
-                    end = outerEndPadding,
-                    bottom = outerBottomPadding
-                ),
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
+        TopAppBar(
+            title = {
+            Text("管理短语")
+        }, navigationIcon = {
+            IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "新建短语"
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "返回"
                 )
             }
-        },
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
+        }, actions = {
+            IconButton(onClick = { showAddGroupDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Folder, contentDescription = "新建分组"
+                )
+            }
+
+            if (currentGroupId != PhraseGroup.DEFAULT_ID) {
+                IconButton(onClick = { selectedGroup?.let { groupPendingDelete = it } }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "删除当前分组"
+                    )
+                }
+            }
+        }, scrollBehavior = scrollBehavior
+        )
+    }, floatingActionButton = {
+        FloatingActionButton(
+            onClick = {
+                onNavigateToAdd(currentGroupId)
+            },
+            modifier = Modifier.padding(
+                start = outerStartPadding, end = outerEndPadding, bottom = outerBottomPadding
+            ),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add, contentDescription = "新建短语"
+            )
+        }
+    }, contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -247,8 +235,7 @@ fun EditScreen(
                 onDragStopped = {
                     isDragging = false
                     persistCurrentGroupOrder()
-                }
-            )
+                })
         }
     }
 
@@ -260,18 +247,13 @@ fun EditScreen(
                 if (onAddGroup(name)) {
                     showAddGroupDialog = false
                 }
-            }
-        )
+            })
     }
 
     groupPendingDelete?.let { group ->
-        DeleteGroupDialog(
-            group = group,
-            onDismiss = { groupPendingDelete = null },
-            onConfirm = {
-                onDeleteGroup(group.id)
-                groupPendingDelete = null
-            }
-        )
+        DeleteGroupDialog(group = group, onDismiss = { groupPendingDelete = null }, onConfirm = {
+            onDeleteGroup(group.id)
+            groupPendingDelete = null
+        })
     }
 }

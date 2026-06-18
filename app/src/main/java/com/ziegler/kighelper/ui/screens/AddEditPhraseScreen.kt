@@ -60,8 +60,8 @@ fun AddEditPhraseScreen(
     val sortedGroups = remember(groupSnapshot) {
         groupSnapshot.distinctBy { it.id }.sortedBy { it.order }
     }
-    val selectedGroupName = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name
-        ?: PhraseGroup.DEFAULT_NAME
+    val selectedGroupName =
+        sortedGroups.firstOrNull { it.id == selectedGroupId }?.name ?: PhraseGroup.DEFAULT_NAME
 
     LaunchedEffect(sortedGroups, selectedGroupId) {
         if (sortedGroups.isNotEmpty() && sortedGroups.none { it.id == selectedGroupId }) {
@@ -78,10 +78,8 @@ fun AddEditPhraseScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
-                }
-            )
-        }
-    ) { padding ->
+                })
+        }) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -91,8 +89,7 @@ fun AddEditPhraseScreen(
         ) {
             ExposedDropdownMenuBox(
                 expanded = groupMenuExpanded,
-                onExpandedChange = { groupMenuExpanded = !groupMenuExpanded }
-            ) {
+                onExpandedChange = { groupMenuExpanded = !groupMenuExpanded }) {
                 OutlinedTextField(
                     value = selectedGroupName,
                     onValueChange = {},
@@ -105,16 +102,13 @@ fun AddEditPhraseScreen(
                 )
                 ExposedDropdownMenu(
                     expanded = groupMenuExpanded,
-                    onDismissRequest = { groupMenuExpanded = false }
-                ) {
+                    onDismissRequest = { groupMenuExpanded = false }) {
                     sortedGroups.forEach { group ->
                         DropdownMenuItem(
-                            text = { Text(group.name) },
-                            onClick = {
-                                selectedGroupId = group.id
-                                groupMenuExpanded = false
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            text = { Text(group.name) }, onClick = {
+                            selectedGroupId = group.id
+                            groupMenuExpanded = false
+                        }, contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                         )
                     }
                 }

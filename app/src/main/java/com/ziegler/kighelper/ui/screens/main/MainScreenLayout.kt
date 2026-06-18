@@ -103,8 +103,7 @@ private fun LandscapeLayout(
         )
 
     Row(
-        modifier = screenModifier,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(
             modifier = Modifier
@@ -119,8 +118,7 @@ private fun LandscapeLayout(
                 onClick = if (state.canEnterFullScreen) {
                     { state.onFullScreenChange(true) }
                 } else null,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp))
-            )
+                modifier = Modifier.clip(RoundedCornerShape(24.dp)))
         }
 
         Box(modifier = Modifier.weight(1f)) {
@@ -177,8 +175,7 @@ private fun PortraitLayout(
                 onClick = if (state.canEnterFullScreen) {
                     { state.onFullScreenChange(true) }
                 } else null,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp))
-            )
+                modifier = Modifier.clip(RoundedCornerShape(24.dp)))
         }
 
         Spacer(Modifier.height(16.dp))
@@ -258,16 +255,13 @@ private fun PhraseAreaContent(
                         if (!state.isLandscape) {
                             state.collapseOffset = 0f
                         }
-                    }
-                )
+                    })
             }
         }
 
         state.showEmptyState -> {
             EmptyPhraseState(
-                modifier = modifier,
-                onAddClick = { state.showAddPhraseDialog = true }
-            )
+                modifier = modifier, onAddClick = { state.showAddPhraseDialog = true })
         }
 
         else -> {
@@ -282,8 +276,7 @@ private fun PhraseAreaContent(
 private fun createNestedScrollConnection(state: MainScreenState): NestedScrollConnection {
     return object : NestedScrollConnection {
         override fun onPreScroll(
-            available: Offset,
-            source: NestedScrollSource
+            available: Offset, source: NestedScrollSource
         ): Offset {
             val dy = available.y
             return if (dy < 0f) {
@@ -296,8 +289,8 @@ private fun createNestedScrollConnection(state: MainScreenState): NestedScrollCo
                     Offset.Zero
                 }
             } else if (dy > 0f) {
-                val isAtTop = state.phraseGridState.firstVisibleItemIndex == 0 &&
-                    state.phraseGridState.firstVisibleItemScrollOffset == 0
+                val isAtTop =
+                    state.phraseGridState.firstVisibleItemIndex == 0 && state.phraseGridState.firstVisibleItemScrollOffset == 0
                 if (isAtTop && state.collapseOffset > 0f) {
                     val consumedY = minOf(dy, state.collapseOffset)
                     state.collapseOffset -= consumedY

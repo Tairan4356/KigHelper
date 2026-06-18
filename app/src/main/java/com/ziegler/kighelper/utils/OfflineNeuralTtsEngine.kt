@@ -110,10 +110,7 @@ class OfflineNeuralTtsEngine(context: Context) {
     }
 
     private fun synthesizeToFile(
-        text: String,
-        profile: VoiceProfile,
-        modelStatus: OfflineVoiceModelStatus,
-        targetFile: File
+        text: String, profile: VoiceProfile, modelStatus: OfflineVoiceModelStatus, targetFile: File
     ) {
         if (modelStatus.pack.format == OfflineVoiceModelFormat.KIGVPK) {
             if (kigvpkEngine == null || kigvpkEngine?.packDir != modelStatus.directory) {
@@ -121,9 +118,12 @@ class OfflineNeuralTtsEngine(context: Context) {
                 kigvpkEngine = KigvpkTtsEngine(appContext, modelStatus.directory)
             }
             val engine = kigvpkEngine!!
-            val modelParams = kigvpkParamsManager.loadDefaults(modelStatus.directory, modelStatus.pack.id)
+            val modelParams =
+                kigvpkParamsManager.loadDefaults(modelStatus.directory, modelStatus.pack.id)
             val speed = modelParams.lengthScale / profile.speechRate.coerceAtLeast(0.5f)
-            engine.setSynthesisTuning(modelParams.noiseScale, speed, modelParams.noiseW, modelParams.sentenceSilenceSec)
+            engine.setSynthesisTuning(
+                modelParams.noiseScale, speed, modelParams.noiseW, modelParams.sentenceSilenceSec
+            )
             val samples = engine.synthesize(text)
             VoiceAudioProcessor.writeWav(targetFile, samples, engine.sampleRate)
             return
@@ -135,9 +135,7 @@ class OfflineNeuralTtsEngine(context: Context) {
         val tts = getOrCreateTts(modelStatus)
         val speakerId = resolveSpeakerId(profile, modelStatus.pack, tts)
         val audio = tts.generate(
-            text = text,
-            sid = speakerId,
-            speed = speed
+            text = text, sid = speakerId, speed = speed
         )
         val processedSamples = VoiceAudioProcessor.process(audio.samples, profile)
         VoiceAudioProcessor.writeWav(targetFile, processedSamples, audio.sampleRate)
@@ -187,9 +185,7 @@ class OfflineNeuralTtsEngine(context: Context) {
     }
 
     private fun resolveSpeakerId(
-        profile: VoiceProfile,
-        pack: OfflineVoiceModelPack,
-        tts: OfflineTts
+        profile: VoiceProfile, pack: OfflineVoiceModelPack, tts: OfflineTts
     ): Int {
         val speakerCount = tts.numSpeakers().takeIf { it > 0 } ?: pack.speakerCount
         if (speakerCount <= 1) return 0
@@ -221,10 +217,7 @@ class OfflineNeuralTtsEngine(context: Context) {
                     dictDir = dictDir
                 )
                 OfflineTtsModelConfig(
-                    vits = vitsConfig,
-                    numThreads = 1,
-                    debug = false,
-                    provider = "cpu"
+                    vits = vitsConfig, numThreads = 1, debug = false, provider = "cpu"
                 )
             }
 
@@ -233,13 +226,9 @@ class OfflineNeuralTtsEngine(context: Context) {
                     model = File(modelDir, "model.onnx").absolutePath,
                     tokens = File(modelDir, "tokens.txt").absolutePath,
                     dataDir = modelDir.resolveOptionalDirectory("espeak-ng-data")
-                        .ifEmpty { modelDir.resolveOptionalDirectory("dict") }
-                )
+                        .ifEmpty { modelDir.resolveOptionalDirectory("dict") })
                 OfflineTtsModelConfig(
-                    vits = piperConfig,
-                    numThreads = 1,
-                    debug = false,
-                    provider = "cpu"
+                    vits = piperConfig, numThreads = 1, debug = false, provider = "cpu"
                 )
             }
 
@@ -254,10 +243,7 @@ class OfflineNeuralTtsEngine(context: Context) {
                     dictDir = File(modelDir, "dict").takeIf { it.exists() }?.absolutePath.orEmpty()
                 )
                 OfflineTtsModelConfig(
-                    kokoro = kokoroConfig,
-                    numThreads = 1,
-                    debug = false,
-                    provider = "cpu"
+                    kokoro = kokoroConfig, numThreads = 1, debug = false, provider = "cpu"
                 )
             }
 
@@ -280,8 +266,7 @@ class OfflineNeuralTtsEngine(context: Context) {
 
     private fun releaseLoadedTts() {
         loadedTts?.let { tts ->
-            runCatching { tts.free() }
-                .onFailure { Log.w(TAG, "释放端侧 TTS 模型失败", it) }
+            runCatching { tts.free() }.onFailure { Log.w(TAG, "释放端侧 TTS 模型失败", it) }
         }
         loadedTts = null
         loadedModelId = null
@@ -332,23 +317,16 @@ private fun File.readTextPrefix(maxBytes: Int = 4096): String {
 
 private fun File.resolveLexicons(): String {
     val preferredOrder = listOf(
-        "lexicon.txt",
-        "lexicon-us-en.txt",
-        "lexicon-zh.txt",
-        "lexicon-gb-en.txt"
+        "lexicon.txt", "lexicon-us-en.txt", "lexicon-zh.txt", "lexicon-gb-en.txt"
     )
-    val preferredFiles = preferredOrder
-        .map { File(this, it) }
-        .filter { it.exists() && it.isFile }
+    val preferredFiles = preferredOrder.map { File(this, it) }.filter { it.exists() && it.isFile }
     val files = preferredFiles.ifEmpty {
-        listFiles()
-            ?.filter {
-                it.isFile &&
-                    it.name.startsWith("lexicon", ignoreCase = true) &&
-                    it.extension.equals("txt", ignoreCase = true)
-            }
-            ?.sortedBy { it.name }
-            .orEmpty()
+        listFiles()?.filter {
+                it.isFile && it.name.startsWith(
+                    "lexicon",
+                    ignoreCase = true
+                ) && it.extension.equals("txt", ignoreCase = true)
+            }?.sortedBy { it.name }.orEmpty()
     }
 
     return files.joinToString(",") { it.absolutePath }
@@ -366,15 +344,11 @@ private fun File.resolveRuleFsts(): String {
         "number-zh.fst",
         "new_heteronym-zh.fst"
     )
-    val preferredFiles = preferredOrder
-        .map { File(this, it) }
-        .filter { it.exists() && it.isFile }
+    val preferredFiles = preferredOrder.map { File(this, it) }.filter { it.exists() && it.isFile }
 
     val files = preferredFiles.ifEmpty {
-        listFiles()
-            ?.filter { it.isFile && it.extension.equals("fst", ignoreCase = true) }
-            ?.sortedBy { it.name }
-            .orEmpty()
+        listFiles()?.filter { it.isFile && it.extension.equals("fst", ignoreCase = true) }
+            ?.sortedBy { it.name }.orEmpty()
     }
 
     return files.joinToString(",") { it.absolutePath }
@@ -383,15 +357,9 @@ private fun File.resolveRuleFsts(): String {
 private fun File.resolveRuleFars(): String {
     if (File(this, "dict").exists()) return ""
 
-    return listFiles()
-        ?.filter { it.isFile && it.extension.equals("far", ignoreCase = true) }
-        ?.sortedBy { it.name }
-        ?.joinToString(",") { it.absolutePath }
-        .orEmpty()
+    return listFiles()?.filter { it.isFile && it.extension.equals("far", ignoreCase = true) }
+        ?.sortedBy { it.name }?.joinToString(",") { it.absolutePath }.orEmpty()
 }
 
 private val OfflineVoiceModelFormat.isRuntimeSupported: Boolean
-    get() = this == OfflineVoiceModelFormat.VITS ||
-        this == OfflineVoiceModelFormat.PIPER ||
-        this == OfflineVoiceModelFormat.KOKORO ||
-        this == OfflineVoiceModelFormat.KIGVPK
+    get() = this == OfflineVoiceModelFormat.VITS || this == OfflineVoiceModelFormat.PIPER || this == OfflineVoiceModelFormat.KOKORO || this == OfflineVoiceModelFormat.KIGVPK

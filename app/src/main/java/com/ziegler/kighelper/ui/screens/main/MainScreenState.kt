@@ -179,10 +179,11 @@ class MainScreenState(
     // 当前可见的分组索引
     @Composable
     fun getCurrentVisibleGroupIndex(
-        groupToFlatIndexMap: Map<Int, Int>,
-        groupedSections: List<Pair<PhraseGroup, List<Phrase>>>
+        groupToFlatIndexMap: Map<Int, Int>, groupedSections: List<Pair<PhraseGroup, List<Phrase>>>
     ): Int {
-        return remember(groupToFlatIndexMap, groupedSections, phraseGridState.firstVisibleItemIndex) {
+        return remember(
+            groupToFlatIndexMap, groupedSections, phraseGridState.firstVisibleItemIndex
+        ) {
             derivedStateOf {
                 val firstVisible = phraseGridState.firstVisibleItemIndex
                 groupToFlatIndexMap.entries.lastOrNull { it.value <= firstVisible }?.key ?: 0
@@ -205,7 +206,8 @@ class MainScreenState(
     fun SyncScrollToSelectedGroup() {
         val groupedSections = getGroupedSections()
         val groupToFlatIndexMap = getGroupToFlatIndexMap(groupedSections)
-        val currentVisibleGroupIndex = getCurrentVisibleGroupIndex(groupToFlatIndexMap, groupedSections)
+        val currentVisibleGroupIndex =
+            getCurrentVisibleGroupIndex(groupToFlatIndexMap, groupedSections)
         val scrolling = isUserScrolling()
 
         LaunchedEffect(currentVisibleGroupIndex, groupedSections) {
@@ -265,9 +267,17 @@ fun rememberMainScreenState(
     val maxCollapseDistancePx = with(density) { 200.dp.toPx() }
 
     return remember(
-        phrases, groups, displayText, isShowingInitialHint,
-        isPhrasesLoading, isFullScreen, onFullScreenChange,
-        isLandscape, screenWidth, smallestScreenWidth, maxCollapseDistancePx
+        phrases,
+        groups,
+        displayText,
+        isShowingInitialHint,
+        isPhrasesLoading,
+        isFullScreen,
+        onFullScreenChange,
+        isLandscape,
+        screenWidth,
+        smallestScreenWidth,
+        maxCollapseDistancePx
     ) {
         MainScreenState(
             phrases = phrases,

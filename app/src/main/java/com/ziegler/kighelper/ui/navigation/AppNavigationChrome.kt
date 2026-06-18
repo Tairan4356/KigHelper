@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -27,9 +26,7 @@ import com.ziegler.kighelper.R
 internal const val NavTransitionDurationMillis = 300
 
 private val topLevelRouteOrder = listOf(
-    AppRoutes.MAIN,
-    AppRoutes.INPUT,
-    AppRoutes.EDIT
+    AppRoutes.MAIN, AppRoutes.INPUT, AppRoutes.EDIT
 )
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection(
@@ -55,13 +52,11 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection
 
 @Composable
 internal fun AppNavigationRail(
-    currentRoute: String,
-    onDestinationClick: (String) -> Unit
+    currentRoute: String, onDestinationClick: (String) -> Unit
 ) {
     // 宽屏使用侧向 NavigationRail，避免底部导航占用纵向空间。
     NavigationRail(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        header = {
+        containerColor = MaterialTheme.colorScheme.surfaceVariant, header = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
@@ -74,23 +69,19 @@ internal fun AppNavigationRail(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-        }
-    ) {
+        }) {
         topLevelDestinations.forEach { item ->
             AppNavigationRailItem(
                 item = item,
                 selected = currentRoute == item.route,
-                onClick = { onDestinationClick(item.route) }
-            )
+                onClick = { onDestinationClick(item.route) })
         }
     }
 }
 
 @Composable
 private fun AppNavigationRailItem(
-    item: TopLevelDestination,
-    selected: Boolean,
-    onClick: () -> Unit
+    item: TopLevelDestination, selected: Boolean, onClick: () -> Unit
 ) {
     // 单个 rail item 只负责把 destination 元数据映射成 Material3 导航项。
     NavigationRailItem(
@@ -103,20 +94,14 @@ private fun AppNavigationRailItem(
 
 @Composable
 internal fun AppBottomBar(
-    visible: Boolean,
-    currentRoute: String,
-    onDestinationClick: (String) -> Unit
+    visible: Boolean, currentRoute: String, onDestinationClick: (String) -> Unit
 ) {
     // 窄屏底部导航保留原有滑入滑出效果，键盘或横屏全屏场景由调用方控制 visible。
     AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically(
-            initialOffsetY = { fullHeight -> fullHeight },
-            animationSpec = tween(220)
-        ),
-        exit = slideOutVertically(
-            targetOffsetY = { fullHeight -> fullHeight },
-            animationSpec = tween(180)
+        visible = visible, enter = slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight }, animationSpec = tween(220)
+        ), exit = slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight }, animationSpec = tween(180)
         )
     ) {
         NavigationBar {
@@ -125,8 +110,7 @@ internal fun AppBottomBar(
                     icon = { Icon(item.icon, contentDescription = item.label) },
                     label = { Text(item.label) },
                     selected = currentRoute == item.route,
-                    onClick = { onDestinationClick(item.route) }
-                )
+                    onClick = { onDestinationClick(item.route) })
             }
         }
     }

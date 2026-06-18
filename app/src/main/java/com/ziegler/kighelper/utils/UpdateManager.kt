@@ -34,9 +34,7 @@ object UpdateManager {
         "https://raw.giteeusercontent.com/tairan_4356/kig-helper/raw/master/update.json"
     )
     private val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .dns(UpdateDns)
-        .build()
+        .readTimeout(10, TimeUnit.SECONDS).dns(UpdateDns).build()
 
     suspend fun checkUpdate(context: Context): UpdateConfig? {
         return withContext(Dispatchers.IO) {
@@ -139,19 +137,14 @@ object UpdateManager {
                 socket.soTimeout = DNS_TIMEOUT_MS
                 socket.send(
                     DatagramPacket(
-                        query,
-                        query.size,
-                        InetAddress.getByAddress(dnsServer),
-                        DNS_PORT
+                        query, query.size, InetAddress.getByAddress(dnsServer), DNS_PORT
                     )
                 )
 
                 val response = DatagramPacket(responseBuffer, responseBuffer.size)
                 socket.receive(response)
                 return parseDnsResponse(
-                    responseBuffer.copyOf(response.length),
-                    transactionId,
-                    hostname
+                    responseBuffer.copyOf(response.length), transactionId, hostname
                 )
             }
         }
@@ -176,9 +169,7 @@ object UpdateManager {
         }
 
         private fun parseDnsResponse(
-            response: ByteArray,
-            transactionId: Int,
-            hostname: String
+            response: ByteArray, transactionId: Int, hostname: String
         ): List<InetAddress> {
             if (response.size < 12 || readUnsignedShort(response, 0) != transactionId) {
                 throw UnknownHostException("Invalid DNS response for $hostname")
@@ -210,8 +201,7 @@ object UpdateManager {
                 if (offset + dataLength > response.size) return@repeat
                 if (type == DNS_TYPE_A && recordClass == 1 && dataLength == 4) {
                     addresses += InetAddress.getByAddress(
-                        hostname,
-                        response.copyOfRange(offset, offset + dataLength)
+                        hostname, response.copyOfRange(offset, offset + dataLength)
                     )
                 }
                 offset += dataLength

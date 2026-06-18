@@ -17,12 +17,10 @@ interface VoiceProfileRepository {
 }
 
 class SharedPreferencesVoiceProfileRepository(
-    context: Context,
-    private val gson: Gson = Gson()
+    context: Context, private val gson: Gson = Gson()
 ) : VoiceProfileRepository {
     private val prefs = context.applicationContext.getSharedPreferences(
-        PREFS_NAME,
-        Context.MODE_PRIVATE
+        PREFS_NAME, Context.MODE_PRIVATE
     )
     private val profileListType: Type = object : TypeToken<List<VoiceProfile>>() {}.type
 
@@ -30,10 +28,8 @@ class SharedPreferencesVoiceProfileRepository(
         val json = prefs.getString(PROFILES_KEY, null) ?: return@withContext defaultProfiles()
 
         runCatching {
-            gson.fromJson<List<VoiceProfile>>(json, profileListType)
-                ?.takeIf { it.isNotEmpty() }
-                ?.map { it.normalizedModelId() }
-                ?: defaultProfiles()
+            gson.fromJson<List<VoiceProfile>>(json, profileListType)?.takeIf { it.isNotEmpty() }
+                ?.map { it.normalizedModelId() } ?: defaultProfiles()
         }.getOrElse { error ->
             Log.w(TAG, "声线预设解析失败，已回退到默认预设", error)
             defaultProfiles()

@@ -41,9 +41,7 @@ object AppRoutes {
 }
 
 data class TopLevelDestination(
-    val route: String,
-    val label: String,
-    val icon: ImageVector
+    val route: String, val label: String, val icon: ImageVector
 )
 
 val topLevelDestinations = listOf(

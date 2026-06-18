@@ -19,8 +19,8 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val languageResult = tts.setLanguage(Locale.CHINESE)
-            isReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
-                languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+            isReady =
+                languageResult != TextToSpeech.LANG_MISSING_DATA && languageResult != TextToSpeech.LANG_NOT_SUPPORTED
             if (isReady) {
                 pendingSystemSpeech?.let { (content, profile) ->
                     pendingSystemSpeech = null
@@ -85,10 +85,7 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
     }
 
     private fun normalizeText(text: String, profile: VoiceProfile): String {
-        val normalized = text
-            .replace(Regex("\\s+"), " ")
-            .replace("...", "……")
-            .trim()
+        val normalized = text.replace(Regex("\\s+"), " ").replace("...", "……").trim()
 
         if (normalized.isEmpty()) return normalized
 

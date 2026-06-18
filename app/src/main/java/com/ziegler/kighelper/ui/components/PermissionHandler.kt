@@ -41,8 +41,7 @@ fun PermissionHandler() {
         // Android 13+ 需要显式申请通知权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasNotificationPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
+                context, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
 
             if (!hasNotificationPermission) {
@@ -59,11 +58,11 @@ fun PermissionHandler() {
     if (showDialog) {
         AlertDialog(
             onDismissRequest = {
-                showDialog = false
-                Toast.makeText(
-                    context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
-                ).show()
-            },
+            showDialog = false
+            Toast.makeText(
+                context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
+            ).show()
+        },
             title = { Text("需要锁屏显示权限") },
             text = { Text("为了能在锁屏时使用，请开启“显示在其他应用上”或“锁屏显示”权限。") },
             confirmButton = {

@@ -72,11 +72,10 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoiceSettingsScreen(
-    viewModel: VoiceViewModel,
-    onBack: () -> Unit,
-    onPreview: (String) -> Unit
+    viewModel: VoiceViewModel, onBack: () -> Unit, onPreview: (String) -> Unit
 ) {
-    val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val navigationBarPadding =
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val context = LocalContext.current
     val profile = viewModel.activeProfile
     val modelManager = remember(context) { OfflineVoiceModelManager(context) }
@@ -93,8 +92,9 @@ fun VoiceSettingsScreen(
     var selectedImportFormat by remember { mutableStateOf(OfflineVoiceModelFormat.VITS) }
     var showModelPicker by remember { mutableStateOf(false) }
     var showPresetPicker by remember { mutableStateOf(false) }
-    val activeModelStatus = modelStatuses.firstOrNull { it.pack.id == modelManager.normalizeModelId(profile.modelId) }
-        ?: modelStatuses.firstOrNull()
+    val activeModelStatus =
+        modelStatuses.firstOrNull { it.pack.id == modelManager.normalizeModelId(profile.modelId) }
+            ?: modelStatuses.firstOrNull()
     val isKigvpk = activeModelStatus?.pack?.format == OfflineVoiceModelFormat.KIGVPK
     val kigvpkParamsManager = remember(context) { KigvpkParamsManager(context) }
     val kigvpkParams = remember(modelRefreshKey, activeModelStatus?.pack?.id) {
@@ -105,7 +105,8 @@ fun VoiceSettingsScreen(
     val displayNoiseScale = profile.kigvpkNoiseScale ?: kigvpkParams.noiseScale
     val displayNoiseW = profile.kigvpkNoiseW ?: kigvpkParams.noiseW
     val displayLengthScale = profile.kigvpkLengthScale ?: kigvpkParams.lengthScale
-    val displaySentenceSilenceSec = profile.kigvpkSentenceSilenceSec ?: kigvpkParams.sentenceSilenceSec
+    val displaySentenceSilenceSec =
+        profile.kigvpkSentenceSilenceSec ?: kigvpkParams.sentenceSilenceSec
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
@@ -124,8 +125,7 @@ fun VoiceSettingsScreen(
                     modelManager = modelManager,
                     viewModel = viewModel,
                     currentSpeakerId = profile.speakerId,
-                    onProgress = { installProgress = it }
-                )
+                    onProgress = { installProgress = it })
                 installMessage = result.message
                 if (result.shouldRefreshModels) {
                     modelRefreshKey++
@@ -142,10 +142,7 @@ fun VoiceSettingsScreen(
     ) { uri ->
         if (uri != null) {
             presetMessage = importVoicePresetConfig(
-                context = context,
-                uri = uri,
-                viewModel = viewModel,
-                modelManager = modelManager
+                context = context, uri = uri, viewModel = viewModel, modelManager = modelManager
             )
         }
     }
@@ -155,45 +152,37 @@ fun VoiceSettingsScreen(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             TopAppBar(
-                title = { Text("全局音色设置") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            configImportLauncher.launch(
-                                arrayOf("application/json", "text/*", "*/*")
-                            )
-                        }
-                    ) {
-                        Icon(Icons.Filled.FileOpen, "导入配置")
-                    }
-                    IconButton(
-                        onClick = {
-                            context.shareVoicePresetFile(
-                                title = profile.name,
-                                content = viewModel.exportActiveProfile(modelManager)
-                            )
-                        }
-                    ) {
-                        Icon(Icons.Filled.Share, "分享预设")
-                    }
-                },
-                scrollBehavior = scrollBehavior
+                title = { Text("全局音色设置") }, navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                }
+            }, actions = {
+                IconButton(
+                    onClick = {
+                        configImportLauncher.launch(
+                            arrayOf("application/json", "text/*", "*/*")
+                        )
+                    }) {
+                    Icon(Icons.Filled.FileOpen, "导入配置")
+                }
+                IconButton(
+                    onClick = {
+                        context.shareVoicePresetFile(
+                            title = profile.name,
+                            content = viewModel.exportActiveProfile(modelManager)
+                        )
+                    }) {
+                    Icon(Icons.Filled.Share, "分享预设")
+                }
+            }, scrollBehavior = scrollBehavior
             )
-        }
-    ) { padding ->
+        }) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(
+                .padding(padding), contentPadding = PaddingValues(
                 start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + navigationBarPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            ), verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Text(
@@ -203,8 +192,7 @@ fun VoiceSettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 EngineSelector(
-                    selected = profile.engineOrDefault,
-                    onSelect = { engine ->
+                    selected = profile.engineOrDefault, onSelect = { engine ->
                         viewModel.updateActiveProfile(
                             engine = engine,
                             modelId = if (engine == VoiceEngineType.OFFLINE_NEURAL) {
@@ -213,30 +201,33 @@ fun VoiceSettingsScreen(
                                 null
                             }
                         )
-                    }
-                )
+                    })
             }
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
                 item {
                     OfflineModelStatusCard(
                         activeModelStatus = activeModelStatus,
                         installMessage = installMessage,
-                        onClick = { showModelPicker = true }
-                    )
+                        onClick = { showModelPicker = true })
                 }
             }
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL && activeModelStatus?.pack?.supportsSpeakerSelection == true) {
                 item {
                     VoiceSlider(
                         title = "说话人",
-                        valueText = "${profile.speakerId.coerceIn(0, activeModelStatus.pack.speakerCount - 1)} / ${activeModelStatus.pack.speakerCount - 1}",
-                        value = profile.speakerId.coerceIn(0, activeModelStatus.pack.speakerCount - 1).toFloat(),
+                        valueText = "${
+                            profile.speakerId.coerceIn(
+                                0, activeModelStatus.pack.speakerCount - 1
+                            )
+                        } / ${activeModelStatus.pack.speakerCount - 1}",
+                        value = profile.speakerId.coerceIn(
+                            0, activeModelStatus.pack.speakerCount - 1
+                        ).toFloat(),
                         valueRange = 0f..(activeModelStatus.pack.speakerCount - 1).toFloat(),
                         steps = (activeModelStatus.pack.speakerCount - 2).coerceAtLeast(0),
                         onValueChange = {
                             viewModel.updateActiveProfile(speakerId = it.roundToInt())
-                        }
-                    )
+                        })
                 }
             }
 
@@ -248,8 +239,7 @@ fun VoiceSettingsScreen(
                 VoicePresetSummaryCard(
                     activeProfile = profile,
                     importMessage = presetMessage,
-                    onClick = { showPresetPicker = true }
-                )
+                    onClick = { showPresetPicker = true })
             }
             item {
                 OutlinedTextField(
@@ -278,8 +268,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(displayNoiseScale * 100).roundToInt()}%",
                         value = displayNoiseScale,
                         valueRange = 0.3f..1.5f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseScale = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseScale = it) })
                 }
                 item {
                     VoiceSlider(
@@ -287,8 +276,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(displayNoiseW * 100).roundToInt()}%",
                         value = displayNoiseW,
                         valueRange = 0.3f..1.5f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseW = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseW = it) })
                 }
                 item {
                     VoiceSlider(
@@ -296,8 +284,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(displayLengthScale * 100).roundToInt()}%",
                         value = displayLengthScale,
                         valueRange = 0.5f..2.0f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkLengthScale = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkLengthScale = it) })
                 }
                 item {
                     VoiceSlider(
@@ -305,8 +292,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(displaySentenceSilenceSec * 1000).roundToInt()}ms",
                         value = displaySentenceSilenceSec,
                         valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkSentenceSilenceSec = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(kigvpkSentenceSilenceSec = it) })
                 }
             } else {
                 item {
@@ -319,8 +305,7 @@ fun VoiceSettingsScreen(
                         },
                         value = profile.age,
                         valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(age = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(age = it) })
                 }
                 item {
                     VoiceSlider(
@@ -328,8 +313,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(profile.speechRate * 100).roundToInt()}%",
                         value = profile.speechRate,
                         valueRange = 0.75f..1.25f,
-                        onValueChange = { viewModel.updateActiveProfile(speechRate = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
                 }
                 item {
                     VoiceSlider(
@@ -337,8 +321,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(profile.pitch * 100).roundToInt()}%",
                         value = profile.pitch,
                         valueRange = 0.85f..1.15f,
-                        onValueChange = { viewModel.updateActiveProfile(pitch = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(pitch = it) })
                 }
                 item {
                     VoiceSlider(
@@ -346,8 +329,7 @@ fun VoiceSettingsScreen(
                         valueText = "${(profile.warmth * 100).roundToInt()}%",
                         value = profile.warmth,
                         valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(warmth = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(warmth = it) })
                 }
                 item {
                     VoiceSlider(
@@ -355,14 +337,12 @@ fun VoiceSettingsScreen(
                         valueText = "${(profile.expressiveness * 100).roundToInt()}%",
                         value = profile.expressiveness,
                         valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(expressiveness = it) }
-                    )
+                        onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
                 }
             }
             item {
                 Button(
-                    onClick = { onPreview(PREVIEW_TEXT) },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { onPreview(PREVIEW_TEXT) }, modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -373,36 +353,33 @@ fun VoiceSettingsScreen(
     }
 
     pendingInstallAction?.let { installAction ->
-        ModelComplianceDialog(
-            onDismiss = { pendingInstallAction = null },
-            onConfirm = {
-                when (installAction) {
-                    is ModelInstallAction.ImportArchive -> {
-                        archiveImportLauncher.launch("*/*")
-                    }
-                    is ModelInstallAction.DownloadArchive -> {
-                        isInstalling = true
-                        installProgress = 0f
-                        coroutineScope.launch {
-                            installMessage = "正在下载并安装模型包..."
-                            val result = downloadModelArchive(
-                                url = downloadUrl,
-                                format = selectedImportFormat,
-                                installer = modelInstaller,
-                                viewModel = viewModel,
-                                onProgress = { installProgress = it }
-                            )
-                            installMessage = result.message
-                            if (result.shouldRefreshModels) {
-                                modelRefreshKey++
-                            }
-                            isInstalling = false
+        ModelComplianceDialog(onDismiss = { pendingInstallAction = null }, onConfirm = {
+            when (installAction) {
+                is ModelInstallAction.ImportArchive -> {
+                    archiveImportLauncher.launch("*/*")
+                }
+
+                is ModelInstallAction.DownloadArchive -> {
+                    isInstalling = true
+                    installProgress = 0f
+                    coroutineScope.launch {
+                        installMessage = "正在下载并安装模型包..."
+                        val result = downloadModelArchive(
+                            url = downloadUrl,
+                            format = selectedImportFormat,
+                            installer = modelInstaller,
+                            viewModel = viewModel,
+                            onProgress = { installProgress = it })
+                        installMessage = result.message
+                        if (result.shouldRefreshModels) {
+                            modelRefreshKey++
                         }
+                        isInstalling = false
                     }
                 }
-                pendingInstallAction = null
             }
-        )
+            pendingInstallAction = null
+        })
     }
 
     if (showPresetPicker) {
@@ -473,16 +450,14 @@ fun VoiceSettingsScreen(
                         installer = modelInstaller,
                         viewModel = viewModel,
                         currentSpeakerId = profile.speakerId,
-                        onProgress = { installProgress = it }
-                    )
+                        onProgress = { installProgress = it })
                     installMessage = result.message
                     if (result.shouldRefreshModels) {
                         modelRefreshKey++
                     }
                     isInstalling = false
                 }
-            }
-        )
+            })
     }
 }
 

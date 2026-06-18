@@ -19,15 +19,13 @@ class DisplayViewModel : ViewModel() {
 
     fun showPhrase(phrase: Phrase) {
         _displayState.value = DisplayState(
-            text = phrase.speech,
-            isInitialHint = false
+            text = phrase.speech, isInitialHint = false
         )
     }
 
     fun clearDisplayText() {
         _displayState.value = DisplayState(
-            text = "",
-            isInitialHint = false
+            text = "", isInitialHint = false
         )
     }
 
