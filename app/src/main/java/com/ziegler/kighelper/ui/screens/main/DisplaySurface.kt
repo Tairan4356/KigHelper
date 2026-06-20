@@ -65,7 +65,8 @@ internal fun DisplaySurface(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
     layoutMode: DisplaySurfaceLayoutMode = DisplaySurfaceLayoutMode.Portrait,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    fontSizeMultiplier: Float = 1.0f
 ) {
     Surface(
         modifier = modifier
@@ -98,7 +99,8 @@ internal fun DisplaySurface(
                     baseStyle = displayTextStyle,
                     layoutMode = layoutMode
                 )
-                val lineHeight = baseFontSize * DisplayLineHeightMultiplier
+                val scaledFontSize = baseFontSize * fontSizeMultiplier
+                val lineHeight = scaledFontSize * DisplayLineHeightMultiplier
 
                 val currentTextIsHint =
                     targetText == "点击下面按钮文字在此显示" || targetText == "先添加一个常用短语吧" || (targetText == text && isSubtle)
@@ -112,7 +114,7 @@ internal fun DisplaySurface(
                     Text(
                         text = targetText,
                         style = displayTextStyle.copy(
-                            fontSize = baseFontSize, lineHeight = lineHeight
+                            fontSize = scaledFontSize, lineHeight = lineHeight
                         ),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onPrimary.copy(

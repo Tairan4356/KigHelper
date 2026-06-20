@@ -11,9 +11,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.MainViewModel
+import com.ziegler.kighelper.ui.SettingsViewModel
 import com.ziegler.kighelper.ui.VoiceViewModel
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.PreviewDialog
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     private val voiceViewModel: VoiceViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -68,7 +72,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
-            KigHelperTheme {
+            val settingsState = settingsViewModel.settings.collectAsStateWithLifecycle()
+            val settings = settingsState.value
+
+            // 监听通知设置变化
+            LaunchedEffect(settings.notificationEnabled) {
+                notificationHelper.setNotificationsEnabled(settings.notificationEnabled)
+            }
+
+            KigHelperTheme(
+                darkMode = settings.darkMode,
+                dynamicColor = settings.dynamicColor
+            ) {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
                 UpdateHandler() // 处理版本更新提示
                 PreviewDialog() // 开发版本提示
@@ -77,6 +92,7 @@ class MainActivity : ComponentActivity() {
                     windowSize = windowSizeClass,
                     viewModel = viewModel,
                     voiceViewModel = voiceViewModel,
+                    settingsViewModel = settingsViewModel,
                     notificationHelper = notificationHelper,
                     onSpeak = { text -> ttsManager.speak(text, voiceViewModel.activeProfile) },
                     onStop = { ttsManager.stop() },

@@ -50,7 +50,9 @@ fun MainScreenLayout(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    fontSizeMultiplier: Float = 1.0f,
+    hapticFeedback: Boolean = true
 ) {
     if (state.isLandscape) {
         LandscapeLayout(
@@ -62,7 +64,9 @@ fun MainScreenLayout(
             onAddPhrase = onAddPhrase,
             onDeletePhrase = onDeletePhrase,
             onUpdatePhrase = onUpdatePhrase,
-            animatedVisibilityScope = animatedVisibilityScope
+            animatedVisibilityScope = animatedVisibilityScope,
+            fontSizeMultiplier = fontSizeMultiplier,
+            hapticFeedback = hapticFeedback
         )
     } else {
         PortraitLayout(
@@ -74,7 +78,9 @@ fun MainScreenLayout(
             onAddPhrase = onAddPhrase,
             onDeletePhrase = onDeletePhrase,
             onUpdatePhrase = onUpdatePhrase,
-            animatedVisibilityScope = animatedVisibilityScope
+            animatedVisibilityScope = animatedVisibilityScope,
+            fontSizeMultiplier = fontSizeMultiplier,
+            hapticFeedback = hapticFeedback
         )
     }
 }
@@ -93,7 +99,9 @@ private fun LandscapeLayout(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    fontSizeMultiplier: Float = 1.0f,
+    hapticFeedback: Boolean = true
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -126,7 +134,9 @@ private fun LandscapeLayout(
                 onClick = if (state.canEnterFullScreen) {
                     { state.onFullScreenChange(true) }
                 } else null,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp)))
+                modifier = Modifier.clip(RoundedCornerShape(24.dp)),
+                fontSizeMultiplier = fontSizeMultiplier
+            )
         }
 
         Box(modifier = Modifier.weight(1f)) {
@@ -136,7 +146,8 @@ private fun LandscapeLayout(
                 onClearClick = onClearClick,
                 onDeletePhrase = onDeletePhrase,
                 onUpdatePhrase = onUpdatePhrase,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                hapticFeedback = hapticFeedback
             )
         }
     }
@@ -156,7 +167,9 @@ private fun PortraitLayout(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    fontSizeMultiplier: Float = 1.0f,
+    hapticFeedback: Boolean = true
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -183,7 +196,9 @@ private fun PortraitLayout(
                 onClick = if (state.canEnterFullScreen) {
                     { state.onFullScreenChange(true) }
                 } else null,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp)))
+                modifier = Modifier.clip(RoundedCornerShape(24.dp)),
+                fontSizeMultiplier = fontSizeMultiplier
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -196,7 +211,8 @@ private fun PortraitLayout(
             onUpdatePhrase = onUpdatePhrase,
             modifier = Modifier
                 .weight(state.phraseAreaWeight)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            hapticFeedback = hapticFeedback
         )
     }
 }
@@ -211,7 +227,8 @@ private fun PhraseAreaContent(
     onClearClick: () -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hapticFeedback: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
     var expandJob: Job? by remember { mutableStateOf<Job?>(null) }
@@ -273,7 +290,9 @@ private fun PhraseAreaContent(
                                 }
                             }
                         }
-                    })
+                    },
+                    hapticFeedback = hapticFeedback
+                )
             }
         }
 

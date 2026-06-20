@@ -30,6 +30,16 @@ class NotificationHelper @Inject constructor(
     private var currentPhraseLabel: String? = null
     private var currentPhraseSpeech: String? = null
 
+    // 通知开关
+    private var notificationsEnabled = true
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        notificationsEnabled = enabled
+        if (!enabled) {
+            cancelNotification()
+        }
+    }
+
     /**
      * 清除当前通知短语内容，并刷新通知为默认提示。
      */
@@ -43,6 +53,10 @@ class NotificationHelper @Inject constructor(
     fun showSilentLockScreenNotification(
         phraseLabel: String? = null, phraseSpeech: String? = null
     ) {
+        if (!notificationsEnabled) {
+            return
+        }
+
         val notificationManager = appContext.notificationManager()
 
         notificationManager.createNotificationChannel(createNotificationChannel())

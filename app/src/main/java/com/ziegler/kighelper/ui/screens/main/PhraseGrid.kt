@@ -83,7 +83,8 @@ internal fun PhraseGrid(
     onDisplayShouldExpand: () -> Unit,
     modifier: Modifier = Modifier,
     cardFontSize: TextUnit = 18.sp,
-    cardHeight: Dp = 80.dp
+    cardHeight: Dp = 80.dp,
+    hapticFeedback: Boolean = true
 ) {
     LazyVerticalGrid(
         columns = columns,
@@ -119,7 +120,8 @@ internal fun PhraseGrid(
                     onPhraseDelete = onPhraseDelete,
                     onDisplayShouldExpand = onDisplayShouldExpand,
                     cardFontSize = cardFontSize,
-                    cardHeight = cardHeight
+                    cardHeight = cardHeight,
+                    hapticFeedback = hapticFeedback
                 )
             }
         }
@@ -146,9 +148,10 @@ private fun PhraseButton(
     onPhraseDelete: (Phrase) -> Unit,
     onDisplayShouldExpand: () -> Unit,
     cardFontSize: TextUnit,
-    cardHeight: Dp
+    cardHeight: Dp,
+    hapticFeedback: Boolean = true
 ) {
-    val performButtonHaptic = rememberPhysicalButtonHaptics()
+    val performButtonHaptic = rememberPhysicalButtonHaptics(enabled = hapticFeedback)
     val buttonShape = MaterialTheme.shapes.large
     val density = LocalDensity.current
     var isMenuExpanded by remember(phrase.id) { mutableStateOf(false) }

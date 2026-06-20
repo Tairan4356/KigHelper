@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SettingsVoice
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,7 +44,8 @@ fun ToolboxScreen(
     contentPadding: PaddingValues,
     onNavigateToPhraseManager: () -> Unit,
     onNavigateToVoiceSettings: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToAbout: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val pagePadding = 16.dp
@@ -93,6 +95,15 @@ fun ToolboxScreen(
                         subtitle = "调整年龄、语速、音高和性格预设",
                         icon = Icons.Filled.SettingsVoice,
                         onClick = onNavigateToVoiceSettings
+                    )
+                }
+
+                item {
+                    ToolboxMenuItem(
+                        title = "偏好设置",
+                        subtitle = "字体大小、深色模式、振动反馈等",
+                        icon = Icons.Filled.Tune,
+                        onClick = onNavigateToSettings
                     )
                 }
 

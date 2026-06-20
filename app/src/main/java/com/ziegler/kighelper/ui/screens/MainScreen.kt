@@ -67,6 +67,8 @@ fun MainScreen(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
+    fontSize: Float = 1.0f,
+    hapticFeedback: Boolean = true,
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -167,7 +169,9 @@ fun MainScreen(
                 onAddPhrase = onAddPhrase,
                 onDeletePhrase = onDeletePhrase,
                 onUpdatePhrase = onUpdatePhrase,
-                animatedVisibilityScope = animatedVisibilityScope
+                animatedVisibilityScope = animatedVisibilityScope,
+                fontSizeMultiplier = fontSize,
+                hapticFeedback = hapticFeedback
             )
         }
 

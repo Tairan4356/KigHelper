@@ -36,6 +36,7 @@ import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
+import com.ziegler.kighelper.ui.screens.SettingsScreen
 import com.ziegler.kighelper.ui.screens.ToolboxScreen
 import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 import com.ziegler.kighelper.utils.NotificationHelper
@@ -56,6 +57,7 @@ fun KigHelperApp(
     windowSize: WindowSizeClass,
     viewModel: MainViewModel,
     voiceViewModel: VoiceViewModel,
+    settingsViewModel: SettingsViewModel,
     notificationHelper: NotificationHelper,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
@@ -64,6 +66,7 @@ fun KigHelperApp(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: AppRoutes.MAIN
+    val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
 
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
@@ -152,12 +155,18 @@ fun KigHelperApp(
                         onDeletePhrase = viewModel::deletePhrase,
                         onUpdatePhrase = { phrase, label, speech ->
                             viewModel.updatePhrase(phrase.id, label, speech)
-                        })
+                        },
+                        fontSize = settings.fontSize,
+                        hapticFeedback = settings.hapticFeedback
+                    )
                 }
 
                 composable(AppRoutes.INPUT) {
                     InputScreen(
-                        contentPadding = innerPadding, onSpeak = onSpeak, onStop = onStop
+                        contentPadding = innerPadding,
+                        onSpeak = onSpeak,
+                        onStop = onStop,
+                        fontSizeMultiplier = settings.fontSize
                     )
                 }
 
@@ -168,6 +177,8 @@ fun KigHelperApp(
                         navController.navigate(AppRoutes.VOICE_SETTINGS)
                     }, onNavigateToAbout = {
                         navController.navigate(AppRoutes.ABOUT)
+                    }, onNavigateToSettings = {
+                        navController.navigate(AppRoutes.SETTINGS)
                     })
                 }
 
@@ -237,6 +248,13 @@ fun KigHelperApp(
 
                 composable(AppRoutes.ABOUT) {
                     AboutScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(AppRoutes.SETTINGS) {
+                    SettingsScreen(
+                        viewModel = settingsViewModel,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
             }
         }
