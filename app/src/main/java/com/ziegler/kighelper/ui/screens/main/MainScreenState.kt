@@ -73,14 +73,16 @@ class MainScreenState(
     }
 
     // 计算显示权重
-    val displayWeight = if (isLandscape) {
-        0.55f
-    } else {
-        val fraction = (collapseOffset / maxCollapseDistancePx).coerceIn(0f, 1f)
-        MAX_WEIGHT - fraction * (MAX_WEIGHT - MIN_WEIGHT)
-    }
+    val displayWeight: Float
+        get() = if (isLandscape) {
+            0.55f
+        } else {
+            val fraction = (collapseOffset / maxCollapseDistancePx).coerceIn(0f, 1f)
+            MAX_WEIGHT - fraction * (MAX_WEIGHT - MIN_WEIGHT)
+        }
 
-    val phraseAreaWeight = 1f - displayWeight
+    val phraseAreaWeight: Float
+        get() = 1f - displayWeight
 
     // 是否有短语
     val hasPhrases = phrases.isNotEmpty()

@@ -15,8 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -26,6 +33,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -206,6 +214,7 @@ private fun PhraseAreaContent(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
+    var expandJob: Job? by remember { mutableStateOf<Job?>(null) }
     val groupedSections = state.getGroupedSections()
     val groupToFlatIndexMap = state.getGroupToFlatIndexMap(groupedSections)
     val selectedGroupIndex = state.getSelectedGroupIndex(groupedSections)
@@ -253,7 +262,16 @@ private fun PhraseAreaContent(
                     onPhraseDelete = onDeletePhrase,
                     onDisplayShouldExpand = {
                         if (!state.isLandscape) {
-                            state.collapseOffset = 0f
+                            expandJob?.cancel()
+                            expandJob = coroutineScope.launch {
+                                animate(
+                                    initialValue = state.collapseOffset,
+                                    targetValue = 0f,
+                                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                ) { value, _ ->
+                                    state.collapseOffset = value
+                                }
+                            }
                         }
                     })
             }
