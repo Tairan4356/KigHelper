@@ -21,7 +21,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -36,11 +35,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.ziegler.kighelper.utils.WindowConfig
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.SettingsViewModel
+import com.ziegler.kighelper.ui.screens.settings.ColorModeSelector
+import com.ziegler.kighelper.ui.screens.settings.ColorPickerDialog
+import com.ziegler.kighelper.ui.screens.settings.CustomColorSelector
+import com.ziegler.kighelper.ui.screens.settings.PresetColorGrid
+import com.ziegler.kighelper.ui.screens.settings.SettingDropdownMenuItem
+import com.ziegler.kighelper.ui.screens.settings.SettingRadioButton
 import com.ziegler.kighelper.ui.theme.FontType
 import kotlin.math.roundToInt
+import com.ziegler.kighelper.ui.screens.settings.SettingSection
+import com.ziegler.kighelper.ui.screens.settings.SettingSlider
+import com.ziegler.kighelper.ui.screens.settings.SettingSwitch
 
 private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
     return weights.minByOrNull { kotlin.math.abs(it - value) } ?: 400
@@ -49,83 +61,75 @@ private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel,
-    onBack: () -> Unit
+    viewModel: SettingsViewModel, onBack: () -> Unit
 ) {
+    val navigationBarPadding =
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
-            TopAppBar(
-                title = { Text("偏好设置") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                    }
+            TopAppBar(title = { Text("偏好设置") }, navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                 }
-            )
-        },
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
-    ) { padding ->
+            })
+        }) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                top = 16.dp,
-                end = 16.dp,
-                bottom = 16.dp + navigationBarPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(padding), contentPadding = PaddingValues(
+                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + navigationBarPadding
+            ), verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "显示") {
-                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSlider(
-                        title = "字体大小",
+                SettingSection(title = "字体") {
+                    FontTypeSelector(
+                        selectedType = settings.fontType, onTypeSelected = { type ->
+                            viewModel.updateFontType(type)
+                            val weights = FontType.entries[type].availableWeights
+                            viewModel.updateFontWeight(
+                                snapToNearestWeight(
+                                    settings.fontWeight, weights
+                                )
+                            )
+                        })
+                    Spacer(modifier = Modifier.height(12.dp))
+                    val currentFontType = FontType.entries[settings.fontType]
+                    val weights = currentFontType.availableWeights
+                    if (weights.size > 1) {
+                        SettingSlider(
+                            title = "字重",
+                            value = weights.indexOf(
+                                snapToNearestWeight(
+                                    settings.fontWeight, weights
+                                )
+                            ).toFloat(),
+                            onValueChange = { index ->
+                                viewModel.updateFontWeight(weights[index.roundToInt()])
+                            },
+                            valueRange = 0f..(weights.size - 1).toFloat(),
+                            steps = weights.size - 2
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SettingSlider(
+                        title = "文字显示区字体大小",
                         value = settings.fontSize,
                         onValueChange = viewModel::updateFontSize,
                         valueRange = 0.8f..2.0f,
-                        steps = 5,
                         valueText = "${(settings.fontSize * 100).roundToInt()}%"
                     )
                 }
             }
 
             item {
-                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "字体") {
-                    FontTypeSelector(
-                        selectedType = settings.fontType,
-                        onTypeSelected = { type ->
-                            viewModel.updateFontType(type)
-                            val weights = FontType.entries[type].availableWeights
-                            viewModel.updateFontWeight(snapToNearestWeight(settings.fontWeight, weights))
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    val currentFontType = FontType.entries[settings.fontType]
-                    val weights = currentFontType.availableWeights
-                    if (weights.size > 1) {
-                        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSlider(
-                            title = "字重",
-                            value = weights.indexOf(snapToNearestWeight(settings.fontWeight, weights)).toFloat(),
-                            onValueChange = { index ->
-                                viewModel.updateFontWeight(weights[index.roundToInt()])
-                            },
-                            valueRange = 0f..(weights.size - 1).toFloat(),
-                            steps = weights.size - 2,
-                            valueText = getFontWeightText(snapToNearestWeight(settings.fontWeight, weights))
-                        )
-                    }
-                }
-            }
-
-            item {
-                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "深色模式") {
+                SettingSection(title = "颜色模式") {
                     DarkModeOptions(
-                        selectedMode = settings.darkMode,
-                        onModeSelected = viewModel::updateDarkMode
+                        selectedMode = settings.darkMode, onModeSelected = viewModel::updateDarkMode
                     )
                 }
             }
@@ -133,15 +137,15 @@ fun SettingsScreen(
             item {
                 var showColorPicker by remember { mutableStateOf(false) }
 
-                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "主题颜色") {
-                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.ColorModeSelector(
+                SettingSection(title = "主题颜色") {
+                    ColorModeSelector(
                         colorMode = settings.colorMode,
                         onColorModeChange = viewModel::updateColorMode
                     )
 
                     if (settings.colorMode == 1) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.PresetColorGrid(
+                        PresetColorGrid(
                             selectedIndex = settings.presetColorIndex,
                             onColorSelected = viewModel::updatePresetColorIndex
                         )
@@ -149,46 +153,44 @@ fun SettingsScreen(
 
                     if (settings.colorMode == 2) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.CustomColorSelector(
+                        CustomColorSelector(
                             customColor = settings.customColor,
-                            onClick = { showColorPicker = true }
-                        )
+                            onClick = { showColorPicker = true })
                     }
                 }
 
                 if (showColorPicker) {
-                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.ColorPickerDialog(
+                    ColorPickerDialog(
                         initialColor = settings.customColor,
                         onColorSelected = { color ->
                             viewModel.updateCustomColor(color)
                             showColorPicker = false
                         },
-                        onDismiss = { showColorPicker = false }
-                    )
+                        onDismiss = { showColorPicker = false })
                 }
             }
 
             item {
                 val context = LocalContext.current
 
-                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "功能") {
-                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSwitch(
-                        title = "振动反馈",
-                        subtitle = "点击短语时提供触觉反馈",
+                SettingSection(title = "功能开关") {
+                    SettingSwitch(
+                        title = "触感反馈",
+                        subtitle = "点击短语时震动",
                         checked = settings.hapticFeedback,
                         onCheckedChange = viewModel::updateHapticFeedback
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSwitch(
+                    SettingSwitch(
                         title = "通知显示",
-                        subtitle = "后台时显示锁屏通知",
+                        subtitle = "应用置于后台时显示通知",
                         checked = settings.notificationEnabled,
                         onCheckedChange = viewModel::updateNotificationEnabled
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSwitch(
+                    SettingSwitch(
                         title = "锁屏显示",
-                        subtitle = "在锁屏界面显示应用内容",
+                        subtitle = "在锁屏界面显示应用",
                         checked = settings.lockScreenEnabled,
                         onCheckedChange = viewModel::updateLockScreenEnabled
                     )
@@ -203,20 +205,24 @@ fun SettingsScreen(
                             Text(
                                 if (WindowConfig.canDrawOverlays(context)) "已授予" else "未授予",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (WindowConfig.canDrawOverlays(context))
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.error
+                                color = if (WindowConfig.canDrawOverlays(context)) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
                             )
                         }
-                        androidx.compose.material3.TextButton(onClick = {
+                        TextButton(onClick = {
                             try {
-                                context.startActivity(WindowConfig.getOverlayPermissionIntent(context))
-                                Toast.makeText(context, "请找到并开启 KigHelper 的权限", Toast.LENGTH_LONG)
-                                    .show()
+                                context.startActivity(
+                                    WindowConfig.getOverlayPermissionIntent(
+                                        context
+                                    )
+                                )
+                                Toast.makeText(
+                                    context, "请找到并开启 KigHelper 的权限", Toast.LENGTH_LONG
+                                ).show()
                             } catch (_: Exception) {
-                                Toast.makeText(context, "无法跳转设置，请手动开启权限", Toast.LENGTH_SHORT)
-                                    .show()
+                                Toast.makeText(
+                                    context, "无法跳转设置，请手动开启权限", Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }) {
                             Text(if (WindowConfig.canDrawOverlays(context)) "已授予" else "去设置")
@@ -224,8 +230,7 @@ fun SettingsScreen(
                     }
                     Text(
                         "不同机型的系统权限设置存在差异，请根据实际情况手动开启锁屏显示、应用上层或悬浮窗等相关权限。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
@@ -235,29 +240,25 @@ fun SettingsScreen(
 
 @Composable
 private fun DarkModeOptions(
-    selectedMode: Int,
-    onModeSelected: (Int) -> Unit
+    selectedMode: Int, onModeSelected: (Int) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingRadioButton(
-            label = "跟随系统",
-            selected = selectedMode == 0,
-            onClick = { onModeSelected(0) },
-            modifier = Modifier.weight(1f)
-        )
-        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingRadioButton(
+    Row {
+        SettingRadioButton(
             label = "浅色",
             selected = selectedMode == 1,
             onClick = { onModeSelected(1) },
             modifier = Modifier.weight(1f)
         )
-        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingRadioButton(
+        SettingRadioButton(
             label = "深色",
             selected = selectedMode == 2,
             onClick = { onModeSelected(2) },
+            modifier = Modifier.weight(1f)
+        )
+        SettingRadioButton(
+            label = "跟随系统",
+            selected = selectedMode == 0,
+            onClick = { onModeSelected(0) },
             modifier = Modifier.weight(1f)
         )
     }
@@ -266,54 +267,32 @@ private fun DarkModeOptions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FontTypeSelector(
-    selectedType: Int,
-    onTypeSelected: (Int) -> Unit
+    selectedType: Int, onTypeSelected: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedFont = FontType.entries[selectedType]
 
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it }
-    ) {
+        expanded = expanded, onExpandedChange = { expanded = it }) {
         TextField(
             value = selectedFont.displayName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("字体") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
         )
         ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+            expanded = expanded, onDismissRequest = { expanded = false }) {
             FontType.entries.forEachIndexed { index, fontType ->
-                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingDropdownMenuItem(
-                    text = fontType.displayName,
-                    onClick = {
+                SettingDropdownMenuItem(
+                    text = fontType.displayName, onClick = {
                         onTypeSelected(index)
                         expanded = false
-                    }
-                )
+                    })
             }
         }
     }
 }
 
-private fun getFontWeightText(weight: Int): String {
-    return when (weight) {
-        100 -> "Thin"
-        200 -> "ExtraLight"
-        300 -> "Light"
-        400 -> "Regular"
-        500 -> "Medium"
-        600 -> "SemiBold"
-        700 -> "Bold"
-        800 -> "ExtraBold"
-        900 -> "Black"
-        else -> "$weight"
-    }
-}

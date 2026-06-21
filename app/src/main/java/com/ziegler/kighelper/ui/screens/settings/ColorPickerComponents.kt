@@ -40,12 +40,7 @@ fun ColorModeSelector(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        Text("主题颜色", style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Row {
             SettingRadioButton(
                 label = "跟随系统",
                 selected = colorMode == 0,
@@ -71,11 +66,9 @@ fun ColorModeSelector(
 @Composable
 fun PresetColorGrid(
     selectedIndex: Int,
-    onColorSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onColorSelected: (Int) -> Unit
 ) {
     Column(
-        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         for (rowIndex in 0..1) {

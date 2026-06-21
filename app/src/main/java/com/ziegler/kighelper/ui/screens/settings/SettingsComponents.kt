@@ -3,7 +3,9 @@ package com.ziegler.kighelper.ui.screens.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
@@ -32,12 +35,12 @@ fun SettingSlider(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.bodyMedium)
             if (valueText != null) {
                 Text(
                     valueText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
         }
@@ -45,8 +48,7 @@ fun SettingSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
-            steps = steps,
-            modifier = Modifier.fillMaxWidth()
+            steps = steps
         )
     }
 }
@@ -64,11 +66,11 @@ fun SettingSwitch(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.secondary
             )
         }
         Switch(
@@ -109,10 +111,12 @@ fun SettingSection(
     Column {
         Text(
             title,
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(bottom = 8.dp)
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
         )
+        Spacer(modifier = Modifier.height(12.dp))
         content()
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -122,7 +126,7 @@ fun SettingDropdownMenuItem(
     onClick: () -> Unit
 ) {
     DropdownMenuItem(
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge) },
+        text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
         onClick = onClick
     )
 }
