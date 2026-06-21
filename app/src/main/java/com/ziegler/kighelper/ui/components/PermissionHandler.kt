@@ -1,6 +1,8 @@
 package com.ziegler.kighelper.ui.components
 
 import android.Manifest
+import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -19,15 +21,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.utils.WindowConfig
 
-/**
- * 统一处理启动时需要的系统权限提示。
- */
+private const val PREFS_NAME = "permission_dialog_state"
+private const val KEY_NOTIFICATION_DIALOG_SHOWN = "notification_dialog_shown"
+private const val KEY_OVERLAY_DIALOG_SHOWN = "overlay_dialog_shown"
+
 @Composable
 fun PermissionHandler() {
     val context = LocalContext.current
     var showDialog by remember { mutableStateOf(false) }
+    val prefs = remember {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
-    // 检查通知权限
     val notificationPermissionResult = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -38,36 +43,49 @@ fun PermissionHandler() {
     }
 
     LaunchedEffect(Unit) {
-        // Android 13+ 需要显式申请通知权限
+        // Android 13+ needs explicit notification permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasNotificationPermission = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
 
             if (!hasNotificationPermission) {
-                notificationPermissionResult.launch(Manifest.permission.POST_NOTIFICATIONS)
+                val dialogShown = prefs.getBoolean(KEY_NOTIFICATION_DIALOG_SHOWN, false)
+                if (!dialogShown) {
+                    notificationPermissionResult.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    prefs.edit().putBoolean(KEY_NOTIFICATION_DIALOG_SHOWN, true).apply()
+                }
             }
         }
 
-        // 部分 ROM 的锁屏显示依赖悬浮窗权限
+        // Overlay permission: show dialog only on first launch, toast on subsequent
         if (!WindowConfig.canDrawOverlays(context)) {
-            showDialog = true
+            val dialogShown = prefs.getBoolean(KEY_OVERLAY_DIALOG_SHOWN, false)
+            if (!dialogShown) {
+                showDialog = true
+            } else {
+                Toast.makeText(
+                    context, "锁屏显示权限未开启，部分功能可能受限", Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = {
-            showDialog = false
-            Toast.makeText(
-                context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
-            ).show()
-        },
+                showDialog = false
+                prefs.edit().putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true).apply()
+                Toast.makeText(
+                    context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
+                ).show()
+            },
             title = { Text("需要锁屏显示权限") },
-            text = { Text("为了能在锁屏时使用，请开启“显示在其他应用上”或“锁屏显示”权限。") },
+            text = { Text("为了能在锁屏时使用，请开启「显示在其他应用上」或「锁屏显示」权限。") },
             confirmButton = {
                 TextButton(onClick = {
                     showDialog = false
+                    prefs.edit().putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true).apply()
                     try {
                         context.startActivity(WindowConfig.getOverlayPermissionIntent(context))
                         Toast.makeText(
@@ -85,6 +103,7 @@ fun PermissionHandler() {
             dismissButton = {
                 TextButton(onClick = {
                     showDialog = false
+                    prefs.edit().putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true).apply()
                     Toast.makeText(
                         context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
                     ).show()

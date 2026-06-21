@@ -18,6 +18,14 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.updateFontSize(size)
     }
 
+    fun updateFontType(type: Int) {
+        settingsRepository.updateFontType(type)
+    }
+
+    fun updateFontWeight(weight: Int) {
+        settingsRepository.updateFontWeight(weight)
+    }
+
     fun updateDarkMode(mode: Int) {
         settingsRepository.updateDarkMode(mode)
     }
@@ -40,5 +48,9 @@ class SettingsViewModel @Inject constructor(
 
     fun updateNotificationEnabled(enabled: Boolean) {
         settingsRepository.updateNotificationEnabled(enabled)
+    }
+
+    fun updateLockScreenEnabled(enabled: Boolean) {
+        settingsRepository.updateLockScreenEnabled(enabled)
     }
 }

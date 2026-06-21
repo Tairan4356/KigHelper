@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -59,21 +60,23 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Ensure activity stays visible on lock screen
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
         enableEdgeToEdge() // 开启边到边显示
 
         startService(Intent(this, TaskRemovedCleanupService::class.java))
         registerScreenReceiver()
-        WindowConfig.setup(this) // 配置锁屏窗口权限
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             val settingsState = settingsViewModel.settings.collectAsStateWithLifecycle()
             val settings = settingsState.value
+
+            // 根据锁屏显示设置控制窗口标志
+            LaunchedEffect(settings.lockScreenEnabled) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    setShowWhenLocked(settings.lockScreenEnabled)
+                    setTurnScreenOn(settings.lockScreenEnabled)
+                }
+            }
 
             // 监听通知设置变化
             LaunchedEffect(settings.notificationEnabled) {
@@ -84,7 +87,9 @@ class MainActivity : ComponentActivity() {
                 darkMode = settings.darkMode,
                 colorMode = settings.colorMode,
                 presetColorIndex = settings.presetColorIndex,
-                customColor = settings.customColor
+                customColor = settings.customColor,
+                fontType = settings.fontType,
+                fontWeight = settings.fontWeight
             ) {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
                 UpdateHandler() // 处理版本更新提示

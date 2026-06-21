@@ -92,7 +92,7 @@ fun ToolboxScreen(
                 item {
                     ToolboxMenuItem(
                         title = "全局音色设置",
-                        subtitle = "调整年龄、语速、音高和性格预设",
+                        subtitle = "调整引擎、语速、音高和管理预设",
                         icon = Icons.Filled.SettingsVoice,
                         onClick = onNavigateToVoiceSettings
                     )
@@ -101,7 +101,7 @@ fun ToolboxScreen(
                 item {
                     ToolboxMenuItem(
                         title = "偏好设置",
-                        subtitle = "字体大小、深色模式、振动反馈等",
+                        subtitle = "显示字体、主题配色、反馈信息等",
                         icon = Icons.Filled.Tune,
                         onClick = onNavigateToSettings
                     )

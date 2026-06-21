@@ -13,6 +13,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.core.view.WindowCompat
 import com.materialkolor.rememberDynamicColorScheme
 
@@ -44,6 +45,8 @@ fun KigHelperTheme(
     colorMode: Int = 0,
     presetColorIndex: Int = 0,
     customColor: Long = 0xFF6650A4,
+    fontType: Int = 0,
+    fontWeight: Int = 400,
     content: @Composable () -> Unit
 ) {
     val isSystemDark = isSystemInDarkTheme()
@@ -90,7 +93,7 @@ fun KigHelperTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = createTypography(FontType.entries[fontType].fontFamily, FontWeight(fontWeight)),
         content = content
     )
 }
