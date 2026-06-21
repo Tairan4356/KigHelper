@@ -22,8 +22,16 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.updateDarkMode(mode)
     }
 
-    fun updateDynamicColor(enabled: Boolean) {
-        settingsRepository.updateDynamicColor(enabled)
+    fun updateColorMode(mode: Int) {
+        settingsRepository.updateColorMode(mode)
+    }
+
+    fun updatePresetColorIndex(index: Int) {
+        settingsRepository.updatePresetColorIndex(index)
+    }
+
+    fun updateCustomColor(color: Long) {
+        settingsRepository.updateCustomColor(color)
     }
 
     fun updateHapticFeedback(enabled: Boolean) {

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.materialkolor.rememberDynamicColorScheme
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -40,7 +41,9 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun KigHelperTheme(
     darkMode: Int = 0,
-    dynamicColor: Boolean = true,
+    colorMode: Int = 0,
+    presetColorIndex: Int = 0,
+    customColor: Long = 0xFF6650A4,
     content: @Composable () -> Unit
 ) {
     val isSystemDark = isSystemInDarkTheme()
@@ -50,13 +53,31 @@ fun KigHelperTheme(
         else -> isSystemDark
     }
 
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = when (colorMode) {
+        0 -> {
+            // 跟随系统/动态配色
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val context = LocalContext.current
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else if (darkTheme) {
+                DarkColorScheme
+            } else {
+                LightColorScheme
+            }
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        1 -> {
+            // 预设颜色 - 使用 MaterialKolor 生成完整调色板
+            val seedColor = PresetColors[presetColorIndex.coerceIn(0, PresetColors.lastIndex)]
+            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
+        }
+        2 -> {
+            // 自定义颜色 - 使用 MaterialKolor 生成完整调色板
+            val seedColor = Color(customColor.toInt())
+            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
+        }
+        else -> {
+            if (darkTheme) DarkColorScheme else LightColorScheme
+        }
     }
 
     val view = LocalView.current

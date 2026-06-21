@@ -18,18 +18,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.SettingsViewModel
@@ -70,174 +67,112 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text(
-                    "显示",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
+                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "显示") {
+                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSlider(
+                        title = "字体大小",
+                        value = settings.fontSize,
+                        onValueChange = viewModel::updateFontSize,
+                        valueRange = 0.8f..2.0f,
+                        steps = 5,
+                        valueText = "${(settings.fontSize * 100).roundToInt()}%"
+                    )
+                }
             }
 
             item {
-                FontSizeSetting(
-                    fontSize = settings.fontSize,
-                    onFontSizeChange = viewModel::updateFontSize
-                )
+                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "深色模式") {
+                    DarkModeOptions(
+                        selectedMode = settings.darkMode,
+                        onModeSelected = viewModel::updateDarkMode
+                    )
+                }
             }
 
             item {
-                DarkModeSetting(
-                    darkMode = settings.darkMode,
-                    onDarkModeChange = viewModel::updateDarkMode
-                )
+                var showColorPicker by remember { mutableStateOf(false) }
+
+                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "主题颜色") {
+                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.ColorModeSelector(
+                        colorMode = settings.colorMode,
+                        onColorModeChange = viewModel::updateColorMode
+                    )
+
+                    if (settings.colorMode == 1) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.PresetColorGrid(
+                            selectedIndex = settings.presetColorIndex,
+                            onColorSelected = viewModel::updatePresetColorIndex
+                        )
+                    }
+
+                    if (settings.colorMode == 2) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.CustomColorSelector(
+                            customColor = settings.customColor,
+                            onClick = { showColorPicker = true }
+                        )
+                    }
+                }
+
+                if (showColorPicker) {
+                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.ColorPickerDialog(
+                        initialColor = settings.customColor,
+                        onColorSelected = { color ->
+                            viewModel.updateCustomColor(color)
+                            showColorPicker = false
+                        },
+                        onDismiss = { showColorPicker = false }
+                    )
+                }
             }
 
             item {
-                SwitchSetting(
-                    title = "动态配色",
-                    subtitle = "使用系统动态主题色（Android 12+）",
-                    checked = settings.dynamicColor,
-                    onCheckedChange = viewModel::updateDynamicColor
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "功能",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            item {
-                SwitchSetting(
-                    title = "振动反馈",
-                    subtitle = "点击短语时提供触觉反馈",
-                    checked = settings.hapticFeedback,
-                    onCheckedChange = viewModel::updateHapticFeedback
-                )
-            }
-
-            item {
-                SwitchSetting(
-                    title = "通知显示",
-                    subtitle = "后台时显示锁屏通知",
-                    checked = settings.notificationEnabled,
-                    onCheckedChange = viewModel::updateNotificationEnabled
-                )
+                _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSection(title = "功能") {
+                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSwitch(
+                        title = "振动反馈",
+                        subtitle = "点击短语时提供触觉反馈",
+                        checked = settings.hapticFeedback,
+                        onCheckedChange = viewModel::updateHapticFeedback
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingSwitch(
+                        title = "通知显示",
+                        subtitle = "后台时显示锁屏通知",
+                        checked = settings.notificationEnabled,
+                        onCheckedChange = viewModel::updateNotificationEnabled
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun FontSizeSetting(
-    fontSize: Float,
-    onFontSizeChange: (Float) -> Unit
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("字体大小", style = MaterialTheme.typography.bodyLarge)
-            Text(
-                "${(fontSize * 100).roundToInt()}%",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Slider(
-            value = fontSize,
-            onValueChange = onFontSizeChange,
-            valueRange = 0.8f..2.0f,
-            steps = 5,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun DarkModeSetting(
-    darkMode: Int,
-    onDarkModeChange: (Int) -> Unit
-) {
-    Column {
-        Text("深色模式", style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DarkModeOption(
-                label = "跟随系统",
-                selected = darkMode == 0,
-                onClick = { onDarkModeChange(0) },
-                modifier = Modifier.weight(1f)
-            )
-            DarkModeOption(
-                label = "浅色",
-                selected = darkMode == 1,
-                onClick = { onDarkModeChange(1) },
-                modifier = Modifier.weight(1f)
-            )
-            DarkModeOption(
-                label = "深色",
-                selected = darkMode == 2,
-                onClick = { onDarkModeChange(2) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun DarkModeOption(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = 4.dp)
-        )
-    }
-}
-
-@Composable
-private fun SwitchSetting(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun DarkModeOptions(
+    selectedMode: Int,
+    onModeSelected: (Int) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
+        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingRadioButton(
+            label = "跟随系统",
+            selected = selectedMode == 0,
+            onClick = { onModeSelected(0) },
+            modifier = Modifier.weight(1f)
+        )
+        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingRadioButton(
+            label = "浅色",
+            selected = selectedMode == 1,
+            onClick = { onModeSelected(1) },
+            modifier = Modifier.weight(1f)
+        )
+        _root_ide_package_.com.ziegler.kighelper.ui.screens.settings.SettingRadioButton(
+            label = "深色",
+            selected = selectedMode == 2,
+            onClick = { onModeSelected(2) },
+            modifier = Modifier.weight(1f)
         )
     }
 }

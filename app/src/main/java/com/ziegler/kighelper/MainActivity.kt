@@ -82,7 +82,9 @@ class MainActivity : ComponentActivity() {
 
             KigHelperTheme(
                 darkMode = settings.darkMode,
-                dynamicColor = settings.dynamicColor
+                colorMode = settings.colorMode,
+                presetColorIndex = settings.presetColorIndex,
+                customColor = settings.customColor
             ) {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
                 UpdateHandler() // 处理版本更新提示

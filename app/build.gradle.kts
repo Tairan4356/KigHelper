@@ -95,7 +95,10 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.reorderable)
+    implementation(libs.colorpickerview)
+    implementation(libs.materialKolor)
     implementation(files("libs/sherpa-onnx-1.13.2.aar"))
+
 
     // Hilt
     implementation(libs.hilt.android)
