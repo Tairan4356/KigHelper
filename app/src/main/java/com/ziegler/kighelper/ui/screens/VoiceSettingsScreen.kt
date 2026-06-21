@@ -203,6 +203,15 @@ fun VoiceSettingsScreen(
                         )
                     })
             }
+            if (profile.engineOrDefault == VoiceEngineType.DISABLED) {
+                item {
+                    Text(
+                        "语音合成已关闭",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
                 item {
                     OfflineModelStatusCard(
@@ -211,6 +220,7 @@ fun VoiceSettingsScreen(
                         onClick = { showModelPicker = true })
                 }
             }
+            if (profile.engineOrDefault != VoiceEngineType.DISABLED) {
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL && activeModelStatus?.pack?.supportsSpeakerSelection == true) {
                 item {
                     VoiceSlider(
@@ -348,6 +358,7 @@ fun VoiceSettingsScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("试听当前音色")
                 }
+            }
             }
         }
     }

@@ -88,7 +88,7 @@ data class VoiceProfile(
 }
 
 enum class VoiceEngineType(val label: String) {
-    SYSTEM_TTS("系统 TTS"), OFFLINE_NEURAL("端侧模型")
+    DISABLED("关闭"), SYSTEM_TTS("系统 TTS"), OFFLINE_NEURAL("端侧模型")
 }
 
 data class VoiceTtsParams(

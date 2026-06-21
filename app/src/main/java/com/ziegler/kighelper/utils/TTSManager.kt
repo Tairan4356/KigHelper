@@ -35,6 +35,7 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
      * @param text 要转语音的文字
      */
     fun speak(text: String, profile: VoiceProfile = VoiceProfile.defaultProfile()) {
+        if (profile.engineOrDefault == VoiceEngineType.DISABLED) return
         val content = normalizeText(text, profile).trim()
         if (content.isEmpty()) return
 
