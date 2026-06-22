@@ -3,6 +3,7 @@ package com.ziegler.kighelper.ui.screens.edit
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.DriveFileMoveRtl
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
@@ -83,7 +87,7 @@ internal fun PhraseManagementItem(
             IconButton(
                 modifier = modifier.size(40.dp), onClick = {}) {
                 Icon(
-                    imageVector = Icons.Default.Menu,
+                    imageVector = Icons.Default.DragIndicator,
                     contentDescription = "拖拽排序",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -106,31 +110,35 @@ internal fun PhraseManagementItem(
                 )
             }
 
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.DriveFileMoveRtl,
+                        contentDescription = "更多",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    groups.forEach { group ->
+                        DropdownMenuItem(
+                            text = { Text(group.name) },
+                            enabled = group.id != phrase.groupId,
+                            onClick = {
+                                onMoveToGroup(group.id)
+                                menuExpanded = false
+                            })
+                    }
+                }
+            }
+
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.secondary
                 )
-            }
-
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert, contentDescription = "更多"
-                )
-            }
-
-            DropdownMenu(
-                expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                groups.forEach { group ->
-                    DropdownMenuItem(
-                        text = { Text(group.name) },
-                        enabled = group.id != phrase.groupId,
-                        onClick = {
-                            onMoveToGroup(group.id)
-                            menuExpanded = false
-                        })
-                }
             }
         }
     }

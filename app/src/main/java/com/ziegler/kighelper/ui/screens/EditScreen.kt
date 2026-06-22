@@ -14,8 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -24,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,7 +35,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
@@ -78,7 +77,6 @@ fun EditScreen(
     val outerEndPadding = contentPadding.calculateEndPadding(layoutDirection)
     val outerBottomPadding = contentPadding.calculateBottomPadding()
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val horizontalPadding = 16.dp
     val itemSpacing = 8.dp
 
@@ -150,7 +148,7 @@ fun EditScreen(
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
+        topBar = {
         TopAppBar(
             title = {
             Text("管理短语")
@@ -164,19 +162,20 @@ fun EditScreen(
         }, actions = {
             IconButton(onClick = { showAddGroupDialog = true }) {
                 Icon(
-                    imageVector = Icons.Default.Folder, contentDescription = "新建分组"
+                    imageVector = Icons.Default.CreateNewFolder,
+                    contentDescription = "新建分组"
                 )
             }
 
             if (currentGroupId != PhraseGroup.DEFAULT_ID) {
                 IconButton(onClick = { selectedGroup?.let { groupPendingDelete = it } }) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = Icons.Default.FolderDelete,
                         contentDescription = "删除当前分组"
                     )
                 }
             }
-        }, scrollBehavior = scrollBehavior
+        }
         )
     }, floatingActionButton = {
         FloatingActionButton(
