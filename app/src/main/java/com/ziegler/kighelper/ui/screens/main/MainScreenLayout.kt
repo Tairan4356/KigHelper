@@ -50,6 +50,7 @@ fun MainScreenLayout(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true
@@ -64,6 +65,7 @@ fun MainScreenLayout(
             onAddPhrase = onAddPhrase,
             onDeletePhrase = onDeletePhrase,
             onUpdatePhrase = onUpdatePhrase,
+            onNavigateToEdit = onNavigateToEdit,
             animatedVisibilityScope = animatedVisibilityScope,
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback
@@ -78,6 +80,7 @@ fun MainScreenLayout(
             onAddPhrase = onAddPhrase,
             onDeletePhrase = onDeletePhrase,
             onUpdatePhrase = onUpdatePhrase,
+            onNavigateToEdit = onNavigateToEdit,
             animatedVisibilityScope = animatedVisibilityScope,
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback
@@ -99,6 +102,7 @@ private fun LandscapeLayout(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true
@@ -146,6 +150,7 @@ private fun LandscapeLayout(
                 onClearClick = onClearClick,
                 onDeletePhrase = onDeletePhrase,
                 onUpdatePhrase = onUpdatePhrase,
+                onNavigateToEdit = onNavigateToEdit,
                 modifier = Modifier.fillMaxSize(),
                 hapticFeedback = hapticFeedback
             )
@@ -167,6 +172,7 @@ private fun PortraitLayout(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true
@@ -209,6 +215,7 @@ private fun PortraitLayout(
             onClearClick = onClearClick,
             onDeletePhrase = onDeletePhrase,
             onUpdatePhrase = onUpdatePhrase,
+            onNavigateToEdit = onNavigateToEdit,
             modifier = Modifier
                 .weight(state.phraseAreaWeight)
                 .fillMaxWidth(),
@@ -227,6 +234,7 @@ private fun PhraseAreaContent(
     onClearClick: () -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
     hapticFeedback: Boolean = true
 ) {
@@ -275,7 +283,7 @@ private fun PhraseAreaContent(
                     cardFontSize = state.cardFontSize,
                     cardHeight = state.cardHeight,
                     onPhraseClick = onPhraseClick,
-                    onPhraseLongClick = { state.editingPhrase = it },
+                    onPhraseLongClick = { onNavigateToEdit(it.id) },
                     onPhraseDelete = onDeletePhrase,
                     onDisplayShouldExpand = {
                         if (!state.isLandscape) {

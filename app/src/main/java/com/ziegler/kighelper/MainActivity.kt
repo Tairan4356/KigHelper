@@ -25,6 +25,7 @@ import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
+import com.ziegler.kighelper.utils.AudioPlayerManager
 import com.ziegler.kighelper.utils.WindowConfig
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -42,6 +43,8 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var notificationHelper: NotificationHelper
+
+    private lateinit var audioPlayerManager: AudioPlayerManager
 
     private var screenReceiverRegistered = false
 
@@ -61,6 +64,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge() // 开启边到边显示
+        audioPlayerManager = AudioPlayerManager(this)
 
         startService(Intent(this, TaskRemovedCleanupService::class.java))
         registerScreenReceiver()
@@ -102,13 +106,19 @@ class MainActivity : ComponentActivity() {
                     settingsViewModel = settingsViewModel,
                     notificationHelper = notificationHelper,
                     onSpeak = { text -> ttsManager.speak(text, voiceViewModel.activeProfile) },
-                    onStop = { ttsManager.stop() },
+                    onStop = {
+                        ttsManager.stop()
+                        audioPlayerManager.stop()
+                    },
                     onPhraseSpoken = { phrase ->
                         // 当短语被使用时更新通知
                         // 传递 label 用于显示，speech 用于 TTS 播放
                         notificationHelper.showSilentLockScreenNotification(
                             phraseLabel = phrase.label, phraseSpeech = phrase.speech
                         )
+                    },
+                    onPlayAudio = { audioPath ->
+                        audioPlayerManager.play(audioPath)
                     })
             }
         }
@@ -132,6 +142,7 @@ class MainActivity : ComponentActivity() {
             unregisterReceiver(screenReceiver)
             screenReceiverRegistered = false
         }
+        audioPlayerManager.release()
         ttsManager.shutDown()
         super.onDestroy()
     }

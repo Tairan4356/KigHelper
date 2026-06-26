@@ -61,7 +61,8 @@ fun KigHelperApp(
     notificationHelper: NotificationHelper,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
-    onPhraseSpoken: (Phrase) -> Unit = {}
+    onPhraseSpoken: (Phrase) -> Unit = {},
+    onPlayAudio: (String) -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -142,7 +143,11 @@ fun KigHelperApp(
                         onFullScreenChange = { isFullScreen = it },
                         onPhraseClick = { phrase ->
                             viewModel.showPhrase(phrase)
-                            onSpeak(phrase.speech)
+                            if (phrase.hasAudio && phrase.audioPath != null) {
+                                onPlayAudio(phrase.audioPath)
+                            } else {
+                                onSpeak(phrase.speech)
+                            }
                             viewModel.markPhraseAsUsed(phrase)
                             onPhraseSpoken(phrase)
                         },
@@ -155,6 +160,9 @@ fun KigHelperApp(
                         onDeletePhrase = viewModel::deletePhrase,
                         onUpdatePhrase = { phrase, label, speech ->
                             viewModel.updatePhrase(phrase.id, label, speech)
+                        },
+                        onNavigateToEdit = { phraseId ->
+                            navController.navigate(AppRoutes.addEditRoute(phraseId))
                         },
                         fontSize = settings.fontSize,
                         hapticFeedback = settings.hapticFeedback
@@ -235,15 +243,16 @@ fun KigHelperApp(
                         isEditMode = phraseId != null,
                         groups = groups,
                         initialGroupId = initialGroupId,
-                        onSave = { label, speech, groupId ->
+                        onSave = { label, speech, groupId, audioPath, cardColor ->
                             if (phraseId == null) {
-                                viewModel.addPhrase(label, speech, groupId)
+                                viewModel.addPhrase(label, speech, groupId, audioPath, cardColor)
                             } else {
-                                viewModel.updatePhrase(phraseId, label, speech, groupId)
+                                viewModel.updatePhrase(phraseId, label, speech, groupId, audioPath, cardColor)
                             }
                             navController.popBackStack()
                         },
-                        onBack = { navController.popBackStack() })
+                        onBack = { navController.popBackStack() }
+                    )
                 }
 
                 composable(AppRoutes.ABOUT) {

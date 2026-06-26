@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -177,8 +178,14 @@ private fun PhraseButton(
                     isMenuExpanded = true
                 }),
             shape = buttonShape,
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            color = phrase.cardColor?.let { Color(it.toInt()) }
+                ?: MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = phrase.cardColor?.let {
+                val luminance = (0.299 * ((it shr 16) and 0xFF) +
+                        0.587 * ((it shr 8) and 0xFF) +
+                        0.114 * (it and 0xFF)) / 255
+                if (luminance > 0.5) Color.Black else Color.White
+            } ?: MaterialTheme.colorScheme.onSecondaryContainer
         ) {
             Box(
                 modifier = Modifier

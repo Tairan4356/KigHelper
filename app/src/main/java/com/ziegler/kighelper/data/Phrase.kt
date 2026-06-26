@@ -26,13 +26,20 @@ data class PhraseGroup(
  * @param id 唯一标识符，默认生成 UUID
  * @param label 在界面上显示的文字（按钮名称）
  * @param speech 点击后 TTS 朗读的具体内容
+ * @param groupId 所属分组 ID
+ * @param audioPath 导入的音频文件内部路径，非空时直接播放音频替代 TTS
+ * @param cardColor 自定义卡片背景色 (ARGB)，null 表示使用默认主题色
  */
 data class Phrase(
     val id: String = UUID.randomUUID().toString(),
     val label: String,
     val speech: String,
-    val groupId: String = PhraseGroup.DEFAULT_ID
+    val groupId: String = PhraseGroup.DEFAULT_ID,
+    val audioPath: String? = null,
+    val cardColor: Long? = null
 ) {
+    val hasAudio: Boolean get() = !audioPath.isNullOrBlank()
+
     companion object {
         val DEFAULT_PHRASES = listOf(
             Phrase(label = "你好", speech = "你好"),

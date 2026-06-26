@@ -42,10 +42,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.ziegler.kighelper.utils.WindowConfig
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.SettingsViewModel
+import com.ziegler.kighelper.ui.components.ColorPickerDialog
+import com.ziegler.kighelper.ui.components.CustomColorSelector
+import com.ziegler.kighelper.ui.components.PresetColorGrid
 import com.ziegler.kighelper.ui.screens.settings.ColorModeSelector
-import com.ziegler.kighelper.ui.screens.settings.ColorPickerDialog
-import com.ziegler.kighelper.ui.screens.settings.CustomColorSelector
-import com.ziegler.kighelper.ui.screens.settings.PresetColorGrid
 import com.ziegler.kighelper.ui.screens.settings.SettingDropdownMenuItem
 import com.ziegler.kighelper.ui.screens.settings.SettingRadioButton
 import com.ziegler.kighelper.ui.theme.FontType
@@ -76,7 +76,7 @@ fun SettingsScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                 }
-            })
+            }, scrollBehavior = scrollBehavior)
         }) { padding ->
         LazyColumn(
             modifier = Modifier

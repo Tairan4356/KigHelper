@@ -35,13 +35,24 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         }
     }
 
-    fun addPhrase(label: String, speech: String, groupId: String = "default") {
+    fun addPhrase(
+        label: String,
+        speech: String,
+        groupId: String = "default",
+        audioPath: String? = null,
+        cardColor: Long? = null
+    ) {
         val normalizedLabel = label.trim()
         val normalizedSpeech = speech.trim()
         if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
 
-        val newPhrase =
-            Phrase(label = normalizedLabel, speech = normalizedSpeech, groupId = groupId)
+        val newPhrase = Phrase(
+            label = normalizedLabel,
+            speech = normalizedSpeech,
+            groupId = groupId,
+            audioPath = audioPath,
+            cardColor = cardColor
+        )
         _phraseList.value += newPhrase
         persistCurrentPhrases()
     }
@@ -51,7 +62,14 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         persistCurrentPhrases()
     }
 
-    fun updatePhrase(id: String, newLabel: String, newSpeech: String, newGroupId: String? = null) {
+    fun updatePhrase(
+        id: String,
+        newLabel: String,
+        newSpeech: String,
+        newGroupId: String? = null,
+        newAudioPath: String? = null,
+        newCardColor: Long? = null
+    ) {
         val normalizedLabel = newLabel.trim()
         val normalizedSpeech = newSpeech.trim()
         if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
@@ -61,7 +79,9 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
                 phrase.copy(
                     label = normalizedLabel,
                     speech = normalizedSpeech,
-                    groupId = newGroupId ?: phrase.groupId
+                    groupId = newGroupId ?: phrase.groupId,
+                    audioPath = newAudioPath,
+                    cardColor = newCardColor
                 )
             } else {
                 phrase

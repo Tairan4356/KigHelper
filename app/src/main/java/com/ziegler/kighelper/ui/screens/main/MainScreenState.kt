@@ -40,8 +40,6 @@ class MainScreenState(
     // 对话框状态
     var showAddPhraseDialog by mutableStateOf(false)
         internal set
-    var editingPhrase by mutableStateOf<Phrase?>(null)
-        internal set
 
     // 折叠状态
     var collapseOffset by mutableFloatStateOf(0f)

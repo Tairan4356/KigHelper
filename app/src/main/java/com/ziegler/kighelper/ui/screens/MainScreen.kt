@@ -38,7 +38,6 @@ import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.screens.main.AddPhraseDialog
 import com.ziegler.kighelper.ui.screens.main.DisplaySurface
 import com.ziegler.kighelper.ui.screens.main.DisplaySurfaceLayoutMode
-import com.ziegler.kighelper.ui.screens.main.EditPhraseDialog
 import com.ziegler.kighelper.ui.screens.main.MainScreenLayout
 import com.ziegler.kighelper.ui.screens.main.rememberMainScreenState
 import com.ziegler.kighelper.ui.utils.findActivity
@@ -67,6 +66,7 @@ fun MainScreen(
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
     onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     fontSize: Float = 1.0f,
     hapticFeedback: Boolean = true,
 ) {
@@ -126,16 +126,6 @@ fun MainScreen(
             })
     }
 
-    state.editingPhrase?.let { phrase ->
-        EditPhraseDialog(
-            phrase = phrase,
-            onDismiss = { state.editingPhrase = null },
-            onSave = { label, speech ->
-                onUpdatePhrase(phrase, label, speech)
-                state.editingPhrase = null
-            })
-    }
-
     // 布局模式
     when {
         isFullScreen -> DisplaySurfaceLayoutMode.Fullscreen
@@ -169,6 +159,7 @@ fun MainScreen(
                 onAddPhrase = onAddPhrase,
                 onDeletePhrase = onDeletePhrase,
                 onUpdatePhrase = onUpdatePhrase,
+                onNavigateToEdit = onNavigateToEdit,
                 animatedVisibilityScope = animatedVisibilityScope,
                 fontSizeMultiplier = fontSize,
                 hapticFeedback = hapticFeedback

@@ -25,16 +25,29 @@ class MainViewModel @Inject constructor(
     val displayState get() = displayViewModel.displayState
     val isFullScreen get() = displayViewModel.isFullScreen
 
-    fun addPhrase(label: String, speech: String, groupId: String = "default") {
-        phraseViewModel.addPhrase(label, speech, groupId)
+    fun addPhrase(
+        label: String,
+        speech: String,
+        groupId: String = "default",
+        audioPath: String? = null,
+        cardColor: Long? = null
+    ) {
+        phraseViewModel.addPhrase(label, speech, groupId, audioPath, cardColor)
     }
 
     fun deletePhrase(phrase: Phrase) {
         phraseViewModel.deletePhrase(phrase)
     }
 
-    fun updatePhrase(id: String, newLabel: String, newSpeech: String, newGroupId: String? = null) {
-        phraseViewModel.updatePhrase(id, newLabel, newSpeech, newGroupId)
+    fun updatePhrase(
+        id: String,
+        newLabel: String,
+        newSpeech: String,
+        newGroupId: String? = null,
+        newAudioPath: String? = null,
+        newCardColor: Long? = null
+    ) {
+        phraseViewModel.updatePhrase(id, newLabel, newSpeech, newGroupId, newAudioPath, newCardColor)
     }
 
     fun showPhrase(phrase: Phrase) {
