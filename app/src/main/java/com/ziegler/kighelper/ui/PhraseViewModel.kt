@@ -3,11 +3,16 @@ package com.ziegler.kighelper.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.data.PhraseRepository
+import com.ziegler.kighelper.data.PhraseShare
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 短语管理 ViewModel，负责短语的加载、增删改查和排序
@@ -90,18 +95,6 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         persistCurrentPhrases()
     }
 
-    fun movePhrase(fromIndex: Int, toIndex: Int) {
-        val currentList = _phraseList.value.toMutableList()
-        if (fromIndex == toIndex) return
-        if (fromIndex !in currentList.indices || toIndex !in currentList.indices) return
-
-        val item = currentList.removeAt(fromIndex)
-        currentList.add(toIndex, item)
-        _phraseList.value = currentList
-
-        persistCurrentPhrases()
-    }
-
     fun movePhraseToGroup(phraseId: String, targetGroupId: String) {
         _phraseList.value = _phraseList.value.map { phrase ->
             if (phrase.id == phraseId) {
@@ -132,14 +125,44 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         persistCurrentPhrases()
     }
 
-    fun exportAll(groups: List<com.ziegler.kighelper.data.PhraseGroup>): String {
-        return com.ziegler.kighelper.data.PhraseShare.export(groups, _phraseList.value)
+    fun exportAll(groups: List<PhraseGroup>): String {
+        return PhraseShare.export(groups, _phraseList.value)
+    }
+
+    suspend fun exportArchive(
+        groups: List<PhraseGroup>,
+        selectedGroupIds: Set<String>,
+        includeAudio: Boolean,
+        audioDir: File?,
+        outputStream: java.io.OutputStream
+    ) = withContext(Dispatchers.IO) {
+        val filteredPhrases = if (selectedGroupIds.isEmpty()) {
+            _phraseList.value
+        } else {
+            _phraseList.value.filter { it.groupId in selectedGroupIds }
+        }
+        val exportPhrases = if (includeAudio) {
+            filteredPhrases
+        } else {
+            filteredPhrases.map { it.copy(audioPath = null) }
+        }
+        val audioFiles = if (includeAudio && audioDir != null) {
+            filteredPhrases.filter { it.hasAudio && it.audioPath != null }.mapNotNull { phrase ->
+                    val audioFile = File(phrase.audioPath!!)
+                    if (audioFile.exists()) audioFile.name to audioFile else null
+                }
+        } else {
+            emptyList()
+        }
+        PhraseShare.exportArchive(
+            groups, exportPhrases, audioFiles, outputStream
+        )
     }
 
     fun importData(
-        content: String, existingGroups: List<com.ziegler.kighelper.data.PhraseGroup>
+        content: String, existingGroups: List<PhraseGroup>
     ): Boolean {
-        val data = com.ziegler.kighelper.data.PhraseShare.import(content) ?: return false
+        val data = PhraseShare.import(content) ?: return false
 
         val currentPhrases = _phraseList.value.toMutableList()
         val existingPhraseIds = currentPhrases.map { it.id }.toMutableSet()
@@ -156,6 +179,52 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         _phraseList.value = currentPhrases
         persistCurrentPhrases()
         return true
+    }
+
+    suspend fun importArchive(
+        archiveBytes: java.io.InputStream, existingGroups: List<PhraseGroup>, audioDir: File?
+    ): Boolean = withContext(Dispatchers.IO) {
+        val parsed = PhraseShare.importArchive(archiveBytes, audioDir) ?: return@withContext false
+
+        val currentPhrases = _phraseList.value.toMutableList()
+        val existingPhraseIds = currentPhrases.map { it.id }.toMutableSet()
+        val existingGroupIds = existingGroups.map { it.id }.toMutableSet()
+
+        for (phrase in parsed.phrases) {
+            if (phrase.id in existingPhraseIds) continue
+            val targetGroupId =
+                if (phrase.groupId in existingGroupIds) phrase.groupId else "default"
+            val localAudioPath = if (phrase.hasAudio && phrase.audioPath != null) {
+                val fileName = File(phrase.audioPath).name
+                File(audioDir, fileName).absolutePath.takeIf { File(it).exists() }
+            } else null
+            currentPhrases.add(phrase.copy(groupId = targetGroupId, audioPath = localAudioPath))
+            existingPhraseIds.add(phrase.id)
+        }
+
+        _phraseList.value = currentPhrases
+        persistCurrentPhrases()
+        true
+    }
+
+    suspend fun importArchiveOverwrite(
+        archiveBytes: java.io.InputStream, audioDir: File?
+    ): Boolean = withContext(Dispatchers.IO) {
+        audioDir?.listFiles()?.forEach { it.delete() }
+
+        val parsed = PhraseShare.importArchive(archiveBytes, audioDir) ?: return@withContext false
+
+        val phrasesWithLocalPaths = parsed.phrases.map { phrase ->
+            val localAudioPath = if (phrase.hasAudio && phrase.audioPath != null) {
+                val fileName = File(phrase.audioPath).name
+                File(audioDir, fileName).absolutePath.takeIf { File(it).exists() }
+            } else null
+            phrase.copy(audioPath = localAudioPath)
+        }
+
+        _phraseList.value = phrasesWithLocalPaths
+        persistCurrentPhrases()
+        true
     }
 
     private fun persistCurrentPhrases() {

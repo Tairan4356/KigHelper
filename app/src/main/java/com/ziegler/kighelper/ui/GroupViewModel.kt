@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.data.PhraseRepository
+import com.ziegler.kighelper.data.PhraseShare
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -98,7 +99,7 @@ class GroupViewModel(private val repository: PhraseRepository) : ViewModel() {
     }
 
     fun importGroups(content: String): Boolean {
-        val data = com.ziegler.kighelper.data.PhraseShare.import(content) ?: return false
+        val data = PhraseShare.import(content) ?: return false
 
         val currentGroups = _groupList.value.toMutableList()
         val existingGroupIds = currentGroups.map { it.id }.toMutableSet()

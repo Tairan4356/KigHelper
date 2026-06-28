@@ -23,10 +23,9 @@ import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.PreviewDialog
 import com.ziegler.kighelper.ui.components.UpdateHandler
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
+import com.ziegler.kighelper.utils.AudioPlayerManager
 import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
-import com.ziegler.kighelper.utils.AudioPlayerManager
-import com.ziegler.kighelper.utils.WindowConfig
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -105,7 +104,10 @@ class MainActivity : ComponentActivity() {
                     voiceViewModel = voiceViewModel,
                     settingsViewModel = settingsViewModel,
                     notificationHelper = notificationHelper,
-                    onSpeak = { text -> ttsManager.speak(text, voiceViewModel.activeProfile) },
+                    onSpeak = { text ->
+                        audioPlayerManager.stop()
+                        ttsManager.speak(text, voiceViewModel.activeProfile)
+                    },
                     onStop = {
                         ttsManager.stop()
                         audioPlayerManager.stop()
@@ -118,6 +120,7 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     onPlayAudio = { audioPath ->
+                        ttsManager.stop()
                         audioPlayerManager.play(audioPath)
                     })
             }

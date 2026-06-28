@@ -15,8 +15,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FolderDelete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -67,7 +71,9 @@ fun EditScreen(
     onNavigateToEdit: (String) -> Unit,
     onAddGroup: (String) -> Boolean,
     onDeleteGroup: (String) -> Unit,
-    onMovePhraseToGroup: (phraseId: String, groupId: String) -> Unit
+    onMovePhraseToGroup: (phraseId: String, groupId: String) -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -92,6 +98,7 @@ fun EditScreen(
     var showAddGroupDialog by rememberSaveable { mutableStateOf(false) }
     var groupPendingDelete by remember { mutableStateOf<PhraseGroup?>(null) }
     var isDragging by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     val selectedGroup =
         sortedGroups.firstOrNull { it.id == selectedGroupId } ?: sortedGroups.firstOrNull()
@@ -149,8 +156,7 @@ fun EditScreen(
 
     Scaffold(
         topBar = {
-        TopAppBar(
-            title = {
+        TopAppBar(title = {
             Text("管理短语")
         }, navigationIcon = {
             IconButton(onClick = onBack) {
@@ -175,8 +181,34 @@ fun EditScreen(
                     )
                 }
             }
-        }
-        )
+
+            IconButton(onClick = { showMenu = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert, contentDescription = "更多选项"
+                )
+            }
+            DropdownMenu(
+                expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(text = { Text("导入短语") }, onClick = {
+                    showMenu = false
+                    onImport()
+                }, leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.FileDownload,
+                        contentDescription = null
+                    )
+                })
+                DropdownMenuItem(text = { Text("导出短语") }, onClick = {
+                    showMenu = false
+                    onExport()
+                }, leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.FileUpload,
+                        contentDescription = null
+                    )
+                })
+            }
+        })
     }, floatingActionButton = {
         FloatingActionButton(
             onClick = {

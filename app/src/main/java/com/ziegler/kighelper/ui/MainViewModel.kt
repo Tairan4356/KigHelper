@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
 import javax.inject.Inject
 
 /**
@@ -12,7 +13,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val phraseRepository: PhraseRepository
+    phraseRepository: PhraseRepository
 ) : ViewModel() {
 
     private val phraseViewModel = PhraseViewModel(phraseRepository)
@@ -23,7 +24,6 @@ class MainViewModel @Inject constructor(
     val groupList get() = groupViewModel.groupList
     val isPhrasesLoading get() = phraseViewModel.isPhrasesLoading
     val displayState get() = displayViewModel.displayState
-    val isFullScreen get() = displayViewModel.isFullScreen
 
     fun addPhrase(
         label: String,
@@ -47,7 +47,9 @@ class MainViewModel @Inject constructor(
         newAudioPath: String? = null,
         newCardColor: Long? = null
     ) {
-        phraseViewModel.updatePhrase(id, newLabel, newSpeech, newGroupId, newAudioPath, newCardColor)
+        phraseViewModel.updatePhrase(
+            id, newLabel, newSpeech, newGroupId, newAudioPath, newCardColor
+        )
     }
 
     fun showPhrase(phrase: Phrase) {
@@ -58,16 +60,8 @@ class MainViewModel @Inject constructor(
         displayViewModel.clearDisplayText()
     }
 
-    fun setFullScreen(enabled: Boolean) {
-        displayViewModel.setFullScreen(enabled)
-    }
-
     fun markPhraseAsUsed(phrase: Phrase) {
         phraseViewModel.markPhraseAsUsed(phrase)
-    }
-
-    suspend fun getLastUsedPhrase(): Phrase? {
-        return phraseViewModel.getLastUsedPhrase()
     }
 
     fun addGroup(name: String): Boolean {
@@ -83,18 +77,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun renameGroup(groupId: String, newName: String) {
-        groupViewModel.renameGroup(groupId, newName)
-    }
-
-    fun moveGroup(fromIndex: Int, toIndex: Int) {
-        groupViewModel.moveGroup(fromIndex, toIndex)
-    }
-
-    fun updateGroupsOrder(updatedGroups: List<com.ziegler.kighelper.data.PhraseGroup>) {
-        groupViewModel.updateGroupsOrder(updatedGroups)
-    }
-
     fun movePhraseToGroup(phraseId: String, targetGroupId: String) {
         phraseViewModel.movePhraseToGroup(phraseId, targetGroupId)
     }
@@ -107,13 +89,31 @@ class MainViewModel @Inject constructor(
         return phraseViewModel.findPhraseById(id)
     }
 
-    fun exportAll(): String {
-        return phraseViewModel.exportAll(groupList.value)
+    suspend fun exportArchive(
+        selectedGroupIds: Set<String>,
+        includeAudio: Boolean,
+        audioDir: File?,
+        outputStream: java.io.OutputStream
+    ) {
+        phraseViewModel.exportArchive(
+            groupList.value, selectedGroupIds, includeAudio, audioDir, outputStream
+        )
     }
 
-    fun importData(content: String): Boolean {
-        val groupsImported = groupViewModel.importGroups(content)
-        val phrasesImported = phraseViewModel.importData(content, groupList.value)
+    suspend fun importArchive(archiveBytes: java.io.InputStream, audioDir: File?): Boolean {
+        val bytes = archiveBytes.readBytes()
+        val groupsImported = groupViewModel.importGroups(String(bytes))
+        val phrasesImported =
+            phraseViewModel.importArchive(bytes.inputStream(), groupList.value, audioDir)
+        return groupsImported || phrasesImported
+    }
+
+    suspend fun importArchiveOverwrite(
+        archiveBytes: java.io.InputStream, audioDir: File?
+    ): Boolean {
+        val bytes = archiveBytes.readBytes()
+        val groupsImported = groupViewModel.importGroups(String(bytes))
+        val phrasesImported = phraseViewModel.importArchiveOverwrite(bytes.inputStream(), audioDir)
         return groupsImported || phrasesImported
     }
 }
