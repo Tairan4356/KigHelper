@@ -128,7 +128,8 @@ class NotificationHelper @Inject constructor(
         phraseLabel: String? = null,
         phraseSpeech: String? = null
     ): Notification {
-        val title = phraseLabel ?: "KigHelper 正在后台运行"
+        val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
+        val title = phraseLabel ?: "$appName 正在后台运行"
         val chipText = phraseLabel ?: "待机中"
         // 内容文本显示完整短语，如果太长则截断
         val contentText = when {

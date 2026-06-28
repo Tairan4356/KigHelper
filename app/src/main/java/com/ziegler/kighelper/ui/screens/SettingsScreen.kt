@@ -216,8 +216,9 @@ fun SettingsScreen(
                                         context
                                     )
                                 )
+                                val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
                                 Toast.makeText(
-                                    context, "请找到并开启 KigHelper 的权限", Toast.LENGTH_LONG
+                                    context, "请找到并开启 $appName 的权限", Toast.LENGTH_LONG
                                 ).show()
                             } catch (_: Exception) {
                                 Toast.makeText(

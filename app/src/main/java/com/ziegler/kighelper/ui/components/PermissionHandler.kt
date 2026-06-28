@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.ziegler.kighelper.utils.WindowConfig
+import androidx.core.content.edit
 
 private const val PREFS_NAME = "permission_dialog_state"
 private const val KEY_NOTIFICATION_DIALOG_SHOWN = "notification_dialog_shown"
@@ -53,7 +54,7 @@ fun PermissionHandler() {
                 val dialogShown = prefs.getBoolean(KEY_NOTIFICATION_DIALOG_SHOWN, false)
                 if (!dialogShown) {
                     notificationPermissionResult.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    prefs.edit().putBoolean(KEY_NOTIFICATION_DIALOG_SHOWN, true).apply()
+                    prefs.edit { putBoolean(KEY_NOTIFICATION_DIALOG_SHOWN, true) }
                 }
             }
         }
@@ -75,7 +76,7 @@ fun PermissionHandler() {
         AlertDialog(
             onDismissRequest = {
                 showDialog = false
-                prefs.edit().putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true).apply()
+                prefs.edit { putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true) }
                 Toast.makeText(
                     context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
                 ).show()
@@ -85,11 +86,12 @@ fun PermissionHandler() {
             confirmButton = {
                 TextButton(onClick = {
                     showDialog = false
-                    prefs.edit().putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true).apply()
+                    prefs.edit { putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true) }
                     try {
                         context.startActivity(WindowConfig.getOverlayPermissionIntent(context))
+                        val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
                         Toast.makeText(
-                            context, "请找到并开启 KigHelper 的权限", Toast.LENGTH_LONG
+                            context, "请找到并开启 $appName 的权限", Toast.LENGTH_LONG
                         ).show()
                     } catch (_: Exception) {
                         Toast.makeText(
@@ -103,7 +105,7 @@ fun PermissionHandler() {
             dismissButton = {
                 TextButton(onClick = {
                     showDialog = false
-                    prefs.edit().putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true).apply()
+                    prefs.edit { putBoolean(KEY_OVERLAY_DIALOG_SHOWN, true) }
                     Toast.makeText(
                         context, "已忽略权限，部分功能可能无法在锁屏生效", Toast.LENGTH_SHORT
                     ).show()

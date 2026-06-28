@@ -8,19 +8,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.ziegler.kighelper.BuildConfig
 
 @Composable
 fun PreviewDialog() {
     if (BuildConfig.FLAVOR != "preview") return
 
+    val context = LocalContext.current
+    val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
     var showDialog by remember { mutableStateOf(true) }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text("开发版本") },
-            text = { Text("当前运行的是 KigHelper Preview 版本，可能包含未完成的功能和 Bug。") },
+            text = { Text("当前运行的是 $appName，可能包含未完成的功能和 Bug。") },
             confirmButton = {
                 TextButton(onClick = { showDialog = false }) {
                     Text("确定")
