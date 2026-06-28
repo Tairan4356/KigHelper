@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.DEFAULT_PROFILE_ID
 import com.ziegler.kighelper.data.VoiceEngineType
@@ -13,9 +12,16 @@ import com.ziegler.kighelper.data.VoicePresetShare
 import com.ziegler.kighelper.data.VoiceProfile
 import com.ziegler.kighelper.data.VoiceProfileRepository
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class VoiceViewModel(
+/**
+ * 语音设置 ViewModel
+ * 使用 @HiltViewModel 注解，支持依赖注入
+ */
+@HiltViewModel
+class VoiceViewModel @Inject constructor(
     private val repository: VoiceProfileRepository
 ) : ViewModel() {
     private val _profiles = mutableStateListOf<VoiceProfile>()
@@ -27,9 +33,8 @@ class VoiceViewModel(
         private set
 
     val activeProfile: VoiceProfile
-        get() = _profiles.firstOrNull { it.id == activeProfileId }
-            ?: _profiles.firstOrNull()
-            ?: VoiceProfile.defaultProfile()
+        get() = _profiles.firstOrNull { it.id == activeProfileId } ?: _profiles.firstOrNull()
+        ?: VoiceProfile.defaultProfile()
 
     init {
         loadProfiles()
@@ -84,8 +89,7 @@ class VoiceViewModel(
     fun duplicateActiveProfile() {
         val source = activeProfile
         val copy = source.copy(
-            id = java.util.UUID.randomUUID().toString(),
-            name = "${source.name} 副本"
+            id = java.util.UUID.randomUUID().toString(), name = "${source.name} 副本"
         )
         _profiles.add(copy)
         setActiveProfile(copy.id)
@@ -122,9 +126,11 @@ class VoiceViewModel(
         )
     }
 
-    fun importProfile(content: String, modelManager: OfflineVoiceModelManager): VoicePresetImportResult {
-        val importedPreset = VoicePresetShare.importPreset(content)
-            ?: return VoicePresetImportResult.InvalidFile
+    fun importProfile(
+        content: String, modelManager: OfflineVoiceModelManager
+    ): VoicePresetImportResult {
+        val importedPreset =
+            VoicePresetShare.importPreset(content) ?: return VoicePresetImportResult.InvalidFile
         var imported = importedPreset.profile
         if (imported.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
             // 导入端侧预设时必须先匹配到本机模型，否则保存后会出现不可试听的配置。
@@ -133,8 +139,7 @@ class VoiceViewModel(
                     ?.takeIf { it.isReady && it.isRuntimeCompatible }
             if (matchedModel == null) {
                 return VoicePresetImportResult.MissingModel(
-                    modelName = importedPreset.model?.name,
-                    modelId = imported.modelId
+                    modelName = importedPreset.model?.name, modelId = imported.modelId
                 )
             }
             imported = imported.copy(
@@ -161,8 +166,7 @@ class VoiceViewModel(
     fun exportActiveProfile(modelManager: OfflineVoiceModelManager): String {
         return VoicePresetShare.export(
             profile = activeProfile,
-            modelRef = activeProfile.modelId?.let { modelManager.buildSharedModelRef(it) }
-        )
+            modelRef = activeProfile.modelId?.let { modelManager.buildSharedModelRef(it) })
     }
 
     private fun loadProfiles() {
@@ -190,18 +194,6 @@ class VoiceViewModel(
 sealed class VoicePresetImportResult {
     data object Success : VoicePresetImportResult()
     data object InvalidFile : VoicePresetImportResult()
-    data class MissingModel(val modelName: String?, val modelId: String?) : VoicePresetImportResult()
-}
-
-class VoiceViewModelFactory(
-    private val repository: VoiceProfileRepository
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(VoiceViewModel::class.java)) {
-            return VoiceViewModel(repository) as T
-        }
-
-        throw IllegalArgumentException("未知的 ViewModel 类型: ${modelClass.name}")
-    }
+    data class MissingModel(val modelName: String?, val modelId: String?) :
+        VoicePresetImportResult()
 }

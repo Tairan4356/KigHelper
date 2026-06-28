@@ -40,8 +40,8 @@ internal fun buildGroupedSections(
     }
 
     return activeGroups.sortedBy { it.order }.map { group ->
-            group to grouped[group].orEmpty().distinctBy { phrase -> phrase.id }
-        }
+        group to grouped[group].orEmpty().distinctBy { phrase -> phrase.id }
+    }
 }
 
 /**

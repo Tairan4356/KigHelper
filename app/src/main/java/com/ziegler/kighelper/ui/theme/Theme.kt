@@ -13,9 +13,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.core.view.WindowCompat
-
-// ui/theme/Theme.kt
+import com.materialkolor.rememberDynamicColorScheme
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -41,18 +41,46 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun KigHelperTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true, content: @Composable () -> Unit
+    darkMode: Int = 0,
+    colorMode: Int = 0,
+    presetColorIndex: Int = 0,
+    customColor: Long = 0xFF6650A4,
+    fontType: Int = 0,
+    fontWeight: Int = 400,
+    content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val isSystemDark = isSystemInDarkTheme()
+    val darkTheme = when (darkMode) {
+        1 -> false
+        2 -> true
+        else -> isSystemDark
+    }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val colorScheme = when (colorMode) {
+        0 -> {
+            // 跟随系统/动态配色
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val context = LocalContext.current
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else if (darkTheme) {
+                DarkColorScheme
+            } else {
+                LightColorScheme
+            }
+        }
+        1 -> {
+            // 预设颜色 - 使用 MaterialKolor 生成完整调色板
+            val seedColor = PresetColors[presetColorIndex.coerceIn(0, PresetColors.lastIndex)]
+            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
+        }
+        2 -> {
+            // 自定义颜色 - 使用 MaterialKolor 生成完整调色板
+            val seedColor = Color(customColor.toInt())
+            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
+        }
+        else -> {
+            if (darkTheme) DarkColorScheme else LightColorScheme
+        }
     }
 
     val view = LocalView.current
@@ -64,6 +92,8 @@ fun KigHelperTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme, typography = Typography, content = content
+        colorScheme = colorScheme,
+        typography = createTypography(FontType.entries[fontType].fontFamily, FontWeight(fontWeight)),
+        content = content
     )
 }

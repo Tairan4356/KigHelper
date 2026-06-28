@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -83,7 +84,8 @@ internal fun PhraseGrid(
     onDisplayShouldExpand: () -> Unit,
     modifier: Modifier = Modifier,
     cardFontSize: TextUnit = 18.sp,
-    cardHeight: Dp = 80.dp
+    cardHeight: Dp = 80.dp,
+    hapticFeedback: Boolean = true
 ) {
     LazyVerticalGrid(
         columns = columns,
@@ -119,7 +121,8 @@ internal fun PhraseGrid(
                     onPhraseDelete = onPhraseDelete,
                     onDisplayShouldExpand = onDisplayShouldExpand,
                     cardFontSize = cardFontSize,
-                    cardHeight = cardHeight
+                    cardHeight = cardHeight,
+                    hapticFeedback = hapticFeedback
                 )
             }
         }
@@ -146,9 +149,10 @@ private fun PhraseButton(
     onPhraseDelete: (Phrase) -> Unit,
     onDisplayShouldExpand: () -> Unit,
     cardFontSize: TextUnit,
-    cardHeight: Dp
+    cardHeight: Dp,
+    hapticFeedback: Boolean = true
 ) {
-    val performButtonHaptic = rememberPhysicalButtonHaptics()
+    val performButtonHaptic = rememberPhysicalButtonHaptics(enabled = hapticFeedback)
     val buttonShape = MaterialTheme.shapes.large
     val density = LocalDensity.current
     var isMenuExpanded by remember(phrase.id) { mutableStateOf(false) }
@@ -174,8 +178,15 @@ private fun PhraseButton(
                     isMenuExpanded = true
                 }),
             shape = buttonShape,
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+            color = phrase.cardColor?.let { Color(it.toInt()) }
+                ?: MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = phrase.cardColor?.let {
+                val luminance = (0.299 * ((it shr 16) and 0xFF) +
+                        0.587 * ((it shr 8) and 0xFF) +
+                        0.114 * (it and 0xFF)) / 255
+                if (luminance > 0.5) Color.Black else Color.White
+            } ?: MaterialTheme.colorScheme.onSecondaryContainer
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

@@ -19,6 +19,7 @@ object AppRoutes {
     const val PHRASE_MANAGEMENT = "phrase_management"
     const val VOICE_SETTINGS = "voice_settings"
     const val ABOUT = "about"
+    const val SETTINGS = "settings"
 
     const val ADD_EDIT = "add_edit"
     const val PHRASE_ID_ARG = "id"
@@ -41,9 +42,7 @@ object AppRoutes {
 }
 
 data class TopLevelDestination(
-    val route: String,
-    val label: String,
-    val icon: ImageVector
+    val route: String, val label: String, val icon: ImageVector
 )
 
 val topLevelDestinations = listOf(

@@ -49,12 +49,11 @@ internal fun DeleteDropTarget(
     modifier: Modifier = Modifier
 ) {
     // 背景全程保持不透明：未命中使用主题 error 色，命中时只把色阶压深。
-    val targetContainerColor =
-        if (isActive) {
-            MaterialTheme.colorScheme.error.darken(DeleteDropTargetActiveDarkenFactor)
-        } else {
-            MaterialTheme.colorScheme.error
-        }
+    val targetContainerColor = if (isActive) {
+        MaterialTheme.colorScheme.error.darken(DeleteDropTargetActiveDarkenFactor)
+    } else {
+        MaterialTheme.colorScheme.error
+    }
 
     // 颜色变化用短动画过渡，拖入和移出删除区时都不会突然跳色。
     val animatedContainerColor by animateColorAsState(
@@ -65,13 +64,10 @@ internal fun DeleteDropTarget(
 
     // 删除区自身仍然沿用飞入/飞出动画，只在拖拽期间覆盖底部导航。
     AnimatedVisibility(
-        visible = visible,
-        modifier = modifier,
-        enter = slideInVertically(
+        visible = visible, modifier = modifier, enter = slideInVertically(
             initialOffsetY = { fullHeight -> fullHeight },
             animationSpec = tween(DeleteDropTargetAnimationMillis)
-        ),
-        exit = slideOutVertically(
+        ), exit = slideOutVertically(
             targetOffsetY = { fullHeight -> fullHeight },
             animationSpec = tween(DeleteDropTargetAnimationMillis)
         )
@@ -115,18 +111,13 @@ internal fun DeleteDropTarget(
     }
 }
 
-private fun Color.darken(factor: Float): Color =
-    copy(
-        red = red * factor,
-        green = green * factor,
-        blue = blue * factor,
-        alpha = 1f
-    )
+private fun Color.darken(factor: Float): Color = copy(
+    red = red * factor, green = green * factor, blue = blue * factor, alpha = 1f
+)
 
 @Composable
 internal fun DraggedPhraseOverlay(
-    dragInfo: PhraseDragInfo?,
-    modifier: Modifier = Modifier
+    dragInfo: PhraseDragInfo?, modifier: Modifier = Modifier
 ) {
     if (dragInfo == null || dragInfo.buttonSize.width <= 0 || dragInfo.buttonSize.height <= 0) {
         return
@@ -150,8 +141,7 @@ internal fun DraggedPhraseOverlay(
         modifier = modifier
             .offset {
                 IntOffset(
-                    overlayTopStart.x.roundToInt(),
-                    overlayTopStart.y.roundToInt()
+                    overlayTopStart.x.roundToInt(), overlayTopStart.y.roundToInt()
                 )
             }
             .size(overlayWidth, overlayHeight)

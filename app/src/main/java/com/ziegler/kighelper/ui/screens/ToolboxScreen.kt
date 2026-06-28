@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -14,15 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SettingsVoice
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,7 +44,8 @@ fun ToolboxScreen(
     contentPadding: PaddingValues,
     onNavigateToPhraseManager: () -> Unit,
     onNavigateToVoiceSettings: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToAbout: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val pagePadding = 16.dp
@@ -59,8 +57,7 @@ fun ToolboxScreen(
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("工具箱") })
-        },
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
+        }, contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -81,8 +78,7 @@ fun ToolboxScreen(
             )
 
             LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
                     ToolboxMenuItem(
@@ -96,9 +92,18 @@ fun ToolboxScreen(
                 item {
                     ToolboxMenuItem(
                         title = "全局音色设置",
-                        subtitle = "调整年龄、语速、音高和性格预设",
+                        subtitle = "调整引擎、语速、音高和管理预设",
                         icon = Icons.Filled.SettingsVoice,
                         onClick = onNavigateToVoiceSettings
+                    )
+                }
+
+                item {
+                    ToolboxMenuItem(
+                        title = "偏好设置",
+                        subtitle = "显示字体、主题配色、反馈信息等",
+                        icon = Icons.Filled.Tune,
+                        onClick = onNavigateToSettings
                     )
                 }
 
@@ -149,15 +154,10 @@ private fun ToolPlaceholder(title: String) {
 
 @Composable
 private fun ToolboxMenuItem(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    onClick: () -> Unit
+    title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp)
+        modifier = Modifier.fillMaxWidth(), onClick = onClick, shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -176,7 +176,11 @@ private fun ToolboxMenuItem(
                     .weight(1f)
                     .padding(horizontal = 16.dp)
             ) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,

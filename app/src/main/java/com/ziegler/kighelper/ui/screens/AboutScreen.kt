@@ -27,6 +27,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
+import com.ziegler.kighelper.R
 
 /**
  * 关于界面：展示 App 版本、开源协议及开发者链接
@@ -58,6 +60,7 @@ fun AboutScreen(onBack: () -> Unit) {
     val appInfo = remember(context) { context.loadAboutAppInfo() }
     val bLink = "https://space.bilibili.com/353197379"
     val githubLink = "https://github.com/Tairan4356/KigHelper"
+    val qqGroupUrl = "https://qm.qq.com/q/qqN05HHWDK"
 
     Scaffold(
         topBar = {
@@ -119,13 +122,24 @@ fun AboutScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(48.dp))
 
             // 2. 信息卡片列表
-            InfoCard(title = "作者 B 站", subtitle = "@麒格Ler", onClick = {
+
+            InfoCard(title = "内测反馈群", subtitle = "1103795582", icon = R.drawable.qq, onClick = {
+                context.startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW, qqGroupUrl.toUri()
+                    )
+                )
+            })
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            InfoCard(title = "作者 B 站", subtitle = "@麒格Ler", icon = R.drawable.bilibili, onClick = {
                 context.startActivity(Intent(Intent.ACTION_VIEW, bLink.toUri()))
             })
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            InfoCard(title = "GitHub 仓库", subtitle = "查看源码与反馈", onClick = {
+            InfoCard(title = "GitHub 仓库", subtitle = "Tairan4356/KigHelper", icon = R.drawable.github, onClick = {
                 context.startActivity(Intent(Intent.ACTION_VIEW, githubLink.toUri()))
             })
 
@@ -162,13 +176,20 @@ fun AboutScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun InfoCard(title: String, subtitle: String, onClick: () -> Unit) {
+private fun InfoCard(title: String, subtitle: String, icon: Int, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(), onClick = onClick
     ) {
         Row(
             modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.padding(start = 12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -187,9 +208,7 @@ private fun InfoCard(title: String, subtitle: String, onClick: () -> Unit) {
 }
 
 private data class AboutAppInfo(
-    val appName: String,
-    val versionName: String,
-    val icon: ImageBitmap?
+    val appName: String, val versionName: String, val icon: ImageBitmap?
 )
 
 private fun Context.loadAboutAppInfo(): AboutAppInfo {
@@ -202,9 +221,7 @@ private fun Context.loadAboutAppInfo(): AboutAppInfo {
     }.getOrNull()
 
     return AboutAppInfo(
-        appName = appName,
-        versionName = versionName,
-        icon = icon
+        appName = appName, versionName = versionName, icon = icon
     )
 }
 
@@ -213,8 +230,7 @@ private fun PackageManager.getVersionName(packageName: String): String {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).versionName
         } else {
-            @Suppress("DEPRECATION")
-            getPackageInfo(packageName, 0).versionName
+            @Suppress("DEPRECATION") getPackageInfo(packageName, 0).versionName
         } ?: "Unknown"
     }.getOrDefault("Unknown")
 }

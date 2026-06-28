@@ -7,19 +7,13 @@ object VoicePresetShare {
 
     // 预设跨设备分享时，modelId 可能不同；modelRef 用于在导入端匹配本地模型。
     fun export(
-        profile: VoiceProfile,
-        modelRef: SharedVoiceModelRef? = null,
-        gson: Gson = Gson()
+        profile: VoiceProfile, modelRef: SharedVoiceModelRef? = null, gson: Gson = Gson()
     ): String {
         return gson.toJson(
             SharedVoicePreset(
-                schemaVersion = SCHEMA_VERSION,
-                app = "KigHelper",
-                profile = profile.copy(
-                    id = "shared_${profile.id}",
-                    modelId = normalizeExportedModelId(profile.modelId)
-                ),
-                model = modelRef
+                schemaVersion = SCHEMA_VERSION, app = "KigHelper", profile = profile.copy(
+                    id = "shared_${profile.id}", modelId = normalizeExportedModelId(profile.modelId)
+                ), model = modelRef
             )
         )
     }
@@ -34,8 +28,7 @@ object VoicePresetShare {
                 profile = sharedPreset.profile.copy(
                     id = java.util.UUID.randomUUID().toString(),
                     modelId = normalizeImportedModelId(sharedPreset.profile.modelId)
-                ),
-                model = sharedPreset.model
+                ), model = sharedPreset.model
             )
         }.getOrNull()
     }
@@ -54,8 +47,7 @@ object VoicePresetShare {
 }
 
 data class ImportedVoicePreset(
-    val profile: VoiceProfile,
-    val model: SharedVoiceModelRef?
+    val profile: VoiceProfile, val model: SharedVoiceModelRef?
 )
 
 // 不包含模型文件本身，只保存可用于识别同一模型的轻量元数据。

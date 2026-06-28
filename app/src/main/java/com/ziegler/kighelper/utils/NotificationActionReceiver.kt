@@ -49,9 +49,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val repository = SharedPreferencesVoiceProfileRepository(context)
         val profiles = repository.getProfiles()
         val activeProfileId = repository.getActiveProfileId()
-        return profiles.firstOrNull { it.id == activeProfileId }
-            ?: profiles.firstOrNull()
-            ?: VoiceProfile.defaultProfile()
+        return profiles.firstOrNull { it.id == activeProfileId } ?: profiles.firstOrNull()
+        ?: VoiceProfile.defaultProfile()
     }
 
     companion object {

@@ -32,9 +32,7 @@ class OfflineVoiceModelManager(context: Context) {
             val directory = File(modelRoot, pack.directoryName)
             val missingFiles = pack.requiredFiles.filterNot { File(directory, it).exists() }
             OfflineVoiceModelStatus(
-                pack = pack,
-                directory = directory,
-                missingFiles = missingFiles
+                pack = pack, directory = directory, missingFiles = missingFiles
             )
         }
     }
@@ -67,22 +65,17 @@ class OfflineVoiceModelManager(context: Context) {
 
     fun resolveSharedModelRef(ref: SharedVoiceModelRef?): OfflineVoiceModelStatus? {
         if (ref == null) return null
-        getModelStatus(ref.modelId)?.takeIf { it.isReady && it.isRuntimeCompatible }?.let { return it }
+        getModelStatus(ref.modelId)?.takeIf { it.isReady && it.isRuntimeCompatible }
+            ?.let { return it }
 
         // 自定义模型在不同设备上的 id 不稳定，所以按强到弱逐级匹配。
         val installed = getModelStatuses().filter { it.isReady && it.isRuntimeCompatible }
         return installed.firstOrNull { status ->
-            status.pack.format.name == ref.format &&
-                status.modelFileSignature() != null &&
-                status.modelFileSignature() == ref.modelFileSignature
+            status.pack.format.name == ref.format && status.modelFileSignature() != null && status.modelFileSignature() == ref.modelFileSignature
         } ?: installed.firstOrNull { status ->
-            status.pack.format.name == ref.format &&
-                ref.sourceUrl?.isNotBlank() == true &&
-                status.sourceUrl == ref.sourceUrl
+            status.pack.format.name == ref.format && ref.sourceUrl?.isNotBlank() == true && status.sourceUrl == ref.sourceUrl
         } ?: installed.firstOrNull { status ->
-            status.pack.format.name == ref.format &&
-                status.pack.name == ref.name &&
-                status.fileSignatures.any { it in ref.fileSignatures }
+            status.pack.format.name == ref.format && status.pack.name == ref.name && status.fileSignatures.any { it in ref.fileSignatures }
         }
     }
 
@@ -102,10 +95,8 @@ class OfflineVoiceModelManager(context: Context) {
         speakerCount: Int
     ): OfflineVoiceModelStatus {
         val id = "custom_${UUID.randomUUID()}"
-        val sanitizedName = displayName
-            .substringBeforeLast('.', displayName)
-            .trim()
-            .ifEmpty { "用户导入模型" }
+        val sanitizedName =
+            displayName.substringBeforeLast('.', displayName).trim().ifEmpty { "用户导入模型" }
         val record = CustomVoiceModelRecord(
             id = id,
             name = sanitizedName,
@@ -175,10 +166,7 @@ class OfflineVoiceModelManager(context: Context) {
         )
 
         private fun vitsBasicRequiredFiles() = listOf(
-            "model.onnx",
-            "lexicon.txt",
-            "tokens.txt",
-            "config.json"
+            "model.onnx", "lexicon.txt", "tokens.txt", "config.json"
         )
 
     }
@@ -202,14 +190,16 @@ private data class CustomVoiceModelRecord(
         } else {
             OfflineVoiceModelFormat.VITS
         }
-        val compatibleFormat = if (
-            resolvedFormat == OfflineVoiceModelFormat.UNSUPPORTED &&
-            name.contains("piper", ignoreCase = true)
-        ) {
-            OfflineVoiceModelFormat.PIPER
-        } else {
-            resolvedFormat
-        }
+        val compatibleFormat =
+            if (resolvedFormat == OfflineVoiceModelFormat.UNSUPPORTED && name.contains(
+                    "piper",
+                    ignoreCase = true
+                )
+            ) {
+                OfflineVoiceModelFormat.PIPER
+            } else {
+                resolvedFormat
+            }
         return OfflineVoiceModelPack(
             id = id,
             name = name,
@@ -228,11 +218,7 @@ private data class CustomVoiceModelRecord(
 }
 
 enum class OfflineVoiceModelFormat(val label: String) {
-    VITS("VITS"),
-    PIPER("Piper"),
-    KOKORO("Kokoro"),
-    KIGVPK("KigVPK"),
-    UNSUPPORTED("不支持")
+    VITS("VITS"), PIPER("Piper"), KOKORO("Kokoro"), KIGVPK("KigVPK"), UNSUPPORTED("不支持")
 }
 
 data class OfflineVoiceModelPack(
@@ -250,9 +236,7 @@ data class OfflineVoiceModelPack(
 }
 
 data class OfflineVoiceModelStatus(
-    val pack: OfflineVoiceModelPack,
-    val directory: File,
-    val missingFiles: List<String>
+    val pack: OfflineVoiceModelPack, val directory: File, val missingFiles: List<String>
 ) {
     val isReady: Boolean
         get() = missingFiles.isEmpty()
@@ -285,17 +269,17 @@ data class OfflineVoiceModelStatus(
         get() = File(directory, "config.json").readJsonStringField("sourceUrl")
 
     val fileSignatures: List<String>
-        get() = listOf("model.onnx", "tokens.txt", "lexicon.txt", "voices.bin")
-            .mapNotNull { fileName ->
-                File(directory, fileName)
-                    .takeIf { it.isFile && it.length() > 0L }
-                    ?.signature()
+        get() = listOf(
+            "model.onnx",
+            "tokens.txt",
+            "lexicon.txt",
+            "voices.bin"
+        ).mapNotNull { fileName ->
+                File(directory, fileName).takeIf { it.isFile && it.length() > 0L }?.signature()
             }
 
     fun modelFileSignature(): String? {
-        return File(directory, "model.onnx")
-            .takeIf { it.isFile && it.length() > 0L }
-            ?.signature()
+        return File(directory, "model.onnx").takeIf { it.isFile && it.length() > 0L }?.signature()
     }
 
     fun toSharedModelRef(): SharedVoiceModelRef {
@@ -320,15 +304,23 @@ data class RemoteVoiceModelCatalogEntry(
 )
 
 data class RemoteVoiceModelFile(
-    val url: String,
-    val outputName: String
+    val url: String, val outputName: String
 )
 
 fun OfflineVoiceModelFormat.defaultRequiredFiles(): List<String> {
     return when (this) {
-        OfflineVoiceModelFormat.VITS -> listOf("model.onnx", "lexicon.txt", "tokens.txt", "config.json")
-        OfflineVoiceModelFormat.PIPER -> listOf("model.onnx", "tokens.txt", "espeak-ng-data", "config.json")
-        OfflineVoiceModelFormat.KOKORO -> listOf("model.onnx", "voices.bin", "tokens.txt", "espeak-ng-data", "config.json")
+        OfflineVoiceModelFormat.VITS -> listOf(
+            "model.onnx", "lexicon.txt", "tokens.txt", "config.json"
+        )
+
+        OfflineVoiceModelFormat.PIPER -> listOf(
+            "model.onnx", "tokens.txt", "espeak-ng-data", "config.json"
+        )
+
+        OfflineVoiceModelFormat.KOKORO -> listOf(
+            "model.onnx", "voices.bin", "tokens.txt", "espeak-ng-data", "config.json"
+        )
+
         OfflineVoiceModelFormat.KIGVPK -> listOf("model.onnx", "model.onnx.json", "phonemizer.dict")
         OfflineVoiceModelFormat.UNSUPPORTED -> listOf("model.onnx", "config.json")
     }
@@ -348,25 +340,25 @@ private fun File.detectStrongModelFormat(): OfflineVoiceModelFormat? {
         return OfflineVoiceModelFormat.PIPER
     }
     if (files.any {
-            it.name.equals("config.json", ignoreCase = true) &&
-                it.readTextPrefix().contains("phoneme_id_map")
-        }
-    ) {
+            it.name.equals("config.json", ignoreCase = true) && it.readTextPrefix()
+                .contains("phoneme_id_map")
+        }) {
         return OfflineVoiceModelFormat.PIPER
     }
     if (names.any {
-            it == "voices.bin" || it == "voices.onnx" || it.startsWith("voices.") ||
-                (it.contains("voice") && (it.endsWith(".bin") || it.endsWith(".npy") || it.endsWith(".pt")))
-        }
-    ) {
+            it == "voices.bin" || it == "voices.onnx" || it.startsWith("voices.") || (it.contains("voice") && (it.endsWith(
+                ".bin"
+            ) || it.endsWith(".npy") || it.endsWith(
+                ".pt"
+            )))
+        }) {
         return OfflineVoiceModelFormat.KOKORO
     }
     return null
 }
 
 private fun File.inferManifestFormat(): OfflineVoiceModelFormat? {
-    walkTopDown()
-        .filter { it.isFile && it.name.equals("manifest.json", ignoreCase = true) }
+    walkTopDown().filter { it.isFile && it.name.equals("manifest.json", ignoreCase = true) }
         .forEach { manifestFile ->
             val json = runCatching {
                 JsonParser.parseString(manifestFile.readText(Charsets.UTF_8)).asJsonObject
@@ -421,11 +413,7 @@ private fun File.signature(maxBytes: Int = 1024 * 1024): String {
 private fun File.readJsonStringField(fieldName: String): String? {
     if (!isFile) return null
     return runCatching {
-        JsonParser.parseString(readText(Charsets.UTF_8))
-            .asJsonObject
-            .get(fieldName)
-            ?.takeIf { it.isJsonPrimitive }
-            ?.asString
-            ?.takeIf { it.isNotBlank() }
+        JsonParser.parseString(readText(Charsets.UTF_8)).asJsonObject.get(fieldName)
+            ?.takeIf { it.isJsonPrimitive }?.asString?.takeIf { it.isNotBlank() }
     }.getOrNull()
 }

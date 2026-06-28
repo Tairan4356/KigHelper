@@ -16,9 +16,7 @@ internal fun ensureDefaultGroup(groups: List<PhraseGroup>): List<PhraseGroup> {
     } else {
         listOf(
             PhraseGroup(
-                id = PhraseGroup.DEFAULT_ID,
-                name = PhraseGroup.DEFAULT_NAME,
-                order = 0
+                id = PhraseGroup.DEFAULT_ID, name = PhraseGroup.DEFAULT_NAME, order = 0
             )
         ) + groups
     }
@@ -38,9 +36,7 @@ internal fun Phrase.effectiveGroupId(knownGroupIds: Set<String>): String {
  * 生成用于界面展示的稳定分组列表：补齐默认分组、去重并按 order 排序。
  */
 internal fun sortedVisibleGroups(groups: List<PhraseGroup>): List<PhraseGroup> {
-    return ensureDefaultGroup(groups)
-        .distinctBy { it.id }
-        .sortedBy { it.order }
+    return ensureDefaultGroup(groups).distinctBy { it.id }.sortedBy { it.order }
 }
 
 /**
@@ -69,10 +65,8 @@ internal fun buildPhraseListWithGroupOrder(
         } else {
             result.addAll(
                 allPhrases.filter { phrase ->
-                    phrase.id !in reorderedIds &&
-                        phrase.effectiveGroupId(knownGroupIds) == group.id
-                }
-            )
+                    phrase.id !in reorderedIds && phrase.effectiveGroupId(knownGroupIds) == group.id
+                })
         }
     }
 

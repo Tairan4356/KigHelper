@@ -22,8 +22,7 @@ internal sealed class ModelInstallAction {
 }
 
 internal data class VoiceSettingsActionResult(
-    val message: String,
-    val shouldRefreshModels: Boolean = false
+    val message: String, val shouldRefreshModels: Boolean = false
 )
 
 /**
@@ -39,9 +38,7 @@ internal suspend fun importModelArchive(
     onProgress: (Float) -> Unit
 ): VoiceSettingsActionResult {
     val result = installer.importFromArchiveFile(
-        archiveUri = archiveUri,
-        format = format,
-        progressCallback = onProgress
+        archiveUri = archiveUri, format = format, progressCallback = onProgress
     )
     val message = applyManualInstallResult(
         result = result,
@@ -63,9 +60,7 @@ internal suspend fun downloadModelArchive(
     onProgress: (Float) -> Unit
 ): VoiceSettingsActionResult {
     val result = installer.downloadAndInstallArchive(
-        url = url,
-        format = format,
-        progressCallback = onProgress
+        url = url, format = format, progressCallback = onProgress
     )
     val message = applyDownloadedArchiveResult(result, viewModel)
     return VoiceSettingsActionResult(message = message, shouldRefreshModels = true)
@@ -82,8 +77,7 @@ internal suspend fun installRemoteVoiceModel(
     onProgress: (Float) -> Unit
 ): VoiceSettingsActionResult {
     val result = installer.installRemoteModel(
-        entry,
-        progressCallback = onProgress
+        entry, progressCallback = onProgress
     )
     val message = when (result) {
         is ModelInstallResult.Success -> {
@@ -116,18 +110,14 @@ internal fun deleteVoiceModel(
     }
 
     if (activeModelId == status.pack.id) {
-        val fallback = modelManager.getModelStatuses()
-            .firstOrNull { it.pack.id != status.pack.id }
+        val fallback = modelManager.getModelStatuses().firstOrNull { it.pack.id != status.pack.id }
         viewModel.updateActiveProfile(
-            engine = VoiceEngineType.OFFLINE_NEURAL,
-            modelId = fallback?.pack?.id,
-            speakerId = 0
+            engine = VoiceEngineType.OFFLINE_NEURAL, modelId = fallback?.pack?.id, speakerId = 0
         )
     }
 
     return VoiceSettingsActionResult(
-        message = "${status.pack.name} 已删除",
-        shouldRefreshModels = true
+        message = "${status.pack.name} 已删除", shouldRefreshModels = true
     )
 }
 
@@ -135,10 +125,7 @@ internal fun deleteVoiceModel(
  * 从配置文件 URI 导入声线预设，并返回给界面显示的结果消息。
  */
 internal fun importVoicePresetConfig(
-    context: Context,
-    uri: Uri,
-    viewModel: VoiceViewModel,
-    modelManager: OfflineVoiceModelManager
+    context: Context, uri: Uri, viewModel: VoiceViewModel, modelManager: OfflineVoiceModelManager
 ): String {
     return when (val content = context.readTextFromUri(uri)) {
         null -> "配置文件读取失败"
@@ -164,9 +151,7 @@ internal fun Context.shareVoicePresetFile(title: String, content: String) {
         writeText(content, Charsets.UTF_8)
     }
     val uri = FileProvider.getUriForFile(
-        this,
-        "$packageName.fileprovider",
-        file
+        this, "$packageName.fileprovider", file
     )
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "application/json"
@@ -210,9 +195,7 @@ private fun applyManualInstallResult(
         is ModelInstallResult.Partial -> {
             result.modelId?.let { modelId ->
                 viewModel.updateActiveProfile(
-                    engine = VoiceEngineType.OFFLINE_NEURAL,
-                    modelId = modelId,
-                    speakerId = 0
+                    engine = VoiceEngineType.OFFLINE_NEURAL, modelId = modelId, speakerId = 0
                 )
             }
             result.message
@@ -223,16 +206,13 @@ private fun applyManualInstallResult(
 }
 
 private fun applyDownloadedArchiveResult(
-    result: ModelInstallResult,
-    viewModel: VoiceViewModel
+    result: ModelInstallResult, viewModel: VoiceViewModel
 ): String {
     return when (result) {
         is ModelInstallResult.Success -> {
             result.modelId?.let { modelId ->
                 viewModel.updateActiveProfile(
-                    engine = VoiceEngineType.OFFLINE_NEURAL,
-                    modelId = modelId,
-                    speakerId = 0
+                    engine = VoiceEngineType.OFFLINE_NEURAL, modelId = modelId, speakerId = 0
                 )
             }
             result.message
@@ -241,9 +221,7 @@ private fun applyDownloadedArchiveResult(
         is ModelInstallResult.Partial -> {
             result.modelId?.let { modelId ->
                 viewModel.updateActiveProfile(
-                    engine = VoiceEngineType.OFFLINE_NEURAL,
-                    modelId = modelId,
-                    speakerId = 0
+                    engine = VoiceEngineType.OFFLINE_NEURAL, modelId = modelId, speakerId = 0
                 )
             }
             result.message

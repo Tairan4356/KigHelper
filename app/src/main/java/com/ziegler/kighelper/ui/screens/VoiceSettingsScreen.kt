@@ -4,9 +4,7 @@ package com.ziegler.kighelper.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -17,31 +15,21 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,16 +40,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.ziegler.kighelper.data.VoiceProfile
 import com.ziegler.kighelper.data.VoiceEngineType
 import com.ziegler.kighelper.ui.VoiceViewModel
+import com.ziegler.kighelper.ui.screens.voice.EngineSelector
+import com.ziegler.kighelper.ui.screens.voice.ModelComplianceDialog
 import com.ziegler.kighelper.ui.screens.voice.ModelInstallAction
+import com.ziegler.kighelper.ui.screens.voice.ModelPickerDialog
+import com.ziegler.kighelper.ui.screens.voice.OfflineModelStatusCard
+import com.ziegler.kighelper.ui.screens.voice.VoicePresetPickerDialog
+import com.ziegler.kighelper.ui.screens.voice.VoicePresetSummaryCard
+import com.ziegler.kighelper.ui.screens.voice.VoiceSlider
 import com.ziegler.kighelper.ui.screens.voice.deleteVoiceModel
 import com.ziegler.kighelper.ui.screens.voice.downloadModelArchive
 import com.ziegler.kighelper.ui.screens.voice.importModelArchive
@@ -71,8 +64,6 @@ import com.ziegler.kighelper.ui.screens.voice.shareVoicePresetFile
 import com.ziegler.kighelper.utils.OfflineVoiceModelInstaller
 import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
-import com.ziegler.kighelper.utils.OfflineVoiceModelStatus
-import com.ziegler.kighelper.utils.RemoteVoiceModelCatalogEntry
 import com.ziegler.kighelper.utils.KigvpkModelParams
 import com.ziegler.kighelper.utils.KigvpkParamsManager
 import kotlinx.coroutines.launch
@@ -108,15 +99,14 @@ fun VoiceSettingsScreen(
     val kigvpkParamsManager = remember(context) { KigvpkParamsManager(context) }
     val kigvpkParams = remember(modelRefreshKey, activeModelStatus?.pack?.id) {
         activeModelStatus?.let {
-            kigvpkParamsManager.loadDefaults(
-                it.directory, it.pack.id
-            )
+            kigvpkParamsManager.loadDefaults(it.directory, it.pack.id)
         } ?: KigvpkModelParams()
     }
     val displayNoiseScale = profile.kigvpkNoiseScale ?: kigvpkParams.noiseScale
     val displayNoiseW = profile.kigvpkNoiseW ?: kigvpkParams.noiseW
     val displayLengthScale = profile.kigvpkLengthScale ?: kigvpkParams.lengthScale
-    val displaySentenceSilenceSec = profile.kigvpkSentenceSilenceSec ?: kigvpkParams.sentenceSilenceSec
+    val displaySentenceSilenceSec =
+        profile.kigvpkSentenceSilenceSec ?: kigvpkParams.sentenceSilenceSec
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val archiveImportLauncher = rememberLauncherForActivityResult(
@@ -135,8 +125,7 @@ fun VoiceSettingsScreen(
                     modelManager = modelManager,
                     viewModel = viewModel,
                     currentSpeakerId = profile.speakerId,
-                    onProgress = { installProgress = it }
-                )
+                    onProgress = { installProgress = it })
                 installMessage = result.message
                 if (result.shouldRefreshModels) {
                     modelRefreshKey++
@@ -153,10 +142,7 @@ fun VoiceSettingsScreen(
     ) { uri ->
         if (uri != null) {
             presetMessage = importVoicePresetConfig(
-                context = context,
-                uri = uri,
-                viewModel = viewModel,
-                modelManager = modelManager
+                context = context, uri = uri, viewModel = viewModel, modelManager = modelManager
             )
         }
     }
@@ -174,14 +160,11 @@ fun VoiceSettingsScreen(
                 IconButton(
                     onClick = {
                         configImportLauncher.launch(
-                            arrayOf(
-                                "application/json", "text/*", "*/*"
-                            )
+                            arrayOf("application/json", "text/*", "*/*")
                         )
                     }) {
                     Icon(Icons.Filled.FileOpen, "导入配置")
                 }
-
                 IconButton(
                     onClick = {
                         context.shareVoicePresetFile(
@@ -220,6 +203,15 @@ fun VoiceSettingsScreen(
                         )
                     })
             }
+            if (profile.engineOrDefault == VoiceEngineType.DISABLED) {
+                item {
+                    Text(
+                        "语音合成已关闭",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
                 item {
                     OfflineModelStatusCard(
@@ -228,6 +220,7 @@ fun VoiceSettingsScreen(
                         onClick = { showModelPicker = true })
                 }
             }
+            if (profile.engineOrDefault != VoiceEngineType.DISABLED) {
             if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL && activeModelStatus?.pack?.supportsSpeakerSelection == true) {
                 item {
                     VoiceSlider(
@@ -250,9 +243,7 @@ fun VoiceSettingsScreen(
 
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "声线参数", style = MaterialTheme.typography.labelLarge
-                )
+                Text("声线参数", style = MaterialTheme.typography.labelLarge)
             }
             item {
                 VoicePresetSummaryCard(
@@ -368,8 +359,8 @@ fun VoiceSettingsScreen(
                     Text("试听当前音色")
                 }
             }
+            }
         }
-
     }
 
     pendingInstallAction?.let { installAction ->
@@ -389,8 +380,7 @@ fun VoiceSettingsScreen(
                             format = selectedImportFormat,
                             installer = modelInstaller,
                             viewModel = viewModel,
-                            onProgress = { installProgress = it }
-                        )
+                            onProgress = { installProgress = it })
                         installMessage = result.message
                         if (result.shouldRefreshModels) {
                             modelRefreshKey++
@@ -471,8 +461,7 @@ fun VoiceSettingsScreen(
                         installer = modelInstaller,
                         viewModel = viewModel,
                         currentSpeakerId = profile.speakerId,
-                        onProgress = { installProgress = it }
-                    )
+                        onProgress = { installProgress = it })
                     installMessage = result.message
                     if (result.shouldRefreshModels) {
                         modelRefreshKey++
@@ -480,529 +469,6 @@ fun VoiceSettingsScreen(
                     isInstalling = false
                 }
             })
-    }
-
-
-}
-
-@Composable
-private fun EngineSelector(
-    selected: VoiceEngineType, onSelect: (VoiceEngineType) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        VoiceEngineType.entries.forEach { engine ->
-            FilterChip(
-                selected = selected == engine,
-                onClick = { onSelect(engine) },
-                label = { Text(engine.label) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun OfflineModelStatusCard(
-    activeModelStatus: OfflineVoiceModelStatus?,
-    installMessage: String?,
-    onClick: () -> Unit
-) {
-    val isReady = activeModelStatus?.isReady == true
-    val isPartial = activeModelStatus?.isPartiallyInstalled == true
-    val compatibilityIssue = activeModelStatus?.runtimeCompatibilityIssue
-
-    Card(
-        modifier = Modifier.fillMaxWidth(), onClick = onClick
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = "点击选择或导入模型",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = when {
-                    isReady -> "当前模型：${activeModelStatus.pack.name} · ${activeModelStatus.pack.format.label}"
-                    isPartial -> "已导入 ONNX 权重，但缺少：${activeModelStatus.missingFiles.joinToString()}"
-                    else -> "模型未安装"
-                }, style = MaterialTheme.typography.bodySmall
-            )
-    if (compatibilityIssue != null) {
-        Text(
-            text = compatibilityIssue,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error
-        )
-    }
-            if (isPartial) {
-                Text(
-                    text = "缺少文本前端文件时无法把中文转换为模型 token，端侧推理会自动回退系统 TTS。",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            if (installMessage != null) {
-                Text(
-                    text = installMessage, style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModelPickerDialog(
-    activeModelId: String?,
-    remoteModelCatalog: List<RemoteVoiceModelCatalogEntry>,
-    modelStatuses: List<OfflineVoiceModelStatus>,
-    isInstalling: Boolean,
-    installProgress: Float,
-    installMessage: String?,
-    selectedImportFormat: OfflineVoiceModelFormat,
-    downloadUrl: String,
-    onImportFormatSelect: (OfflineVoiceModelFormat) -> Unit,
-    onDownloadUrlChange: (String) -> Unit,
-    onImportClick: () -> Unit,
-    onDownloadClick: () -> Unit,
-    onDismiss: () -> Unit,
-    onSelect: (RemoteVoiceModelCatalogEntry) -> Unit,
-    onSelectStatus: (OfflineVoiceModelStatus) -> Unit,
-    onDeleteModel: (OfflineVoiceModelStatus) -> Unit,
-    onInstall: (RemoteVoiceModelCatalogEntry) -> Unit
-) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("选择端侧模型") }, text = {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item {
-                Text(
-                    text = "端侧引擎使用Sherpa-ONNX，支持VITS、Piper和Kokoro格式的模型包。",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            items(remoteModelCatalog, key = { it.pack.id }) { entry ->
-                val status = modelStatuses.firstOrNull { it.pack.id == entry.pack.id }
-                RemoteModelItem(
-                    entry = entry,
-                    selected = entry.pack.id == activeModelId,
-                    installed = status?.isReady == true,
-                    partiallyInstalled = status?.isPartiallyInstalled == true,
-                    isInstalling = isInstalling,
-                    onSelect = { onSelect(entry) },
-                    onInstall = { onInstall(entry) })
-            }
-            val remoteModelIds = remoteModelCatalog.map { it.pack.id }.toSet()
-            val customModelStatuses = modelStatuses.filter { it.pack.id !in remoteModelIds }
-            if (customModelStatuses.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "用户导入模型",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                items(customModelStatuses, key = { it.pack.id }) { status ->
-                    ImportedModelItem(
-                        status = status,
-                        selected = status.pack.id == activeModelId,
-                        isInstalling = isInstalling,
-                        onSelect = { onSelectStatus(status) },
-                        onDelete = { onDeleteModel(status) })
-                }
-            }
-            item {
-                Text(
-                    text = "手动安装",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            item {
-                Text(
-                    text = "模型格式（格式错误的模型可能会导致程序崩溃）",
-                    style = MaterialTheme.typography.titleSmall
-                )
-            }
-            item {
-                ImportFormatSelector(
-                    selected = selectedImportFormat, onSelect = onImportFormatSelect
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = downloadUrl,
-                    onValueChange = onDownloadUrlChange,
-                    label = { Text("模型压缩包下载地址") },
-                    enabled = !isInstalling,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onImportClick,
-                        enabled = !isInstalling,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("导入压缩包")
-                    }
-                    OutlinedButton(
-                        onClick = onDownloadClick,
-                        enabled = !isInstalling,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("下载压缩包")
-                    }
-                }
-            }
-            if (isInstalling) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = if (installProgress > 0) {
-                                "正在安装模型包 (${(installProgress * 100).toInt()}%)..."
-                            } else {
-                                "正在准备安装模型包..."
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        LinearProgressIndicator(
-                            progress = { installProgress },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
-            if (installMessage != null) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Text(
-                            text = installMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }, confirmButton = {
-        TextButton(onClick = onDismiss) {
-            Text("关闭")
-        }
-    })
-}
-
-@Composable
-private fun ImportedModelItem(
-    status: OfflineVoiceModelStatus,
-    selected: Boolean,
-    isInstalling: Boolean,
-    onSelect: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                val compatibilityIssue = status.runtimeCompatibilityIssue
-                Text(status.pack.name, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    text = when {
-                        compatibilityIssue != null -> compatibilityIssue
-                        status.isReady -> "已安装 · ${status.pack.format.label}"
-                        status.isPartiallyInstalled -> "缺少：${status.missingFiles.joinToString()}"
-                        else -> "未安装完整"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            OutlinedButton(
-                onClick = onSelect,
-                enabled = !isInstalling && status.isReady && status.runtimeCompatibilityIssue == null
-            ) {
-                Text(if (selected) "已选择" else "选择")
-            }
-            IconButton(
-                onClick = onDelete, enabled = !isInstalling
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "删除模型",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ImportFormatSelector(
-    selected: OfflineVoiceModelFormat, onSelect: (OfflineVoiceModelFormat) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(
-            OfflineVoiceModelFormat.VITS,
-            OfflineVoiceModelFormat.PIPER,
-            OfflineVoiceModelFormat.KOKORO
-        ).forEach { format ->
-            FilterChip(
-                selected = selected == format,
-                onClick = { onSelect(format) },
-                label = { Text(format.label) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-
-    val kigvpk = OfflineVoiceModelFormat.KIGVPK
-    FilterChip(
-        selected = selected == kigvpk,
-        onClick = { onSelect(kigvpk) },
-        label = { Text(kigvpk.label + "（KIGTTS 训练器格式）") },
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@Composable
-private fun RemoteModelItem(
-    entry: RemoteVoiceModelCatalogEntry,
-    selected: Boolean,
-    installed: Boolean,
-    partiallyInstalled: Boolean,
-    isInstalling: Boolean,
-    onSelect: () -> Unit,
-    onInstall: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(entry.pack.name, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        entry.pack.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                OutlinedButton(
-                    onClick = if (installed) onSelect else onInstall,
-                    enabled = !isInstalling,
-                ) {
-                    Text(
-                        when {
-                            installed && selected -> "已选择"
-                            installed -> "选择"
-                            partiallyInstalled -> "补齐文件"
-                            else -> "一键安装"
-                        }
-                    )
-                }
-            }
-            Text(
-                if (partiallyInstalled) {
-                    "已导入 ONNX，但仍缺少：${
-                        entry.pack.requiredFiles.filterNot { it == "config.json" }.joinToString()
-                    }"
-                } else {
-                    "${entry.pack.format.label} · 说话人：${entry.pack.speakerCount}"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-        }
-    }
-}
-
-@Composable
-private fun ModelComplianceDialog(
-    onDismiss: () -> Unit, onConfirm: () -> Unit
-) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("模型使用合规声明") }, text = {
-        Text(
-            "继续操作前，请确认你导入或下载的模型来源合法，许可允许在本应用中离线端侧推理，并且不包含未经授权的声音克隆或受限制数据。"
-        )
-    }, confirmButton = {
-        TextButton(onClick = onConfirm) {
-            Text("我已确认")
-        }
-    }, dismissButton = {
-        TextButton(onClick = onDismiss) {
-            Text("取消")
-        }
-    })
-}
-
-@Composable
-private fun VoicePresetSummaryCard(
-    activeProfile: VoiceProfile, importMessage: String?, onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(), onClick = onClick,
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = "选择或导入声线预设",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "已选择的声线预设：${activeProfile.name}",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = activeProfile.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (importMessage != null) {
-                Text(
-                    text = importMessage,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun VoicePresetPickerDialog(
-    profiles: List<VoiceProfile>,
-    activeProfileId: String,
-    canDelete: Boolean,
-    onDismiss: () -> Unit,
-    onSelect: (String) -> Unit,
-    onDuplicate: () -> Unit,
-    onDelete: (String) -> Unit
-) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("选择声线预设") }, text = {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(profiles, key = { it.id }) { item ->
-                VoicePresetItem(
-                    profile = item,
-                    selected = item.id == activeProfileId,
-                    canDelete = canDelete,
-                    onClick = { onSelect(item.id) },
-                    onDelete = { onDelete(item.id) })
-            }
-            item {
-                OutlinedButton(
-                    onClick = onDuplicate, modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("复制当前预设")
-                }
-            }
-        }
-    }, confirmButton = {
-        TextButton(onClick = onDismiss) {
-            Text("关闭")
-        }
-    })
-}
-
-@Composable
-private fun VoicePresetItem(
-    profile: VoiceProfile,
-    selected: Boolean,
-    canDelete: Boolean,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(), onClick = onClick, colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(profile.name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    profile.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(
-                onClick = onDelete, enabled = canDelete
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "删除预设",
-                    tint = if (canDelete) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun VoiceSlider(
-    title: String,
-    valueText: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int = 0,
-    onValueChange: (Float) -> Unit
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                valueText,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Slider(
-            value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps
-        )
     }
 }
 

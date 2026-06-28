@@ -23,13 +23,10 @@ import java.util.zip.ZipInputStream
 class OfflineVoiceModelInstaller(context: Context) {
     private val appContext = context.applicationContext
     private val modelManager = OfflineVoiceModelManager(appContext)
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.MINUTES)
-        .writeTimeout(2, TimeUnit.MINUTES)
-        .callTimeout(0, TimeUnit.MILLISECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    private val httpClient =
+        OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(2, TimeUnit.MINUTES).callTimeout(0, TimeUnit.MILLISECONDS)
+            .retryOnConnectionFailure(true).build()
 
     suspend fun importFromArchiveFile(
         archiveUri: Uri,
@@ -44,7 +41,9 @@ class OfflineVoiceModelInstaller(context: Context) {
                 mkdirs()
             }
 
-            val totalSize = appContext.contentResolver.query(archiveUri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            val totalSize = appContext.contentResolver.query(
+                archiveUri, arrayOf(OpenableColumns.SIZE), null, null, null
+            )?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.getLong(0) else -1L
             } ?: -1L
 
@@ -58,9 +57,7 @@ class OfflineVoiceModelInstaller(context: Context) {
             } ?: return@withContext ModelInstallResult.Failure("无法读取所选模型压缩包")
 
             val importSpec = createManualImportSpec(
-                displayName = displayName,
-                format = format,
-                tempDir = tempDir
+                displayName = displayName, format = format, tempDir = tempDir
             )
             val status = modelManager.registerCustomModel(
                 displayName = importSpec.displayName,
@@ -83,69 +80,66 @@ class OfflineVoiceModelInstaller(context: Context) {
     }
 
     suspend fun installRemoteModel(
-        entry: RemoteVoiceModelCatalogEntry,
-        progressCallback: ((Float) -> Unit)? = null
-    ): ModelInstallResult =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val status = modelManager.getModelStatuses().firstOrNull { it.pack.id == entry.pack.id }
-                    ?: throw IOException("没有可安装的模型配置")
-                val tempDir = File(appContext.cacheDir, "voice_model_${entry.pack.id}").apply {
-                    deleteRecursively()
-                    mkdirs()
-                }
-
-                val archiveUrl = entry.archiveUrl
-                if (archiveUrl != null) {
-                    val archiveName = archiveUrl.substringBefore('?').substringAfterLast('/').ifBlank {
-                        "model.tar.bz2"
-                    }
-                    val archiveType = ArchiveType.fromFileName(archiveName) ?: ArchiveType.ZIP
-                    val urls = listOf(archiveUrl, entry.sourceUrl).distinct()
-                    downloadArchiveFromAnyUrl(urls, tempDir, archiveType, progressCallback)
-                    val result = installExtractedModel(
-                        status = status,
-                        tempDir = tempDir,
-                        sourceUrl = entry.sourceUrl,
-                        successMessage = "${entry.pack.name} 已安装"
-                    )
-                    tempDir.deleteRecursively()
-                    return@withContext result
-                }
-
-                val totalFiles = entry.files.size
-                entry.files.forEachIndexed { index, file ->
-                    val target = File(tempDir, file.outputName)
-                    downloadFile(url = file.url, target = target)
-                    progressCallback?.invoke((index + 1).toFloat() / totalFiles)
-                }
-
-                val missingFiles = entry.pack.sourceRequiredFiles().filterNot { File(tempDir, it).exists() }
-                if (missingFiles.isNotEmpty()) {
-                    return@withContext ModelInstallResult.Failure(
-                        "模型源缺少文件：${missingFiles.joinToString()}"
-                    )
-                }
-
-                status.directory.replaceWithEmptyDirectory()
-                entry.pack.sourceRequiredFiles().forEach { fileName ->
-                    val target = File(status.directory, fileName)
-                    target.parentFile?.mkdirs()
-                    File(tempDir, fileName).copyTo(target, overwrite = true)
-                }
-                status.directory.writeModelConfig(status.pack, sourceUrl = entry.sourceUrl)
-                tempDir.deleteRecursively()
-
-                ModelInstallResult.Success("${entry.pack.name} 已安装")
-            }.getOrElse { error ->
-                ModelInstallResult.Failure(error.downloadFailureMessage("模型安装失败"))
+        entry: RemoteVoiceModelCatalogEntry, progressCallback: ((Float) -> Unit)? = null
+    ): ModelInstallResult = withContext(Dispatchers.IO) {
+        runCatching {
+            val status = modelManager.getModelStatuses().firstOrNull { it.pack.id == entry.pack.id }
+                ?: throw IOException("没有可安装的模型配置")
+            val tempDir = File(appContext.cacheDir, "voice_model_${entry.pack.id}").apply {
+                deleteRecursively()
+                mkdirs()
             }
+
+            val archiveUrl = entry.archiveUrl
+            if (archiveUrl != null) {
+                val archiveName = archiveUrl.substringBefore('?').substringAfterLast('/').ifBlank {
+                    "model.tar.bz2"
+                }
+                val archiveType = ArchiveType.fromFileName(archiveName) ?: ArchiveType.ZIP
+                val urls = listOf(archiveUrl, entry.sourceUrl).distinct()
+                downloadArchiveFromAnyUrl(urls, tempDir, archiveType, progressCallback)
+                val result = installExtractedModel(
+                    status = status,
+                    tempDir = tempDir,
+                    sourceUrl = entry.sourceUrl,
+                    successMessage = "${entry.pack.name} 已安装"
+                )
+                tempDir.deleteRecursively()
+                return@withContext result
+            }
+
+            val totalFiles = entry.files.size
+            entry.files.forEachIndexed { index, file ->
+                val target = File(tempDir, file.outputName)
+                downloadFile(url = file.url, target = target)
+                progressCallback?.invoke((index + 1).toFloat() / totalFiles)
+            }
+
+            val missingFiles =
+                entry.pack.sourceRequiredFiles().filterNot { File(tempDir, it).exists() }
+            if (missingFiles.isNotEmpty()) {
+                return@withContext ModelInstallResult.Failure(
+                    "模型源缺少文件：${missingFiles.joinToString()}"
+                )
+            }
+
+            status.directory.replaceWithEmptyDirectory()
+            entry.pack.sourceRequiredFiles().forEach { fileName ->
+                val target = File(status.directory, fileName)
+                target.parentFile?.mkdirs()
+                File(tempDir, fileName).copyTo(target, overwrite = true)
+            }
+            status.directory.writeModelConfig(status.pack, sourceUrl = entry.sourceUrl)
+            tempDir.deleteRecursively()
+
+            ModelInstallResult.Success("${entry.pack.name} 已安装")
+        }.getOrElse { error ->
+            ModelInstallResult.Failure(error.downloadFailureMessage("模型安装失败"))
         }
+    }
 
     suspend fun downloadAndInstallArchive(
-        url: String,
-        format: OfflineVoiceModelFormat,
-        progressCallback: ((Float) -> Unit)? = null
+        url: String, format: OfflineVoiceModelFormat, progressCallback: ((Float) -> Unit)? = null
     ): ModelInstallResult = withContext(Dispatchers.IO) {
         runCatching {
             val normalizedUrl = url.trim()
@@ -163,9 +157,7 @@ class OfflineVoiceModelInstaller(context: Context) {
             }
             downloadArchiveFromAnyUrl(listOf(normalizedUrl), tempDir, archiveType, progressCallback)
             val importSpec = createManualImportSpec(
-                displayName = archiveName,
-                format = format,
-                tempDir = tempDir
+                displayName = archiveName, format = format, tempDir = tempDir
             )
             val status = modelManager.registerCustomModel(
                 displayName = importSpec.displayName,
@@ -188,17 +180,17 @@ class OfflineVoiceModelInstaller(context: Context) {
     }
 
     private fun extractArchiveToDirectory(
-        input: InputStream,
-        tempDir: File,
-        archiveType: ArchiveType
+        input: InputStream, tempDir: File, archiveType: ArchiveType
     ) {
         when (archiveType) {
             ArchiveType.ZIP -> extractZipToDirectory(input, tempDir)
             ArchiveType.TAR -> extractTarToDirectory(BufferedInputStream(input), tempDir)
-            ArchiveType.TAR_GZ -> extractTarToDirectory(GZIPInputStream(BufferedInputStream(input)), tempDir)
+            ArchiveType.TAR_GZ -> extractTarToDirectory(
+                GZIPInputStream(BufferedInputStream(input)), tempDir
+            )
+
             ArchiveType.TAR_BZ2 -> extractTarToDirectory(
-                BZip2CompressorInputStream(BufferedInputStream(input)),
-                tempDir
+                BZip2CompressorInputStream(BufferedInputStream(input)), tempDir
             )
         }
     }
@@ -243,14 +235,14 @@ class OfflineVoiceModelInstaller(context: Context) {
             if (contentLength > MAX_MODEL_ARCHIVE_BYTES) {
                 throw IOException("模型包超过 1GB，已取消安装")
             }
-            
+
             val stream = body.byteStream()
             val progressInput = if (contentLength > 0 && progressCallback != null) {
                 ProgressInputStream(stream, contentLength, progressCallback)
             } else {
                 stream
             }
-            
+
             extractArchiveToDirectory(progressInput, tempDir, archiveType)
         }
     }
@@ -368,8 +360,11 @@ class OfflineVoiceModelInstaller(context: Context) {
         val hasPiperConfig = names.any { it.endsWith(".onnx.json") }
         val manifestFormat = inferManifestFormat(tempDir)
         val hasKokoroVoices = names.any {
-            it == "voices.bin" || it == "voices.onnx" || it.startsWith("voices.") ||
-                (it.contains("voice") && (it.endsWith(".bin") || it.endsWith(".npy") || it.endsWith(".pt")))
+            it == "voices.bin" || it == "voices.onnx" || it.startsWith("voices.") || (it.contains("voice") && (it.endsWith(
+                ".bin"
+            ) || it.endsWith(".npy") || it.endsWith(
+                ".pt"
+            )))
         }
         val hasLexicon = names.any { it == "lexicon.txt" || it.startsWith("lexicon") }
         val hasTokens = names.any { it == "tokens.txt" || it == "tokens" }
@@ -413,9 +408,7 @@ class OfflineVoiceModelInstaller(context: Context) {
     }
 
     private fun createManualImportSpec(
-        displayName: String,
-        format: OfflineVoiceModelFormat,
-        tempDir: File
+        displayName: String, format: OfflineVoiceModelFormat, tempDir: File
     ): ModelImportSpec {
         validateSelectedFormat(tempDir, format)
         val inferredSpec = inferImportSpec(displayName, tempDir)
@@ -452,17 +445,18 @@ class OfflineVoiceModelInstaller(context: Context) {
             return OfflineVoiceModelFormat.PIPER
         }
         if (files.any {
-                it.name.equals("config.json", ignoreCase = true) &&
-                    it.readTextPrefix().contains("phoneme_id_map")
-            }
-        ) {
+                it.name.equals("config.json", ignoreCase = true) && it.readTextPrefix()
+                    .contains("phoneme_id_map")
+            }) {
             return OfflineVoiceModelFormat.PIPER
         }
         if (names.any {
-                it == "voices.bin" || it == "voices.onnx" || it.startsWith("voices.") ||
-                    (it.contains("voice") && (it.endsWith(".bin") || it.endsWith(".npy") || it.endsWith(".pt")))
-            }
-        ) {
+                it == "voices.bin" || it == "voices.onnx" || it.startsWith("voices.") || (it.contains(
+                    "voice"
+                ) && (it.endsWith(".bin") || it.endsWith(".npy") || it.endsWith(
+                    ".pt"
+                )))
+            }) {
             return OfflineVoiceModelFormat.KOKORO
         }
         return null
@@ -488,14 +482,12 @@ class OfflineVoiceModelInstaller(context: Context) {
             return speakerIdMap.size()
         }
 
-        return json.optionalInt("num_speakers")
-            ?: json.optionalObject("audio")?.optionalInt("num_speakers")
-            ?: 1
+        return json.optionalInt("num_speakers") ?: json.optionalObject("audio")
+            ?.optionalInt("num_speakers") ?: 1
     }
 
     private fun estimateKokoroSpeakerCount(tempDir: File): Int {
-        val packageText = tempDir.walkTopDown()
-            .joinToString(" ") { it.name.lowercase() }
+        val packageText = tempDir.walkTopDown().joinToString(" ") { it.name.lowercase() }
         return when {
             "zh-en-v1_1" in packageText -> 103
             "zh-en-v1.1" in packageText -> 103
@@ -509,8 +501,7 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private fun inferManifestFormat(tempDir: File): OfflineVoiceModelFormat? {
         val manifestFiles = tempDir.walkTopDown()
-            .filter { it.isFile && it.name.equals("manifest.json", ignoreCase = true) }
-            .toList()
+            .filter { it.isFile && it.name.equals("manifest.json", ignoreCase = true) }.toList()
         for (manifestFile in manifestFiles) {
             val json = runCatching {
                 JsonParser.parseString(manifestFile.readText(Charsets.UTF_8)).asJsonObject
@@ -542,9 +533,7 @@ class OfflineVoiceModelInstaller(context: Context) {
                 .firstOrNull { it.isFile && it.name.equals(fileName, ignoreCase = true) }
                 ?: return@forEach
             val name = runCatching {
-                JsonParser.parseString(file.readText(Charsets.UTF_8))
-                    .asJsonObject
-                    .optionalString("name")
+                JsonParser.parseString(file.readText(Charsets.UTF_8)).asJsonObject.optionalString("name")
             }.getOrNull()
             if (!name.isNullOrBlank()) return name
         }
@@ -563,10 +552,10 @@ class OfflineVoiceModelInstaller(context: Context) {
                     source.copyRecursively(File(targetRoot, "espeak-ng-data"), overwrite = true)
                 }
 
-                source.isFile && (
-                    source.extension.equals("fst", ignoreCase = true) ||
-                        source.extension.equals("far", ignoreCase = true)
-                    ) -> {
+                source.isFile && (source.extension.equals(
+                    "fst",
+                    ignoreCase = true
+                ) || source.extension.equals("far", ignoreCase = true)) -> {
                     source.copyTo(File(targetRoot, targetName), overwrite = true)
                 }
 
@@ -578,15 +567,17 @@ class OfflineVoiceModelInstaller(context: Context) {
                     source.copyTo(File(targetRoot, targetName), overwrite = true)
                 }
 
-                source.isFile && (
-                    targetName.equals("manifest.json", ignoreCase = true) ||
-                        targetName.equals("voicepack.json", ignoreCase = true)
-                    ) -> {
+                source.isFile && (targetName.equals(
+                    "manifest.json",
+                    ignoreCase = true
+                ) || targetName.equals("voicepack.json", ignoreCase = true)) -> {
                     source.copyTo(File(targetRoot, targetName), overwrite = true)
                 }
 
-                source.isFile && targetName.startsWith("lexicon", ignoreCase = true) &&
-                    targetName.endsWith(".txt", ignoreCase = true) -> {
+                source.isFile && targetName.startsWith(
+                    "lexicon",
+                    ignoreCase = true
+                ) && targetName.endsWith(".txt", ignoreCase = true) -> {
                     source.copyTo(File(targetRoot, targetName), overwrite = true)
                 }
             }
@@ -610,20 +601,44 @@ class OfflineVoiceModelInstaller(context: Context) {
             "model.onnx" -> files.firstOrNull {
                 it.name.equals("model.onnx", ignoreCase = true)
             } ?: files.firstOrNull {
-                it.extension.equals("onnx", ignoreCase = true) &&
-                    !it.name.contains("voice", ignoreCase = true)
+                it.extension.equals("onnx", ignoreCase = true) && !it.name.contains(
+                    "voice",
+                    ignoreCase = true
+                )
             } ?: files.firstOrNull { it.extension.equals("onnx", ignoreCase = true) }
+
             "voices.bin" -> files.firstOrNull {
                 val name = it.name.lowercase()
-                name == "voices.bin" || name.startsWith("voices.") ||
-                    (name.contains("voice") && (name.endsWith(".bin") || name.endsWith(".npy") || name.endsWith(".pt")))
+                name == "voices.bin" || name.startsWith("voices.") || (name.contains("voice") && (name.endsWith(
+                    ".bin"
+                ) || name.endsWith(".npy") || name.endsWith(
+                    ".pt"
+                )))
             }
+
             "tokens.txt" -> files.firstOrNull { it.name.equals("tokens.txt", ignoreCase = true) }
-            "lexicon.txt" -> files.firstOrNull { it.name.equals("lexicon.txt", ignoreCase = true) || it.name.startsWith("lexicon") }
-            "model.onnx.json" -> files.firstOrNull { it.name.equals("model.onnx.json", ignoreCase = true) }
-                ?: files.firstOrNull { it.name.endsWith(".onnx.json", ignoreCase = true) }
-            "phonemizer.dict" -> files.firstOrNull { it.name.equals("phonemizer.dict", ignoreCase = true) }
-                ?: files.firstOrNull { it.name.endsWith(".dict", ignoreCase = true) && !it.name.contains("user", ignoreCase = true) }
+            "lexicon.txt" -> files.firstOrNull {
+                it.name.equals(
+                    "lexicon.txt", ignoreCase = true
+                ) || it.name.startsWith("lexicon")
+            }
+
+            "model.onnx.json" -> files.firstOrNull {
+                it.name.equals(
+                    "model.onnx.json", ignoreCase = true
+                )
+            } ?: files.firstOrNull { it.name.endsWith(".onnx.json", ignoreCase = true) }
+
+            "phonemizer.dict" -> files.firstOrNull {
+                it.name.equals(
+                    "phonemizer.dict", ignoreCase = true
+                )
+            } ?: files.firstOrNull {
+                it.name.endsWith(
+                    ".dict", ignoreCase = true
+                ) && !it.name.contains("user", ignoreCase = true)
+            }
+
             "dict" -> null
             else -> null
         }
@@ -631,7 +646,11 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private fun findPiperConfigFile(files: List<File>): File? {
         return files.firstOrNull { it.name.endsWith(".onnx.json", ignoreCase = true) }
-            ?: files.firstOrNull { it.name.equals("config.json", ignoreCase = true) && it.readTextPrefix().contains("phoneme_id_map") }
+            ?: files.firstOrNull {
+                it.name.equals(
+                    "config.json", ignoreCase = true
+                ) && it.readTextPrefix().contains("phoneme_id_map")
+            }
     }
 
     private fun File.readTextPrefix(maxBytes: Int = 64 * 1024): String {
@@ -669,11 +688,7 @@ class OfflineVoiceModelInstaller(context: Context) {
 
     private fun Context.displayNameForUri(uri: Uri): String {
         return contentResolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME),
-            null,
-            null,
-            null
+            uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
         )?.use { cursor ->
             val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
             if (nameIndex >= 0 && cursor.moveToFirst()) {
@@ -705,8 +720,7 @@ class OfflineVoiceModelInstaller(context: Context) {
               "dictDir": "dict",
               "dataDir": "espeak-ng-data"
             }
-            """.trimIndent(),
-            Charsets.UTF_8
+            """.trimIndent(), Charsets.UTF_8
         )
     }
 
@@ -775,10 +789,7 @@ class OfflineVoiceModelInstaller(context: Context) {
 }
 
 private enum class ArchiveType {
-    ZIP,
-    TAR,
-    TAR_GZ,
-    TAR_BZ2;
+    ZIP, TAR, TAR_GZ, TAR_BZ2;
 
     companion object {
         fun fromFileName(fileName: String): ArchiveType? {
@@ -830,8 +841,10 @@ private fun Throwable?.downloadFailureMessage(defaultMessage: String = "模型�
     val error = this ?: return defaultMessage
     val message = error.message.orEmpty()
     return when {
-        error is SocketTimeoutException || message.contains("timeout", ignoreCase = true) ->
-            "$defaultMessage：网络超时。请切换网络后重试，或手动下载模型压缩包后导入。"
+        error is SocketTimeoutException || message.contains(
+            "timeout",
+            ignoreCase = true
+        ) -> "$defaultMessage：网络超时。请切换网络后重试，或手动下载模型压缩包后导入。"
 
         message.isNotBlank() -> "$defaultMessage：$message"
         else -> defaultMessage

@@ -31,10 +31,8 @@ data class VoiceProfile(
         val expressivenessRateOffset = (expressiveness - 0.5f) * 0.05f
 
         return VoiceTtsParams(
-            speechRate = (speechRate + expressivenessRateOffset)
-                .coerceIn(MIN_RATE, MAX_RATE),
-            pitch = (pitch + agePitchOffset + warmthPitchOffset)
-                .coerceIn(MIN_PITCH, MAX_PITCH)
+            speechRate = (speechRate + expressivenessRateOffset).coerceIn(MIN_RATE, MAX_RATE),
+            pitch = (pitch + agePitchOffset + warmthPitchOffset).coerceIn(MIN_PITCH, MAX_PITCH)
         )
     }
 
@@ -66,8 +64,7 @@ data class VoiceProfile(
         )
 
         fun builtInProfiles() = listOf(
-            defaultProfile(),
-            VoiceProfile(
+            defaultProfile(), VoiceProfile(
                 id = "builtin_clear",
                 name = "清晰播报",
                 engine = VoiceEngineType.SYSTEM_TTS,
@@ -76,8 +73,7 @@ data class VoiceProfile(
                 pitch = 1.0f,
                 warmth = 0.45f,
                 expressiveness = 0.35f
-            ),
-            VoiceProfile(
+            ), VoiceProfile(
                 id = "builtin_lively",
                 name = "元气活泼",
                 engine = VoiceEngineType.SYSTEM_TTS,
@@ -92,13 +88,11 @@ data class VoiceProfile(
 }
 
 enum class VoiceEngineType(val label: String) {
-    SYSTEM_TTS("系统 TTS"),
-    OFFLINE_NEURAL("端侧模型")
+    DISABLED("关闭"), SYSTEM_TTS("系统 TTS"), OFFLINE_NEURAL("端侧模型")
 }
 
 data class VoiceTtsParams(
-    val speechRate: Float,
-    val pitch: Float
+    val speechRate: Float, val pitch: Float
 )
 
 const val DEFAULT_PROFILE_ID = "default_voice_profile"

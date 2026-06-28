@@ -4,11 +4,18 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import com.ziegler.kighelper.utils.NotificationHelper
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * Cleans up the persistent notification when the app task is removed from recents.
  */
+@AndroidEntryPoint
 class TaskRemovedCleanupService : Service() {
+
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -16,7 +23,7 @@ class TaskRemovedCleanupService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        NotificationHelper.cancelNotification(this)
+        notificationHelper.cancelNotification()
         stopSelf()
         super.onTaskRemoved(rootIntent)
     }

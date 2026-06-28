@@ -70,7 +70,7 @@ internal fun PhraseManagementList(
                 ReorderableItem(
                     state = reorderableLazyGridState,
                     key = phrase.id,
-                    animateItemModifier = Modifier
+                    animateItemModifier = Modifier.animateItem()
                 ) { dragging ->
                     val interactionSource = remember { MutableInteractionSource() }
 
@@ -111,7 +111,7 @@ internal fun PhraseManagementList(
                 ReorderableItem(
                     state = reorderableLazyListState,
                     key = phrase.id,
-                    animateItemModifier = Modifier
+                    animateItemModifier = Modifier.animateItem()
                 ) { dragging ->
                     val interactionSource = remember { MutableInteractionSource() }
 

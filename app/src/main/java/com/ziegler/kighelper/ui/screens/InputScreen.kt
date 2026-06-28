@@ -65,7 +65,8 @@ fun InputScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     onSpeak: (String) -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    fontSizeMultiplier: Float = 1.0f
 ) {
     var textFieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(""))
@@ -87,19 +88,17 @@ fun InputScreen(
         WindowInsets.navigationBars.getRight(this, layoutDirection).toDp()
     }
     val safeStartPadding = maxOf(
-        contentPadding.calculateStartPadding(layoutDirection),
-        navigationStartPadding
+        contentPadding.calculateStartPadding(layoutDirection), navigationStartPadding
     )
     val safeEndPadding = maxOf(
-        contentPadding.calculateEndPadding(layoutDirection),
-        navigationEndPadding
+        contentPadding.calculateEndPadding(layoutDirection), navigationEndPadding
     )
 
     val actionBottomPadding = maxOf(imeBottomPadding, contentPadding.calculateBottomPadding())
 
     val smallestScreenWidth = configuration.smallestScreenWidthDp
     // 动态计算缩放系数与字号
-    val fontSize = when {
+    val baseFontSize = when {
         smallestScreenWidth < 360 -> {
             if (text.length > 20) 32.sp else 56.sp
         }
@@ -116,6 +115,7 @@ fun InputScreen(
             if (text.length > 20) 80.sp else 110.sp
         }
     }
+    val fontSize = baseFontSize * fontSizeMultiplier
     val lineHeight = fontSize * 1.15f
 
     LaunchedEffect(Unit) {

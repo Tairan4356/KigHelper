@@ -36,8 +36,7 @@ class SpeechAudioCache(context: Context) {
     }
 
     private fun String.sha256(): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(toByteArray(Charsets.UTF_8))
+        val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) }
     }
 
