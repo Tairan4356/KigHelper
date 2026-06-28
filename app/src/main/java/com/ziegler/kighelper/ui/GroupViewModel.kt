@@ -39,6 +39,12 @@ class GroupViewModel(private val repository: PhraseRepository) : ViewModel() {
         return true
     }
 
+    fun addGroupDirectly(group: PhraseGroup) {
+        if (_groupList.value.any { it.id == group.id || it.name.equals(group.name, ignoreCase = true) }) return
+        _groupList.value = _groupList.value + group
+        persistCurrentGroups()
+    }
+
     fun deleteGroup(groupId: String) {
         if (groupId == PhraseGroup.DEFAULT_ID) return
 

@@ -71,7 +71,7 @@ object PhraseShare {
 
     fun importArchive(
         archiveBytes: InputStream, audioOutputDir: File?, gson: Gson = Gson()
-    ): PhraseData? {
+    ): Pair<PhraseData, List<PhraseGroup>>? {
         return runCatching {
             var phraseData: PhraseData? = null
 
@@ -103,16 +103,23 @@ object PhraseShare {
             val parsed = phraseData ?: return null
             if (parsed.schemaVersion > SCHEMA_VERSION || parsed.app != "KigHelper") return null
 
-            PhraseData(
-                schemaVersion = parsed.schemaVersion,
-                app = parsed.app,
-                groups = parsed.groups.map { it.copy(id = UUID.randomUUID().toString()) },
-                phrases = parsed.phrases.map {
-                    it.copy(
-                        id = UUID.randomUUID().toString(),
-                        groupId = findMappedGroupId(it.groupId, parsed.groups)
-                    )
-                })
+            val originalGroups = parsed.groups
+            val idMapping = originalGroups.associate { it.id to UUID.randomUUID().toString() }
+
+            Pair(
+                PhraseData(
+                    schemaVersion = parsed.schemaVersion,
+                    app = parsed.app,
+                    groups = originalGroups.map { it.copy(id = idMapping[it.id] ?: UUID.randomUUID().toString()) },
+                    phrases = parsed.phrases.map {
+                        it.copy(
+                            id = UUID.randomUUID().toString(),
+                            groupId = idMapping[it.groupId] ?: PhraseGroup.DEFAULT_ID
+                        )
+                    }
+                ),
+                originalGroups
+            )
         }.getOrNull()
     }
 

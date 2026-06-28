@@ -102,18 +102,24 @@ class MainViewModel @Inject constructor(
 
     suspend fun importArchive(archiveBytes: java.io.InputStream, audioDir: File?): Boolean {
         val bytes = archiveBytes.readBytes()
-        val groupsImported = groupViewModel.importGroups(String(bytes))
         val phrasesImported =
             phraseViewModel.importArchive(bytes.inputStream(), groupList.value, audioDir)
-        return groupsImported || phrasesImported
+        val pendingGroups = phraseViewModel.consumePendingNewGroups()
+        for (group in pendingGroups) {
+            groupViewModel.addGroupDirectly(group)
+        }
+        return phrasesImported
     }
 
     suspend fun importArchiveOverwrite(
         archiveBytes: java.io.InputStream, audioDir: File?
     ): Boolean {
         val bytes = archiveBytes.readBytes()
-        val groupsImported = groupViewModel.importGroups(String(bytes))
         val phrasesImported = phraseViewModel.importArchiveOverwrite(bytes.inputStream(), audioDir)
-        return groupsImported || phrasesImported
+        val pendingGroups = phraseViewModel.consumePendingNewGroups()
+        for (group in pendingGroups) {
+            groupViewModel.addGroupDirectly(group)
+        }
+        return phrasesImported
     }
 }

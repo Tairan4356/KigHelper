@@ -87,16 +87,18 @@ fun PhraseExportDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                val ids = selectedGroupIds.value
-                                if (group.id in ids) ids.remove(group.id) else ids.add(group.id)
+                                selectedGroupIds.value = selectedGroupIds.value.toMutableSet().also {
+                                    if (group.id in it) it.remove(group.id) else it.add(group.id)
+                                }
                             }
                             .padding(vertical = 2.dp)
                     ) {
                         Checkbox(
                             checked = group.id in selectedGroupIds.value,
                             onCheckedChange = { checked ->
-                                val ids = selectedGroupIds.value
-                                if (checked) ids.add(group.id) else ids.remove(group.id)
+                                selectedGroupIds.value = selectedGroupIds.value.toMutableSet().also {
+                                    if (checked) it.add(group.id) else it.remove(group.id)
+                                }
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))

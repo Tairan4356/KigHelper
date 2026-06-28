@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 /**
  * 短语管理 ViewModel，负责短语的加载、增删改查和排序
@@ -23,6 +24,8 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
 
     private val _isPhrasesLoading = MutableStateFlow(true)
     val isPhrasesLoading: StateFlow<Boolean> = _isPhrasesLoading.asStateFlow()
+
+    private val _pendingNewGroups = mutableListOf<PhraseGroup>()
 
     init {
         loadPhrases()
@@ -184,22 +187,36 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
     suspend fun importArchive(
         archiveBytes: java.io.InputStream, existingGroups: List<PhraseGroup>, audioDir: File?
     ): Boolean = withContext(Dispatchers.IO) {
-        val parsed = PhraseShare.importArchive(archiveBytes, audioDir) ?: return@withContext false
+        val (parsed, originalGroups) = PhraseShare.importArchive(archiveBytes, audioDir)
+            ?: return@withContext false
+
+        val existingGroupByName = existingGroups.associateBy { it.name }
+        val idMapping = mutableMapOf<String, String>()
+
+        for (origGroup in originalGroups) {
+            val matched = existingGroupByName[origGroup.name]
+            if (matched != null) {
+                idMapping[origGroup.id] = matched.id
+            } else {
+                val newGroupId = UUID.randomUUID().toString()
+                idMapping[origGroup.id] = newGroupId
+                _pendingNewGroups.add(PhraseGroup(id = newGroupId, name = origGroup.name, order = origGroup.order))
+            }
+        }
 
         val currentPhrases = _phraseList.value.toMutableList()
-        val existingPhraseIds = currentPhrases.map { it.id }.toMutableSet()
-        val existingGroupIds = existingGroups.map { it.id }.toMutableSet()
+        val currentPhraseLabels = currentPhrases.map { "${it.label}:${it.groupId}" }.toMutableSet()
 
         for (phrase in parsed.phrases) {
-            if (phrase.id in existingPhraseIds) continue
-            val targetGroupId =
-                if (phrase.groupId in existingGroupIds) phrase.groupId else "default"
+            val labelKey = "${phrase.label}:${idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID}"
+            if (labelKey in currentPhraseLabels) continue
             val localAudioPath = if (phrase.hasAudio && phrase.audioPath != null) {
                 val fileName = File(phrase.audioPath).name
                 File(audioDir, fileName).absolutePath.takeIf { File(it).exists() }
             } else null
+            val targetGroupId = idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID
             currentPhrases.add(phrase.copy(groupId = targetGroupId, audioPath = localAudioPath))
-            existingPhraseIds.add(phrase.id)
+            currentPhraseLabels.add(labelKey)
         }
 
         _phraseList.value = currentPhrases
@@ -212,14 +229,25 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
     ): Boolean = withContext(Dispatchers.IO) {
         audioDir?.listFiles()?.forEach { it.delete() }
 
-        val parsed = PhraseShare.importArchive(archiveBytes, audioDir) ?: return@withContext false
+        val (parsed, originalGroups) = PhraseShare.importArchive(archiveBytes, audioDir)
+            ?: return@withContext false
+
+        val idMapping = mutableMapOf<String, String>()
+        for (origGroup in originalGroups) {
+            val newGroupId = UUID.randomUUID().toString()
+            idMapping[origGroup.id] = newGroupId
+            _pendingNewGroups.add(PhraseGroup(id = newGroupId, name = origGroup.name, order = origGroup.order))
+        }
 
         val phrasesWithLocalPaths = parsed.phrases.map { phrase ->
             val localAudioPath = if (phrase.hasAudio && phrase.audioPath != null) {
                 val fileName = File(phrase.audioPath).name
                 File(audioDir, fileName).absolutePath.takeIf { File(it).exists() }
             } else null
-            phrase.copy(audioPath = localAudioPath)
+            phrase.copy(
+                groupId = idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID,
+                audioPath = localAudioPath
+            )
         }
 
         _phraseList.value = phrasesWithLocalPaths
@@ -232,5 +260,11 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         viewModelScope.launch {
             repository.savePhrases(snapshot)
         }
+    }
+
+    fun consumePendingNewGroups(): List<PhraseGroup> {
+        val groups = _pendingNewGroups.toList()
+        _pendingNewGroups.clear()
+        return groups
     }
 }
