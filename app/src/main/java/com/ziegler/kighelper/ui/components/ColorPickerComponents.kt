@@ -37,7 +37,8 @@ import com.ziegler.kighelper.ui.theme.PresetColors
 fun PresetColorGrid(
     selectedIndex: Int,
     onColorSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showNames: Boolean = true
 ) {
     Column(
         modifier = modifier,
@@ -53,7 +54,8 @@ fun PresetColorGrid(
                             name = PresetColorNames[index],
                             selected = selectedIndex == index,
                             onClick = { onColorSelected(index) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            showName = showNames
                         )
                     }
                 }
@@ -68,7 +70,8 @@ fun PresetColorItem(
     name: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showName: Boolean = true
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -87,12 +90,14 @@ fun PresetColorItem(
                     }
                 )
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (showName) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

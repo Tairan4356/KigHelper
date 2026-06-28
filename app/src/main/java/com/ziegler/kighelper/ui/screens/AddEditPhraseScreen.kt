@@ -305,7 +305,10 @@ fun AddEditPhraseScreen(
                     }
                 } else {
                     OutlinedButton(
-                        onClick = { hasCustomColor = true },
+                        onClick = {
+                            hasCustomColor = true
+                            if (cardColor == 0L) cardColor = 0xFF6650A4
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("自定义卡片颜色")
@@ -323,7 +326,8 @@ fun AddEditPhraseScreen(
                             if (index in colors.indices) {
                                 cardColor = colors[index]
                             }
-                        }
+                        },
+                        showNames = false
                     )
                 }
             }
