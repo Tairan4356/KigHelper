@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "1.1.2",
-  "updateContent": "1. 短语支持分组管理\n2. 主页卡片可以长按编辑\n3. 支持KIGVPK格式声音模型\n4. 通知胶囊/状态栏上岛\n5. 优化了界面交互\n感谢@yulexun、@iMallpa、@LHT02和@1MLightyears的代码贡献\n\n因为作者疏忽导致原签名文件丢失，使用新版本需要卸载旧版本并重新安装，造成不便请谅解",
+  "versionCode": 6,
+  "versionName": "1.2.0",
+  "updateContent": "1. 软件正式更名为“娃语”\n2. 新增偏好设置页面\n3. 新增短语自定义音频功能\n4. 新增短语卡片自定义颜色功能\n\n版本更新后，应用名称将会变更为“娃语” / “KiguSay”（英文名）/ “着ぐ声”（日文名），请留意桌面图标的变化。",
   "downloadUrl": "https://tairan4356.github.io/KigHelper/"
 }

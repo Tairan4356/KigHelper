@@ -18,10 +18,11 @@ android {
         minSdk = 26
         //noinspection OldTargetApi
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.1.2"
+        versionCode = 6
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        resConfigs("zh", "ja", "en")
     }
 
     flavorDimensions += "version"
@@ -39,7 +40,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             ndk {
                 //noinspection ChromeOsAbiSupport
                 abiFilters += "arm64-v8a"
