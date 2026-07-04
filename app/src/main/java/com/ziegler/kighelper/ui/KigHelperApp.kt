@@ -253,6 +253,8 @@ fun KigHelperApp(
                         },
                         onAddGroup = viewModel::addGroup,
                         onDeleteGroup = viewModel::deleteGroup,
+                        onRenameGroup = viewModel::renameGroup,
+                        onReorderGroups = viewModel::updateGroupsOrder,
                         onMovePhraseToGroup = viewModel::movePhraseToGroup,
                         onExport = { showExportDialog = true },
                         onImport = { showImportDialog = true })

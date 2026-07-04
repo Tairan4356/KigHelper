@@ -2,6 +2,7 @@ package com.ziegler.kighelper.ui
 
 import androidx.lifecycle.ViewModel
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.data.PhraseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -75,6 +76,14 @@ class MainViewModel @Inject constructor(
         currentPhrases.filter { it.groupId == groupId }.forEach { phrase ->
             phraseViewModel.updatePhrase(phrase.id, phrase.label, phrase.speech, "default")
         }
+    }
+
+    fun renameGroup(groupId: String, newName: String) {
+        groupViewModel.renameGroup(groupId, newName)
+    }
+
+    fun updateGroupsOrder(updatedGroups: List<PhraseGroup>) {
+        groupViewModel.updateGroupsOrder(updatedGroups)
     }
 
     fun movePhraseToGroup(phraseId: String, targetGroupId: String) {

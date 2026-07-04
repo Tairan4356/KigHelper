@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -47,6 +48,7 @@ import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.screens.edit.AddGroupDialog
 import com.ziegler.kighelper.ui.screens.edit.DeleteGroupDialog
 import com.ziegler.kighelper.ui.screens.edit.GroupFilterRow
+import com.ziegler.kighelper.ui.screens.edit.GroupManagementDialog
 import com.ziegler.kighelper.ui.screens.edit.PhraseManagementList
 import com.ziegler.kighelper.ui.screens.phrase.buildPhraseListWithGroupOrder
 import com.ziegler.kighelper.ui.screens.phrase.effectiveGroupId
@@ -71,6 +73,8 @@ fun EditScreen(
     onNavigateToEdit: (String) -> Unit,
     onAddGroup: (String) -> Boolean,
     onDeleteGroup: (String) -> Unit,
+    onRenameGroup: (groupId: String, newName: String) -> Unit,
+    onReorderGroups: (List<PhraseGroup>) -> Unit,
     onMovePhraseToGroup: (phraseId: String, groupId: String) -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit
@@ -99,6 +103,7 @@ fun EditScreen(
     var groupPendingDelete by remember { mutableStateOf<PhraseGroup?>(null) }
     var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var showGroupManagementDialog by rememberSaveable { mutableStateOf(false) }
 
     val selectedGroup =
         sortedGroups.firstOrNull { it.id == selectedGroupId } ?: sortedGroups.firstOrNull()
@@ -189,6 +194,15 @@ fun EditScreen(
             }
             DropdownMenu(
                 expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(text = { Text("分组管理") }, onClick = {
+                    showMenu = false
+                    showGroupManagementDialog = true
+                }, leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = null
+                    )
+                })
                 DropdownMenuItem(text = { Text("导入短语") }, onClick = {
                     showMenu = false
                     onImport()
@@ -286,5 +300,16 @@ fun EditScreen(
             onDeleteGroup(group.id)
             groupPendingDelete = null
         })
+    }
+
+    if (showGroupManagementDialog) {
+        GroupManagementDialog(
+            groups = sortedGroups,
+            onDismiss = { showGroupManagementDialog = false },
+            onAddGroup = onAddGroup,
+            onRenameGroup = onRenameGroup,
+            onDeleteGroup = onDeleteGroup,
+            onReorderGroups = onReorderGroups
+        )
     }
 }
