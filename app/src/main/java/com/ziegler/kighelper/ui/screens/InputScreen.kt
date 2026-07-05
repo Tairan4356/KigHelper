@@ -2,9 +2,11 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -45,6 +48,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +64,7 @@ import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
  * @param onSpeak 触发朗读的回调，传入当前文本
  * @param onStop 触发停止朗读的回调
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun InputScreen(
     modifier: Modifier = Modifier,
@@ -73,12 +78,19 @@ fun InputScreen(
     }
     val scrollState = rememberScrollState()
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val text = textFieldValue.text
     val performButtonHaptic = rememberPhysicalButtonHaptics()
+
+    // 输入法可见时拦截返回键，先收起输入法而不是直接返回上一级
+    val isImeVisible = WindowInsets.isImeVisible
+    BackHandler(enabled = isImeVisible) {
+        keyboardController?.hide()
+    }
 
     val imeBottomPadding = with(density) { WindowInsets.ime.getBottom(this).toDp() }
     val navigationStartPadding = with(density) {
