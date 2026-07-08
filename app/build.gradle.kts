@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.reorderable)
     implementation(libs.colorpickerview)
     implementation(libs.materialKolor)
+    implementation(libs.coil.compose)
     implementation(files("libs/sherpa-onnx-1.13.2.aar"))
 
 

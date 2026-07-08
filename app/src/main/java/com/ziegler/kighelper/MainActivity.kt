@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.MainViewModel
 import com.ziegler.kighelper.ui.SettingsViewModel
+import com.ziegler.kighelper.ui.SocialCardViewModel
 import com.ziegler.kighelper.ui.VoiceViewModel
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.PreviewDialog
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private val voiceViewModel: VoiceViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val socialCardViewModel: SocialCardViewModel by viewModels()
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -103,6 +105,7 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     voiceViewModel = voiceViewModel,
                     settingsViewModel = settingsViewModel,
+                    socialCardViewModel = socialCardViewModel,
                     notificationHelper = notificationHelper,
                     onSpeak = { text ->
                         audioPlayerManager.stop()

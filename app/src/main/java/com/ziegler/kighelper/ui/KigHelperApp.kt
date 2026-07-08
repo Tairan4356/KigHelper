@@ -50,6 +50,7 @@ import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
 import com.ziegler.kighelper.ui.screens.SettingsScreen
+import com.ziegler.kighelper.ui.screens.SocialCardEditScreen
 import com.ziegler.kighelper.ui.screens.ToolboxScreen
 import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
 import com.ziegler.kighelper.ui.screens.edit.ExportResult
@@ -79,6 +80,7 @@ fun KigHelperApp(
     viewModel: MainViewModel,
     voiceViewModel: VoiceViewModel,
     settingsViewModel: SettingsViewModel,
+    socialCardViewModel: SocialCardViewModel,
     notificationHelper: NotificationHelper,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
@@ -89,6 +91,7 @@ fun KigHelperApp(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: AppRoutes.MAIN
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+    val socialCardProfile by socialCardViewModel.profile.collectAsStateWithLifecycle()
 
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
@@ -198,15 +201,24 @@ fun KigHelperApp(
                 }
 
                 composable(AppRoutes.EDIT) {
-                    ToolboxScreen(contentPadding = innerPadding, onNavigateToPhraseManager = {
-                        navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
-                    }, onNavigateToVoiceSettings = {
-                        navController.navigate(AppRoutes.VOICE_SETTINGS)
-                    }, onNavigateToAbout = {
-                        navController.navigate(AppRoutes.ABOUT)
-                    }, onNavigateToSettings = {
-                        navController.navigate(AppRoutes.SETTINGS)
-                    })
+                    ToolboxScreen(
+                        contentPadding = innerPadding,
+                        socialCardProfile = socialCardProfile,
+                        onNavigateToSocialCardEdit = {
+                            navController.navigate(AppRoutes.SOCIAL_CARD_EDIT)
+                        },
+                        onNavigateToPhraseManager = {
+                            navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
+                        },
+                        onNavigateToVoiceSettings = {
+                            navController.navigate(AppRoutes.VOICE_SETTINGS)
+                        },
+                        onNavigateToAbout = {
+                            navController.navigate(AppRoutes.ABOUT)
+                        },
+                        onNavigateToSettings = {
+                            navController.navigate(AppRoutes.SETTINGS)
+                        })
                 }
 
                 composable(AppRoutes.PHRASE_MANAGEMENT) {
@@ -370,6 +382,17 @@ fun KigHelperApp(
                 composable(AppRoutes.SETTINGS) {
                     SettingsScreen(
                         viewModel = settingsViewModel, onBack = { navController.popBackStack() })
+                }
+
+                composable(AppRoutes.SOCIAL_CARD_EDIT) {
+                    SocialCardEditScreen(
+                        initialProfile = socialCardProfile,
+                        onBack = { navController.popBackStack() },
+                        onSave = { profile, avatarUri, backgroundUri, qrCodeUris, iconUris ->
+                            socialCardViewModel.commit(
+                                profile, avatarUri, backgroundUri, qrCodeUris, iconUris
+                            )
+                        })
                 }
             }
         }

@@ -24,6 +24,7 @@ hiltNavigationCompose = "1.2.0"
 ksp = "2.3.9"
 colorpickerview = "2.4.0"
 materialKolor = "4.1.1"
+coil = "2.7.0"
 
 
 [libraries]
@@ -61,6 +62,7 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 ksp = { group = "com.google.devtools.ksp", name = "com.google.devtools.ksp.gradle.plugin", version.ref = "ksp" }
 colorpickerview = { group = "com.github.skydoves", name = "colorpickerview", version.ref = "colorpickerview" }
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

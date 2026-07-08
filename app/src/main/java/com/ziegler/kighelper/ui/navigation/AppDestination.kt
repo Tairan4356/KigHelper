@@ -20,6 +20,7 @@ object AppRoutes {
     const val VOICE_SETTINGS = "voice_settings"
     const val ABOUT = "about"
     const val SETTINGS = "settings"
+    const val SOCIAL_CARD_EDIT = "social_card_edit"
 
     const val ADD_EDIT = "add_edit"
     const val PHRASE_ID_ARG = "id"
