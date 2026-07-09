@@ -25,6 +25,7 @@ ksp = "2.3.9"
 colorpickerview = "2.4.0"
 materialKolor = "4.1.1"
 coil = "2.7.0"
+composeCropper = "0.5.0"
 
 
 [libraries]
@@ -63,6 +64,7 @@ ksp = { group = "com.google.devtools.ksp", name = "com.google.devtools.ksp.gradl
 colorpickerview = { group = "com.github.skydoves", name = "colorpickerview", version.ref = "colorpickerview" }
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+compose-cropper = { group = "com.github.SmartToolFactory", name = "Compose-Cropper", version.ref = "composeCropper" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -79,13 +79,34 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.smarttoolfactory.cropper.model.AspectRatio
 import com.ziegler.kighelper.data.CardTemplates
 import com.ziegler.kighelper.data.SocialCardProfile
 import com.ziegler.kighelper.data.SocialContact
 import com.ziegler.kighelper.data.SocialPlatformIcons
+import com.ziegler.kighelper.ui.components.CropRequest
+import com.ziegler.kighelper.ui.components.CropShape
+import com.ziegler.kighelper.ui.components.ImageCropperDialog
 import com.ziegler.kighelper.ui.components.SocialCard
 import java.io.File
 import java.util.UUID
+
+/** 裁剪请求 tag，用于在 [ImageCropperDialog] 的回调中区分裁剪来源。 */
+private const val TAG_AVATAR = "avatar"
+private const val TAG_BACKGROUND = "background"
+private const val TAG_QR_PREFIX = "qr:"
+private const val TAG_ICON_PREFIX = "icon:"
+
+/** 头像裁剪可选形状：覆盖矩形、圆形、圆角、三角形/五/六/八边形。 */
+private val AVATAR_CROP_SHAPES = listOf(
+    CropShape.OVAL,
+    CropShape.RECT,
+    CropShape.ROUNDED_RECT,
+    CropShape.POLYGON_S3,
+    CropShape.POLYGON_S5,
+    CropShape.POLYGON_S6,
+    CropShape.POLYGON_S8
+)
 
 /**
  * 编辑社交卡片信息页面。
@@ -129,40 +150,42 @@ fun SocialCardEditScreen(
     var pendingQrContactId by remember { mutableStateOf<String?>(null) }
     var pendingIconContactId by remember { mutableStateOf<String?>(null) }
 
+    // 当前裁剪请求；非空时弹出 ImageCropperDialog
+    var cropRequest by remember { mutableStateOf<CropRequest?>(null) }
+
     val pickAvatar =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
-                avatarUri = uri
-                avatarPath = null
+                cropRequest = CropRequest(
+                    inputUri = uri,
+                    aspectRatio = AspectRatio(1f),
+                    defaultShape = CropShape.OVAL,
+                    selectableShapes = AVATAR_CROP_SHAPES,
+                    tag = TAG_AVATAR
+                )
             }
         }
     val pickBackground =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
-                backgroundUri = uri
-                customBackgroundPath = null
+                cropRequest = CropRequest(
+                    inputUri = uri,
+                    aspectRatio = AspectRatio.Original,
+                    defaultShape = CropShape.RECT,
+                    tag = TAG_BACKGROUND
+                )
             }
         }
     val pickQrLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val contactId = pendingQrContactId
             if (uri != null && contactId != null) {
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
-                qrCodeUris[contactId] = uri
+                cropRequest = CropRequest(
+                    inputUri = uri,
+                    aspectRatio = AspectRatio(1f),
+                    defaultShape = CropShape.RECT,
+                    tag = TAG_QR_PREFIX + contactId
+                )
             }
             pendingQrContactId = null
         }
@@ -170,16 +193,13 @@ fun SocialCardEditScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val contactId = pendingIconContactId
             if (uri != null && contactId != null) {
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
-                iconUris[contactId] = uri
-                removedIconIds.remove(contactId)
-                // 清掉旧的 customIconPath，避免预览时仍加载旧文件
-                val idx = contacts.indexOfFirst { it.id == contactId }
-                if (idx >= 0) contacts[idx] = contacts[idx].copy(customIconPath = null)
+                cropRequest = CropRequest(
+                    inputUri = uri,
+                    aspectRatio = AspectRatio(1f),
+                    defaultShape = CropShape.OVAL,
+                    selectableShapes = AVATAR_CROP_SHAPES,
+                    tag = TAG_ICON_PREFIX + contactId
+                )
             }
             pendingIconContactId = null
         }
@@ -496,6 +516,42 @@ fun SocialCardEditScreen(
                 TextButton(onClick = { showDiscardConfirm = false }) { Text("继续编辑") }
             })
     }
+
+    // 图片裁剪对话框：选完图片后弹出，裁剪完成回调中按 tag 分发到对应字段
+    ImageCropperDialog(
+        request = cropRequest,
+        onResult = { resultUri, tag ->
+            when {
+                tag == TAG_AVATAR -> {
+                    avatarUri = resultUri
+                    avatarPath = null
+                }
+
+                tag == TAG_BACKGROUND -> {
+                    backgroundUri = resultUri
+                    customBackgroundPath = null
+                }
+
+                tag?.startsWith(TAG_QR_PREFIX) == true -> {
+                    val contactId = tag.removePrefix(TAG_QR_PREFIX)
+                    qrCodeUris[contactId] = resultUri
+                }
+
+                tag?.startsWith(TAG_ICON_PREFIX) == true -> {
+                    val contactId = tag.removePrefix(TAG_ICON_PREFIX)
+                    iconUris[contactId] = resultUri
+                    removedIconIds.remove(contactId)
+                    // 清掉旧的 customIconPath，避免预览时仍加载旧文件
+                    val idx = contacts.indexOfFirst { it.id == contactId }
+                    if (idx >= 0) {
+                        contacts[idx] = contacts[idx].copy(customIconPath = null)
+                    }
+                }
+            }
+            cropRequest = null
+        },
+        onDismiss = { cropRequest = null }
+    )
 }
 
 @Composable
