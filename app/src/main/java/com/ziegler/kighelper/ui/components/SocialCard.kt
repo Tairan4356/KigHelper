@@ -1,6 +1,5 @@
 package com.ziegler.kighelper.ui.components
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ziegler.kighelper.data.CardTemplates
@@ -60,7 +60,7 @@ import java.io.File
 private fun resolveModel(path: String?): Any? {
     if (path.isNullOrBlank()) return null
     return if (path.startsWith("content://") || path.startsWith("file://")) {
-        Uri.parse(path)
+        path.toUri()
     } else {
         File(path)
     }
@@ -238,20 +238,13 @@ fun SocialCard(
                     // 头像
                     val avatarPath = profile.avatarPath
                     if (avatarPath != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(96.dp)
-                                .clip(CircleShape)
-                                .background(Color(0x33FFFFFF)), contentAlignment = Alignment.Center
-                        ) {
-                            val avatarModel = resolveModel(avatarPath)
-                            AsyncImage(
-                                model = ImageRequest.Builder(context).data(avatarModel).build(),
-                                contentDescription = "头像",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(resolveModel(avatarPath))
+                                .build(),
+                            contentDescription = "头像",
+                            modifier = Modifier.size(96.dp),
+                            contentScale = ContentScale.Fit
+                        )
                     }
                 }
 
@@ -339,7 +332,7 @@ private fun ContactIcon(
                     model = ImageRequest.Builder(context).data(customModel).build(),
                     contentDescription = contact.displayName,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     colorFilter = if (selected) null else DesaturateColorFilter
                 )
                 // 预设 drawable 图标：选中显示原色，未选中着灰

@@ -5,13 +5,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,36 +22,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -67,15 +51,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -83,30 +61,23 @@ import com.smarttoolfactory.cropper.model.AspectRatio
 import com.ziegler.kighelper.data.CardTemplates
 import com.ziegler.kighelper.data.SocialCardProfile
 import com.ziegler.kighelper.data.SocialContact
-import com.ziegler.kighelper.data.SocialPlatformIcons
 import com.ziegler.kighelper.ui.components.CropRequest
 import com.ziegler.kighelper.ui.components.CropShape
 import com.ziegler.kighelper.ui.components.ImageCropperDialog
+import com.ziegler.kighelper.ui.components.SectionTitle
 import com.ziegler.kighelper.ui.components.SocialCard
+import com.ziegler.kighelper.ui.screens.socialedit.AddContactDialog
+import com.ziegler.kighelper.ui.screens.socialedit.ContactEditor
+import com.ziegler.kighelper.ui.screens.socialedit.SocialCardEditDefaults
+import com.ziegler.kighelper.ui.screens.socialedit.TemplateThumb
 import java.io.File
 import java.util.UUID
 
-/** 裁剪请求 tag，用于在 [ImageCropperDialog] 的回调中区分裁剪来源。 */
-private const val TAG_AVATAR = "avatar"
-private const val TAG_BACKGROUND = "background"
-private const val TAG_QR_PREFIX = "qr:"
-private const val TAG_ICON_PREFIX = "icon:"
-
-/** 头像裁剪可选形状：覆盖矩形、圆形、圆角、三角形/五/六/八边形。 */
-private val AVATAR_CROP_SHAPES = listOf(
-    CropShape.OVAL,
-    CropShape.RECT,
-    CropShape.ROUNDED_RECT,
-    CropShape.POLYGON_S3,
-    CropShape.POLYGON_S5,
-    CropShape.POLYGON_S6,
-    CropShape.POLYGON_S8
-)
+private const val TAG_AVATAR = SocialCardEditDefaults.TAG_AVATAR
+private const val TAG_BACKGROUND = SocialCardEditDefaults.TAG_BACKGROUND
+private const val TAG_QR_PREFIX = SocialCardEditDefaults.TAG_QR_PREFIX
+private const val TAG_ICON_PREFIX = SocialCardEditDefaults.TAG_ICON_PREFIX
+private val AVATAR_CROP_SHAPES = SocialCardEditDefaults.AVATAR_CROP_SHAPES
 
 /**
  * 编辑社交卡片信息页面。
@@ -118,7 +89,7 @@ private val AVATAR_CROP_SHAPES = listOf(
  * @param onBack 返回回调
  * @param onSave 保存回调，传入更新后的资料 + 待写入的图片 URI
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SocialCardEditScreen(
     initialProfile: SocialCardProfile, onBack: () -> Unit, onSave: (
@@ -341,7 +312,6 @@ fun SocialCardEditScreen(
                     modifier = Modifier
                         .size(72.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { pickAvatar.launch(arrayOf("image/*")) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -351,14 +321,21 @@ fun SocialCardEditScreen(
                             model = ImageRequest.Builder(context).data(avatarModel).build(),
                             contentDescription = "头像",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Fit
                         )
                     } else {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = "添加头像",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "添加头像",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.size(12.dp))
@@ -518,425 +495,35 @@ fun SocialCardEditScreen(
     }
 
     // 图片裁剪对话框：选完图片后弹出，裁剪完成回调中按 tag 分发到对应字段
-    ImageCropperDialog(
-        request = cropRequest,
-        onResult = { resultUri, tag ->
-            when {
-                tag == TAG_AVATAR -> {
-                    avatarUri = resultUri
-                    avatarPath = null
-                }
-
-                tag == TAG_BACKGROUND -> {
-                    backgroundUri = resultUri
-                    customBackgroundPath = null
-                }
-
-                tag?.startsWith(TAG_QR_PREFIX) == true -> {
-                    val contactId = tag.removePrefix(TAG_QR_PREFIX)
-                    qrCodeUris[contactId] = resultUri
-                }
-
-                tag?.startsWith(TAG_ICON_PREFIX) == true -> {
-                    val contactId = tag.removePrefix(TAG_ICON_PREFIX)
-                    iconUris[contactId] = resultUri
-                    removedIconIds.remove(contactId)
-                    // 清掉旧的 customIconPath，避免预览时仍加载旧文件
-                    val idx = contacts.indexOfFirst { it.id == contactId }
-                    if (idx >= 0) {
-                        contacts[idx] = contacts[idx].copy(customIconPath = null)
-                    }
-                }
+    ImageCropperDialog(request = cropRequest, onResult = { resultUri, tag ->
+        when {
+            tag == TAG_AVATAR -> {
+                avatarUri = resultUri
+                avatarPath = null
             }
-            cropRequest = null
-        },
-        onDismiss = { cropRequest = null }
-    )
-}
 
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
-}
+            tag == TAG_BACKGROUND -> {
+                backgroundUri = resultUri
+                customBackgroundPath = null
+            }
 
-@Composable
-private fun TemplateThumb(
-    name: String,
-    brush: Brush?,
-    selected: Boolean,
-    onClick: () -> Unit,
-    customImageModel: Any? = null
-) {
-    val borderColor = if (selected) MaterialTheme.colorScheme.primary
-    else MaterialTheme.colorScheme.outlineVariant
-    Column(
-        modifier = Modifier
-            .size(width = 80.dp, height = 120.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 80.dp, height = 100.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .border(2.dp, borderColor, RoundedCornerShape(12.dp))
-        ) {
-            when {
-                brush != null -> Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(brush)
-                )
+            tag?.startsWith(TAG_QR_PREFIX) == true -> {
+                val contactId = tag.removePrefix(TAG_QR_PREFIX)
+                qrCodeUris[contactId] = resultUri
+            }
 
-                customImageModel != null -> AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current).data(customImageModel)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                else -> Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "+",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            tag?.startsWith(TAG_ICON_PREFIX) == true -> {
+                val contactId = tag.removePrefix(TAG_ICON_PREFIX)
+                iconUris[contactId] = resultUri
+                removedIconIds.remove(contactId)
+                // 清掉旧的 customIconPath，避免预览时仍加载旧文件
+                val idx = contacts.indexOfFirst { it.id == contactId }
+                if (idx >= 0) {
+                    contacts[idx] = contacts[idx].copy(customIconPath = null)
                 }
             }
         }
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            textAlign = TextAlign.Center
-        )
-    }
+        cropRequest = null
+    }, onDismiss = { cropRequest = null })
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun ContactEditor(
-    contact: SocialContact,
-    qrPreviewModel: Any?,
-    iconPreviewModel: Any?,
-    onRename: (String) -> Unit,
-    onIconKeyChange: (String) -> Unit,
-    onUploadIcon: () -> Unit,
-    onRemoveCustomIcon: () -> Unit,
-    onHandleChange: (String) -> Unit,
-    onPickQr: () -> Unit,
-    onRemoveQr: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showIconPicker by remember { mutableStateOf(false) }
-    var showRenameDialog by remember { mutableStateOf(false) }
-    var renameValue by remember(contact.id) { mutableStateOf(contact.displayName) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // 平台图标（点击切换图标）
-                Surface(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clickable { showIconPicker = true },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        when {
-                            iconPreviewModel != null -> AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(iconPreviewModel).build(),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            contact.iconKey != SocialPlatformIcons.KEY_DEFAULT -> Icon(
-                                painter = painterResource(SocialPlatformIcons.iconRes(contact.iconKey)),
-                                contentDescription = null,
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(28.dp)
-                            )
-
-                            else -> Text(
-                                text = contact.displayName.firstOrNull()?.toString() ?: "?",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    contact.displayName.ifBlank { "(未命名)" },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = { showRenameDialog = true }) {
-                    Icon(Icons.Filled.Edit, contentDescription = "重命名")
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "删除")
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = contact.handle,
-                onValueChange = onHandleChange,
-                label = { Text("账号/ID") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (qrPreviewModel != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current).data(qrPreviewModel)
-                            .build(),
-                        contentDescription = "二维码",
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(6.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.size(8.dp))
-                    TextButton(onClick = onPickQr) { Text("更换二维码") }
-                    Spacer(Modifier.size(4.dp))
-                    TextButton(onClick = onRemoveQr) { Text("移除") }
-                } else {
-                    OutlinedButton(onClick = onPickQr) {
-                        Icon(
-                            Icons.Filled.QrCode,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.size(8.dp))
-                        Text("上传二维码")
-                    }
-                }
-            }
-        }
-    }
-
-    if (showIconPicker) {
-        IconPickerSheet(
-            currentKey = contact.iconKey,
-            hasCustomIcon = iconPreviewModel != null,
-            onDismiss = { showIconPicker = false },
-            onPick = { key ->
-                onIconKeyChange(key)
-                showIconPicker = false
-            },
-            onUploadIcon = {
-                showIconPicker = false
-                onUploadIcon()
-            },
-            onRemoveCustomIcon = {
-                showIconPicker = false
-                onRemoveCustomIcon()
-            })
-    }
-
-    if (showRenameDialog) {
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("修改平台名称") },
-            text = {
-                OutlinedTextField(
-                    value = renameValue,
-                    onValueChange = { renameValue = it },
-                    singleLine = true,
-                    label = { Text("平台名称") })
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (renameValue.isNotBlank()) onRename(renameValue.trim())
-                    showRenameDialog = false
-                }) { Text("确定") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text("取消") }
-            })
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun IconPickerSheet(
-    currentKey: String,
-    hasCustomIcon: Boolean,
-    onDismiss: () -> Unit,
-    onPick: (String) -> Unit,
-    onUploadIcon: () -> Unit,
-    onRemoveCustomIcon: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = onDismiss, sheetState = sheetState
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "选择图标",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(12.dp))
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // 上传自定义图标
-                AssistChip(
-                    onClick = onUploadIcon, label = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Upload,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            Text("上传图标")
-                        }
-                    }, colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                )
-
-                // 若已有自定义图标，提供移除按钮
-                if (hasCustomIcon) {
-                    AssistChip(
-                        onClick = onRemoveCustomIcon, label = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Delete,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.size(8.dp))
-                                Text("移除自定义")
-                            }
-                        })
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "预设图标",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SocialPlatformIcons.selectableKeys.forEach { key ->
-                    FilterChip(selected = key == currentKey, onClick = { onPick(key) }, label = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(SocialPlatformIcons.iconRes(key)),
-                                contentDescription = null,
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            Text(
-                                when (key) {
-                                    SocialPlatformIcons.KEY_QQ -> "QQ"
-                                    SocialPlatformIcons.KEY_WECHAT -> "微信"
-                                    SocialPlatformIcons.KEY_BILIBILI -> "B站"
-                                    SocialPlatformIcons.KEY_DOUYIN -> "抖音"
-                                    SocialPlatformIcons.KEY_WEIBO -> "微博"
-                                    SocialPlatformIcons.KEY_X -> "X"
-                                    SocialPlatformIcons.KEY_FACEBOOK -> "Facebook"
-                                    SocialPlatformIcons.KEY_INSTAGRAM -> "Instagram"
-                                    SocialPlatformIcons.KEY_TELEGRAM -> "Telegram"
-                                    else -> "默认"
-                                }
-                            )
-                        }
-                    })
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun AddContactDialog(
-    onDismiss: () -> Unit, onConfirm: (name: String, iconKey: String) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var selectedIconKey by remember { mutableStateOf(SocialPlatformIcons.KEY_DEFAULT) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("添加平台") }, text = {
-        Column {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                label = { Text("平台名称") },
-                placeholder = { Text("如：微博、小红书") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
-            Text("选择图标", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(8.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SocialPlatformIcons.selectableKeys.forEach { key ->
-                    AssistChip(
-                        onClick = { selectedIconKey = key },
-                        label = {
-                            Icon(
-                                painter = painterResource(SocialPlatformIcons.iconRes(key)),
-                                contentDescription = null,
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        colors = if (selectedIconKey == key) AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ) else AssistChipDefaults.assistChipColors()
-                    )
-                }
-            }
-        }
-    }, confirmButton = {
-        TextButton(
-            onClick = {
-                if (name.isNotBlank()) onConfirm(name.trim(), selectedIconKey)
-            }) { Text("添加") }
-    }, dismissButton = {
-        TextButton(onClick = onDismiss) { Text("取消") }
-    })
-}
