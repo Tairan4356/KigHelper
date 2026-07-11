@@ -1,20 +1,24 @@
 package com.ziegler.kighelper.ui.components
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -35,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -137,6 +142,41 @@ private fun cardTextColor(profile: SocialCardProfile): Color {
     }
 }
 
+/** 平板最小宽度阈值（dp）：smallestScreenWidthDp >= 此值视为平板。 */
+private const val TABLET_SMALLEST_WIDTH_DP = 600
+
+/** 横屏平板下卡片高度占屏幕高度的比例。 */
+private const val LANDSCAPE_TABLET_HEIGHT_FRACTION = 0.6f
+
+/**
+ * 社交卡片布局模式：由屏幕方向与尺寸共同决定，用于解耦布局判定与渲染逻辑。
+ */
+private enum class SocialCardLayoutMode {
+    /** 竖屏：内容自上而下排列。 */
+    PORTRAIT,
+
+    /** 横屏手机：二维码固定尺寸在右，主内容占满剩余宽度。 */
+    LANDSCAPE_PHONE,
+
+    /** 横屏平板：二维码:主内容 = 2:1，二维码随容器放大，卡片高度按屏幕高度比例。 */
+    LANDSCAPE_TABLET
+}
+
+/** 依据当前 [Configuration] 推断社交卡片布局模式。 */
+@Composable
+private fun socialCardLayoutMode(): SocialCardLayoutMode {
+    val configuration = LocalConfiguration.current
+    return when {
+        configuration.orientation != Configuration.ORIENTATION_LANDSCAPE ->
+            SocialCardLayoutMode.PORTRAIT
+
+        configuration.smallestScreenWidthDp >= TABLET_SMALLEST_WIDTH_DP ->
+            SocialCardLayoutMode.LANDSCAPE_TABLET
+
+        else -> SocialCardLayoutMode.LANDSCAPE_PHONE
+    }
+}
+
 /**
  * 社交卡片预览。在工具箱主页与编辑页之间复用。
  *
@@ -157,6 +197,7 @@ fun SocialCard(
 ) {
     val textColor = cardTextColor(profile)
     val context = LocalContext.current
+    val layoutMode = socialCardLayoutMode()
 
     // 已配置的平台（有账号或二维码都算）
     val visibleContacts = remember(profile.contacts) {
@@ -203,9 +244,8 @@ fun SocialCard(
                 )
             }
 
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
+            // 头像 + 昵称 + 平台图标：竖屏与横屏共用的主内容区
+            val mainContent: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(
                         modifier = Modifier
@@ -273,15 +313,79 @@ fun SocialCard(
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.size(32.dp))
+            when (layoutMode) {
+                SocialCardLayoutMode.LANDSCAPE_TABLET -> {
+                    // 横屏平板：二维码:主内容 = 2:1，卡片高度按屏幕高度比例
+                    val cardHeight =
+                        (LocalConfiguration.current.screenHeightDp * LANDSCAPE_TABLET_HEIGHT_FRACTION).dp
+                    Row(
+                        modifier = Modifier
+                            .height(cardHeight)
+                            .padding(24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            mainContent()
+                        }
 
-                // 选中平台的二维码展示区
-                if (selectedContact != null) {
-                    SelectedContactQrCode(
-                        contact = selectedContact,
-                        textColor = textColor,
-                        onQrClick = { fullscreenContact = selectedContact })
+                        Spacer(modifier = Modifier.size(32.dp))
+
+                        // 选中平台的二维码展示区
+                        if (selectedContact != null) {
+                            SelectedContactQrCode(
+                                contact = selectedContact,
+                                textColor = textColor,
+                                layoutMode = layoutMode,
+                                modifier = Modifier.weight(2f),
+                                onQrClick = { fullscreenContact = selectedContact })
+                        }
+                    }
+                }
+
+                SocialCardLayoutMode.LANDSCAPE_PHONE -> {
+                    // 横屏手机：二维码固定尺寸在右，主内容占满剩余宽度
+                    Row(
+                        modifier = Modifier.padding(24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            mainContent()
+                        }
+
+                        Spacer(modifier = Modifier.size(32.dp))
+
+                        // 选中平台的二维码展示区
+                        if (selectedContact != null) {
+                            SelectedContactQrCode(
+                                contact = selectedContact,
+                                textColor = textColor,
+                                layoutMode = layoutMode,
+                                onQrClick = { fullscreenContact = selectedContact })
+                        }
+                    }
+                }
+
+                SocialCardLayoutMode.PORTRAIT -> {
+                    // 竖屏：自上而下排列
+                    Column(
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        mainContent()
+
+                        Spacer(modifier = Modifier.size(32.dp))
+
+                        // 选中平台的二维码展示区
+                        if (selectedContact != null) {
+                            SelectedContactQrCode(
+                                contact = selectedContact,
+                                textColor = textColor,
+                                layoutMode = layoutMode,
+                                modifier = Modifier.fillMaxWidth(),
+                                onQrClick = { fullscreenContact = selectedContact })
+                        }
+                    }
                 }
             }
         }
@@ -356,71 +460,130 @@ private fun ContactIcon(
 }
 
 /**
- * 选中平台的二维码展示区。包含平台名称 + handle + 二维码图片。
+ * 选中平台的二维码展示区。包含二维码图片 + 平台名称 + handle。
  * 若该平台未上传二维码，显示占位提示。
  *
- * 点击二维码可触发 [onQrClick] 进入全屏查看。
+ * 布局随 [layoutMode] 变化：
+ * - 平板横屏：二维码随容器放大（正方形，高度受限），整体填满分配高度；
+ * - 其余模式：二维码固定 180dp，居中排列。
+ *
+ * @param modifier 外层容器修饰符；平板横屏下由调用方传入 [Modifier.weight] 控制占比。
+ * @param layoutMode 当前布局模式，决定二维码尺寸策略。
+ * @param onQrClick 点击二维码回调，进入全屏查看。
  */
 @Composable
 private fun SelectedContactQrCode(
-    contact: SocialContact, textColor: Color, onQrClick: () -> Unit
+    contact: SocialContact,
+    textColor: Color,
+    layoutMode: SocialCardLayoutMode,
+    modifier: Modifier = Modifier,
+    onQrClick: () -> Unit
 ) {
-    val context = LocalContext.current
     val qrModel = resolveModel(contact.qrCodePath)
+    val isTabletLandscape = layoutMode == SocialCardLayoutMode.LANDSCAPE_TABLET
 
     Column(
-        modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
+        modifier = if (isTabletLandscape) modifier.fillMaxHeight() else modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 二维码图片或占位
-        Box(
-            modifier = Modifier
-                .size(180.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0x33FFFFFF))
-                .clickable(enabled = qrModel != null, onClick = onQrClick),
-            contentAlignment = Alignment.Center
-        ) {
-            if (qrModel != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(qrModel).build(),
-                    contentDescription = "${contact.displayName} 二维码",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = "无二维码",
-                    color = textColor.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center
+        if (isTabletLandscape) {
+            // 平板横屏：二维码随容器放大，正方形并居中于剩余空间
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                val qrSize = minOf(maxHeight, maxWidth)
+                QrCodeBox(
+                    qrModel = qrModel,
+                    contactName = contact.displayName,
+                    textColor = textColor,
+                    modifier = Modifier.size(qrSize),
+                    onQrClick = onQrClick
                 )
             }
+        } else {
+            // 竖屏 / 横屏手机：二维码固定 180dp
+            QrCodeBox(
+                qrModel = qrModel,
+                contactName = contact.displayName,
+                textColor = textColor,
+                modifier = Modifier.size(180.dp),
+                onQrClick = onQrClick
+            )
         }
 
         Spacer(modifier = Modifier.size(16.dp))
 
-        Column(
-            modifier = Modifier.height(intrinsicSize = IntrinsicSize.Max),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        ContactCaption(contact = contact, textColor = textColor)
+    }
+}
+
+/**
+ * 二维码图片容器：有图显示二维码（Crop 填充），无图显示占位文字。
+ * 尺寸与圆角/背景由 [modifier] 决定，便于在不同布局模式下复用。
+ */
+@Composable
+private fun QrCodeBox(
+    qrModel: Any?,
+    contactName: String,
+    textColor: Color,
+    modifier: Modifier,
+    onQrClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x33FFFFFF))
+            .clickable(enabled = qrModel != null, onClick = onQrClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (qrModel != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(qrModel).build(),
+                contentDescription = "$contactName 二维码",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
             Text(
-                text = contact.displayName.ifBlank { "社交平台" },
-                color = textColor,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                text = "无二维码",
+                color = textColor.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * 选中平台的文字说明：平台名 + handle（若有）。
+ */
+@Composable
+private fun ContactCaption(contact: SocialContact, textColor: Color) {
+    Column(
+        modifier = Modifier.height(intrinsicSize = IntrinsicSize.Max),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = contact.displayName.ifBlank { "社交平台" },
+            color = textColor,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (contact.handle.isNotBlank()) {
+            Spacer(modifier = Modifier.size(4.dp))
+            Text(
+                text = contact.handle,
+                color = textColor.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (contact.handle.isNotBlank()) {
-                Spacer(modifier = Modifier.size(4.dp))
-                Text(
-                    text = contact.handle,
-                    color = textColor.copy(alpha = 0.85f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
     }
 }
