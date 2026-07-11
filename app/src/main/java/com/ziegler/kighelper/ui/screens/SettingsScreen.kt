@@ -5,12 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -63,14 +60,11 @@ private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
 fun SettingsScreen(
     viewModel: SettingsViewModel, onBack: () -> Unit
 ) {
-    val navigationBarPadding =
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             TopAppBar(title = { Text("偏好设置") }, navigationIcon = {
                 IconButton(onClick = onBack) {
@@ -82,7 +76,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding), contentPadding = PaddingValues(
-                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + navigationBarPadding
+                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp
             ), verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {

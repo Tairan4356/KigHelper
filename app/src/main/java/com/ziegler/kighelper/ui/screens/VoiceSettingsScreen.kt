@@ -6,12 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,8 +71,6 @@ import kotlin.math.roundToInt
 fun VoiceSettingsScreen(
     viewModel: VoiceViewModel, onBack: () -> Unit, onPreview: (String) -> Unit
 ) {
-    val navigationBarPadding =
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val context = LocalContext.current
     val profile = viewModel.activeProfile
     val modelManager = remember(context) { OfflineVoiceModelManager(context) }
@@ -149,7 +144,6 @@ fun VoiceSettingsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             TopAppBar(
                 title = { Text("全局音色设置") }, navigationIcon = {
@@ -181,7 +175,7 @@ fun VoiceSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding), contentPadding = PaddingValues(
-                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + navigationBarPadding
+                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp
             ), verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {

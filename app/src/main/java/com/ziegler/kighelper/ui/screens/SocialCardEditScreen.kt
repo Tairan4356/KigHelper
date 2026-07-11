@@ -11,12 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -236,8 +233,9 @@ fun SocialCardEditScreen(
         if (hasUnsavedChanges()) showDiscardConfirm = true else onBack()
     }
 
-    // 拦截系统返回键，与点击 TopAppBar 返回按钮行为一致
-    BackHandler(enabled = true) { handleBack() }
+    // 仅在有未保存修改时拦截系统返回（弹确认框）；
+    // 无修改时放行，由 NavHost 的 popExitTransition 提供预见式返回滑动动画
+    BackHandler(enabled = hasUnsavedChanges()) { showDiscardConfirm = true }
 
     // 当前预览资料：把 Uri 转成字符串供 SocialCard 直接加载
     val previewProfile = SocialCardProfile(
@@ -257,7 +255,6 @@ fun SocialCardEditScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             TopAppBar(
                 title = { Text("编辑卡片") }, navigationIcon = {
@@ -271,16 +268,13 @@ fun SocialCardEditScreen(
             }, scrollBehavior = scrollBehavior
             )
         }) { padding ->
-        val navigationBarPadding =
-            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp + navigationBarPadding)
+                .padding(bottom = 16.dp)
         ) {
             // 实时预览
             SocialCard(profile = previewProfile, showEditHint = false)
