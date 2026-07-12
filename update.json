@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "1.2.0",
-  "updateContent": "1. 软件正式更名为“娃语”\n2. 新增偏好设置页面\n3. 新增短语自定义音频功能\n4. 新增短语卡片自定义颜色功能\n\n版本更新后，应用名称将会变更为“娃语” / “KiguSay”（英文名）/ “着ぐ声”（日文名），请留意桌面图标的变化。",
+  "versionCode": 7,
+  "versionName": "1.3.0",
+  "updateContent": "扩列卡片\n1. 工具页面新增扩列卡片功能\n2. 支持自定义文字内容\n3. 支持自定义背景\n4. 支持自定义头像和形状\n5. 支持展示多个平台的二维码",
   "downloadUrl": "https://tairan4356.github.io/KigHelper/"
 }

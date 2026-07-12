@@ -29,20 +29,48 @@
         <p class="text-2xl mb-6 font-bold text-pink-200">KigHelper 现正式更名为“娃语”，感谢大家的集思广益！</p>
 
         <!-- Badges -->
-        <div class="flex justify-center gap-3 mb-10 flex-wrap">
+        <div class="flex justify-center gap-3 mb-6 flex-wrap">
             <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-sm font-medium">Android 8.0+</span>
             <span class="bg-pink-100/20 backdrop-blur-sm border border-pink-200/30 px-3 py-1 rounded-full text-sm font-medium">Kotlin & Compose</span>
             <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-sm font-medium underline"><a
                     href="https://github.com/Tairan4356/KigHelper/blob/main/LICENSE">GPL v3</a></span>
         </div>
 
+        <!-- Version & Update Highlights -->
+        <div class="mb-10 max-w-2xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-left shadow-lg">
+            <div class="flex items-center justify-between border-b border-white/20 pb-3 mb-4">
+                <span class="flex items-center gap-2">
+                    <span class="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded">LATEST</span>
+                    <span class="font-mono text-pink-100 font-bold">v1.3.0 版本已发布</span>
+                </span>
+                <span class="text-xs text-pink-100/80"><i class="far fa-clock mr-1"></i> 2026-07-12</span>
+            </div>
+            <h4 class="font-bold text-white mb-2 text-sm md:text-base flex items-center gap-2">
+                <i class="fas fa-circle-info text-pink-200"></i> 近期更新亮点
+            </h4>
+            <ul class="space-y-2 text-xs md:text-sm text-pink-50/90 leading-relaxed">
+                <li class="flex items-start gap-2">
+                    <span class="text-pink-200">✦</span>
+                    <span><strong>新增个人信息扩列卡片：</strong>支持一键展示专属社交名片与社交平台二维码。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-pink-200">✦</span>
+                    <span><strong>品牌命名重构：</strong>应用正式更名为“娃语”（中）、“KiguSay”（英）、“着ぐ声”（日）。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-pink-200">✦</span>
+                    <span><strong>新增偏好设置页面：</strong>可自定义软件字体、字重和字号，自定义软件主题色等。</span>
+                </li>
+            </ul>
+        </div>
+
         <!-- Download Buttons -->
         <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <a href="https://github.com/Tairan4356/KigHelper/releases/download/v1.2.0/KiguSay-v1.2.0.apk"
+            <a href="https://github.com/Tairan4356/KigHelper/releases/download/v1.3.0/KiguSay-v1.3.0.apk"
                class="bg-white text-pink-500 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-transform shadow-xl flex items-center justify-center">
                 <i class="fas fa-download mr-3"></i>立即下载 (GitHub)
             </a>
-            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/v1.2.0/KiguSay-v1.2.0.apk"
+            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/v1.3.0/KiguSay-v1.3.0.apk"
                class="bg-pink-900/20 backdrop-blur text-white border border-white/30 px-8 py-4 rounded-2xl font-bold hover:bg-pink-900/30 transition flex items-center justify-center">
                 <i class="fas fa-rocket mr-3"></i>国内镜像 (Gitee)
             </a>
@@ -104,8 +132,69 @@
     </div>
 </section>
 
-<!-- Core Highlight: Voice Model Import (Sherpa-Onnx) -->
+<!-- Core Highlight: Social Card Profile -->
 <section class="py-16 px-6 bg-pink-50/10 border-t border-b border-pink-100/50">
+    <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col md:flex-row-reverse items-center gap-12">
+            <div class="flex flex-col lg:flex-row items-center gap-12">
+                <!-- Left Content: Text & Feature Details -->
+                <div class="flex-1 space-y-6">
+                    <div class="inline-flex items-center gap-2 bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">
+                        NEW FEATURE · 新功能
+                    </div>
+                    <h2 class="text-3xl font-bold mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
+                        📇 扩列卡片：展会面基快速扩列</span>
+                    </h2>
+                    <p class="text-gray-600 leading-relaxed text-sm md:text-base">
+                        在漫展、外景现场与同好交流时，打字和查找各个平台的个人主页往往极其繁琐。
+                        <b>全新扩列卡片功能</b>，支持在应用内配置个性化专属主页，将你所有的社交账号聚合展示。
+                    </p>
+
+                    <!-- Feature Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div class="flex items-start gap-3">
+                            <div class="text-pink-500 mt-1"><i class="fas fa-address-book"></i></div>
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-sm">多平台聚合展示</h4>
+                                <p class="text-xs text-gray-500">一屏配置包含 QQ、B站、微信、微博等多个社交平台账号的二维码。</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="text-pink-500 mt-1"><i class="fas fa-image"></i></div>
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-sm">自定义排版与二维码</h4>
+                                <p class="text-xs text-gray-500">支持自主上传头像，设置背景和形状，贴合角色人设，</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Content: Overlapping Layered Visual Presentation (Distinct style) -->
+                <div class="flex-1 flex justify-center items-center relative py-8 min-h-[320px]">
+                    <!-- Subtle glow effect -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-pink-300 to-rose-300 rounded-full filter blur-3xl opacity-20 transform -rotate-12 scale-75"></div>
+
+                    <!-- Underlayer: App Editor Screenshot -->
+                    <div class="relative z-10 w-44 md:w-48 transform -rotate-6 translate-x-[-15%] md:translate-x-[-20%] transition-transform duration-300 hover:rotate-0">
+                        <div class="screenshot-container shadow-2xl">
+                            <img src="screenshots/socialedit.jpg" alt="卡片编辑界面"
+                                 class="screenshot-img">
+                        </div>
+                    </div>
+
+                    <!-- Overlayer: Mock Digital Social Card rendering -->
+                    <div class="absolute z-20 right-4 md:right-8 bottom-6 md:bottom-8 w-56 md:w-60 bg-white rounded-2xl shadow-2xl border border-pink-100 overflow-hidden transform rotate-3 transition-transform duration-300 hover:rotate-0">
+                        <img src="screenshots/socialcard.png" alt="卡片预览"
+                             class="w-full h-auto object-cover">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Core Highlight: Voice Model Import (Sherpa-Onnx) -->
+<section class="py-16 px-6 bg-white">
     <div class="max-w-5xl mx-auto">
         <div class="flex flex-col md:flex-row-reverse items-center gap-12">
             <div class="flex-1">
@@ -227,11 +316,27 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
                 <i class="far fa-circle text-pink-500"></i>
-                <span>扩列卡片</span>
+                <span>多语言支持</span>
             </div>
             <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
-                <i class="far fa-circle text-pink-500"></i>
-                <span>多语言支持</span>
+                <i class="fas fa-check-circle text-pink-400"></i>
+                <span class="text-gray-400 line-through">自定义音频导入 (v1.2.0已上线)</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="fas fa-check-circle text-pink-400"></i>
+                <span class="text-gray-400 line-through">偏好设置 (v1.2.0已上线)</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="fas fa-check-circle text-pink-400"></i>
+                <span class="text-gray-400 line-through">短语分组管理 (v1.1.2已上线)</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="fas fa-check-circle text-pink-400"></i>
+                <span class="text-gray-400 line-through">离线语音 (v1.1.0已上线)</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                <i class="fas fa-check-circle text-pink-400"></i>
+                <span class="text-gray-400 line-through">横屏适配 (v1.0.1已上线)</span>
             </div>
         </div>
     </div>
