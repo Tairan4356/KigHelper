@@ -43,6 +43,13 @@ data class SocialCardProfile(
     val customBackgroundPath: String? = null,
     val contacts: List<SocialContact> = emptyList()
 ) {
+    /**
+     * 已配置（有账号或二维码）的联系方式，按用户排序。
+     * 供卡片展示与外部动作（如跳转平台 App）共用，避免重复过滤导致口径不一致。
+     */
+    val visibleContacts: List<SocialContact>
+        get() = contacts.filter { it.qrCodePath != null || it.handle.isNotBlank() }
+
     companion object {
         /** 表示使用自定义背景的模板索引哨兵值 */
         const val CUSTOM_TEMPLATE_INDEX = -1

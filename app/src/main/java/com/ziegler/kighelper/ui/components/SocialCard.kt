@@ -166,11 +166,9 @@ private enum class SocialCardLayoutMode {
 private fun socialCardLayoutMode(): SocialCardLayoutMode {
     val configuration = LocalConfiguration.current
     return when {
-        configuration.orientation != Configuration.ORIENTATION_LANDSCAPE ->
-            SocialCardLayoutMode.PORTRAIT
+        configuration.orientation != Configuration.ORIENTATION_LANDSCAPE -> SocialCardLayoutMode.PORTRAIT
 
-        configuration.smallestScreenWidthDp >= TABLET_SMALLEST_WIDTH_DP ->
-            SocialCardLayoutMode.LANDSCAPE_TABLET
+        configuration.smallestScreenWidthDp >= TABLET_SMALLEST_WIDTH_DP -> SocialCardLayoutMode.LANDSCAPE_TABLET
 
         else -> SocialCardLayoutMode.LANDSCAPE_PHONE
     }
@@ -192,22 +190,27 @@ private fun socialCardLayoutMode(): SocialCardLayoutMode {
  */
 @Composable
 fun SocialCard(
-    profile: SocialCardProfile, modifier: Modifier = Modifier, showEditHint: Boolean = false
+    profile: SocialCardProfile,
+    modifier: Modifier = Modifier,
+    showEditHint: Boolean = false,
+    selectedIndex: Int? = null,
+    onSelectedIndexChange: ((Int) -> Unit)? = null
 ) {
     val textColor = cardTextColor(profile)
     val context = LocalContext.current
     val layoutMode = socialCardLayoutMode()
 
     // 已配置的平台（有账号或二维码都算）
-    val visibleContacts = remember(profile.contacts) {
-        profile.contacts.filter { it.qrCodePath != null || it.handle.isNotBlank() }
-    }
+    val visibleContacts = remember(profile.contacts) { profile.visibleContacts }
 
-    // 当前选中平台的索引：默认 0，越界时自动夹紧
-    var selectedIndex by remember(visibleContacts.size) {
+    // 当前选中平台的索引：支持外部上提（state hoisting），未传入时回退到内部状态；
+    // 越界时由 safeIndex 自动夹紧
+    var internalSelectedIndex by remember(visibleContacts.size) {
         mutableIntStateOf(0)
     }
-    val safeIndex = selectedIndex.coerceIn(0, visibleContacts.lastIndex.coerceAtLeast(0))
+    val currentSelectedIndex = selectedIndex ?: internalSelectedIndex
+    val onSelectedChange = onSelectedIndexChange ?: { internalSelectedIndex = it }
+    val safeIndex = currentSelectedIndex.coerceIn(0, visibleContacts.lastIndex.coerceAtLeast(0))
     val selectedContact = visibleContacts.getOrNull(safeIndex)
 
     // 点击二维码进入全屏查看的目标平台
@@ -253,7 +256,7 @@ fun SocialCard(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = profile.nickname.ifBlank { "未设置昵称" },
+                            text = profile.nickname.ifBlank { "扩列卡片" },
                             style = MaterialTheme.typography.displayMedium,
                             color = textColor,
                             fontWeight = FontWeight.Bold,
@@ -304,7 +307,7 @@ fun SocialCard(
                                 contact = contact,
                                 textColor = textColor,
                                 selected = indexInList == safeIndex,
-                                onClick = { selectedIndex = indexInList })
+                                onClick = { onSelectedChange(indexInList) })
                         }
                         // 不足 4 个时填充空占位，保持左对齐
                         repeat(4 - row.size) {
@@ -466,7 +469,7 @@ private fun ContactIcon(
  * - 平板横屏：二维码随容器放大（正方形，高度受限），整体填满分配高度；
  * - 其余模式：二维码固定 180dp，居中排列。
  *
- * @param modifier 外层容器修饰符；平板横屏下由调用方传入 [Modifier.weight] 控制占比。
+ * @param modifier 外层容器修饰符；平板横屏下由调用方传入 Modifier.weight 控制占比。
  * @param layoutMode 当前布局模式，决定二维码尺寸策略。
  * @param onQrClick 点击二维码回调，进入全屏查看。
  */
@@ -490,8 +493,7 @@ private fun SelectedContactQrCode(
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth(), contentAlignment = Alignment.Center
             ) {
                 val qrSize = minOf(maxHeight, maxWidth)
                 QrCodeBox(
@@ -525,11 +527,7 @@ private fun SelectedContactQrCode(
  */
 @Composable
 private fun QrCodeBox(
-    qrModel: Any?,
-    contactName: String,
-    textColor: Color,
-    modifier: Modifier,
-    onQrClick: () -> Unit
+    qrModel: Any?, contactName: String, textColor: Color, modifier: Modifier, onQrClick: () -> Unit
 ) {
     val context = LocalContext.current
     Box(

@@ -22,6 +22,19 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- 社交平台包名：Android 11+ 包可见性所需，
+             与 SocialPlatformLauncher 中的 PlatformTarget.packageName 配套维护。
+             使用包名（而非 scheme）查询，配合代码中的 setPackage 可确保
+             scheme intent 被目标 app 的深链 Activity 处理。 -->
+        <package android:name="com.tencent.mm" />
+        <package android:name="com.tencent.mobileqq" />
+        <package android:name="tv.danmaku.bili" />
+        <package android:name="com.ss.android.ugc.aweme" />
+        <package android:name="com.sina.weibo" />
+        <package android:name="com.twitter.android" />
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.instagram.android" />
+        <package android:name="org.telegram.messenger" />
     </queries>
     <application
         android:name=".KigHelperApplication"
