@@ -2,6 +2,8 @@ package com.ziegler.kighelper.di
 
 import android.content.Context
 import com.ziegler.kighelper.data.PhraseRepository
+import com.ziegler.kighelper.data.PlaybackDeviceProvider
+import com.ziegler.kighelper.data.SettingsRepository
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
 import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
 import com.ziegler.kighelper.data.VoiceProfileRepository
@@ -40,9 +42,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTTSManager(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        playbackDeviceProvider: PlaybackDeviceProvider,
+        settingsRepository: SettingsRepository
     ): TTSManager {
-        return TTSManager(context)
+        return TTSManager(context, playbackDeviceProvider, settingsRepository)
     }
 
     @Provides

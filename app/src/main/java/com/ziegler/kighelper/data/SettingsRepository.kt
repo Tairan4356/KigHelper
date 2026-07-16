@@ -20,7 +20,8 @@ data class AppSettings(
     val customColor: Long = 0xFF6650A4,
     val hapticFeedback: Boolean = true,
     val notificationEnabled: Boolean = true,
-    val lockScreenEnabled: Boolean = false
+    val lockScreenEnabled: Boolean = false,
+    val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID
 )
 
 @Singleton
@@ -41,6 +42,7 @@ class SettingsRepository @Inject constructor(
         const val HAPTIC_FEEDBACK = "haptic_feedback"
         const val NOTIFICATION_ENABLED = "notification_enabled"
         const val LOCK_SCREEN_ENABLED = "lock_screen_enabled"
+        const val PLAYBACK_DEVICE_ID = "playback_device_id"
     }
 
     private val _settings = MutableStateFlow(loadSettings())
@@ -57,7 +59,8 @@ class SettingsRepository @Inject constructor(
             customColor = prefs.getLong(Keys.CUSTOM_COLOR, 0xFF6650A4),
             hapticFeedback = prefs.getBoolean(Keys.HAPTIC_FEEDBACK, true),
             notificationEnabled = prefs.getBoolean(Keys.NOTIFICATION_ENABLED, true),
-            lockScreenEnabled = prefs.getBoolean(Keys.LOCK_SCREEN_ENABLED, false)
+            lockScreenEnabled = prefs.getBoolean(Keys.LOCK_SCREEN_ENABLED, false),
+            playbackDeviceId = prefs.getInt(Keys.PLAYBACK_DEVICE_ID, PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID)
         )
     }
 
@@ -112,6 +115,11 @@ class SettingsRepository @Inject constructor(
 
     fun updateLockScreenEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Keys.LOCK_SCREEN_ENABLED, enabled) }
+        saveAndEmit()
+    }
+
+    fun updatePlaybackDeviceId(id: Int) {
+        prefs.edit { putInt(Keys.PLAYBACK_DEVICE_ID, id) }
         saveAndEmit()
     }
 }

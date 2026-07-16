@@ -10,11 +10,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.MainViewModel
 import com.ziegler.kighelper.ui.SettingsViewModel
@@ -44,6 +46,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
+    @Inject
+    lateinit var playbackDeviceProvider: PlaybackDeviceProvider
+
     private lateinit var audioPlayerManager: AudioPlayerManager
 
     private var screenReceiverRegistered = false
@@ -61,11 +66,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge() // 开启边到边显示
-        audioPlayerManager = AudioPlayerManager(this)
+        audioPlayerManager = AudioPlayerManager()
 
         startService(Intent(this, TaskRemovedCleanupService::class.java))
         registerScreenReceiver()
@@ -77,10 +83,8 @@ class MainActivity : ComponentActivity() {
 
             // 根据锁屏显示设置控制窗口标志
             LaunchedEffect(settings.lockScreenEnabled) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                    setShowWhenLocked(settings.lockScreenEnabled)
-                    setTurnScreenOn(settings.lockScreenEnabled)
-                }
+                setShowWhenLocked(settings.lockScreenEnabled)
+                setTurnScreenOn(settings.lockScreenEnabled)
             }
 
             // 监听通知设置变化
@@ -124,7 +128,21 @@ class MainActivity : ComponentActivity() {
                     },
                     onPlayAudio = { audioPath ->
                         ttsManager.stop()
-                        audioPlayerManager.play(audioPath)
+                        val deviceInfo =
+                            playbackDeviceProvider.resolveAudioDeviceInfo(settings.playbackDeviceId)
+                        audioPlayerManager.play(audioPath, deviceInfo)
+                    },
+                    onTestDevice = { deviceId ->
+                        val deviceInfo =
+                            if (deviceId == com.ziegler.kighelper.data.PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID) {
+                                null
+                            } else {
+                                playbackDeviceProvider.resolveAudioDeviceInfo(deviceId)
+                            }
+                        audioPlayerManager.stop()
+                        ttsManager.speakTo(
+                            "已选择当前设备", voiceViewModel.activeProfile, deviceInfo
+                        )
                     })
             }
         }
@@ -162,4 +180,5 @@ class MainActivity : ComponentActivity() {
         )
         screenReceiverRegistered = true
     }
+
 }

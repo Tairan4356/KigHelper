@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.ziegler.kighelper.data.PlaybackDeviceProvider
+import com.ziegler.kighelper.data.SettingsRepository
 import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
 import com.ziegler.kighelper.data.VoiceProfile
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +68,11 @@ private object NotificationReplayPlayer {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     fun speak(context: Context, text: String, profile: VoiceProfile) {
-        val manager = ttsManager ?: TTSManager(context.applicationContext).also {
+        val manager = ttsManager ?: TTSManager(
+            context.applicationContext,
+            PlaybackDeviceProvider(context.applicationContext),
+            SettingsRepository(context.applicationContext)
+        ).also {
             ttsManager = it
         }
         manager.speak(text, profile)

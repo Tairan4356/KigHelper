@@ -1,7 +1,11 @@
 package com.ziegler.kighelper.utils
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
+import com.ziegler.kighelper.data.PlaybackDeviceProvider
+import com.ziegler.kighelper.data.SettingsRepository
 import com.ziegler.kighelper.data.VoiceProfile
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
@@ -23,7 +27,11 @@ import java.util.concurrent.atomic.AtomicInteger
  * 端侧神经 TTS 引擎。
  * 使用 sherpa-onnx OfflineTts 进行本地推理，生成结果写入缓存后播放。
  */
-class OfflineNeuralTtsEngine(context: Context) {
+class OfflineNeuralTtsEngine(
+    context: Context,
+    private val playbackDeviceProvider: PlaybackDeviceProvider,
+    private val settingsRepository: SettingsRepository
+) {
     private val appContext = context.applicationContext
     private val modelManager = OfflineVoiceModelManager(context)
     private val kigvpkParamsManager = KigvpkParamsManager(context)
@@ -40,13 +48,14 @@ class OfflineNeuralTtsEngine(context: Context) {
     private var kigvpkEngine: KigvpkTtsEngine? = null
     private val failedModelIds = Collections.synchronizedSet(mutableSetOf<String>())
 
+    @RequiresApi(Build.VERSION_CODES.P)
     fun speak(text: String, profile: VoiceProfile): Boolean {
         val readyModel = modelManager.findReadyModel(profile.modelId)
         val isKigvpk = readyModel?.pack?.format == OfflineVoiceModelFormat.KIGVPK
         if (!isKigvpk) {
             val cachedAudio = audioCache.getIfExists(text, profile)
             if (cachedAudio != null) {
-                return audioPlayer.play(cachedAudio)
+                return audioPlayer.play(cachedAudio, resolvePreferredDevice())
             }
         }
 
@@ -83,7 +92,7 @@ class OfflineNeuralTtsEngine(context: Context) {
                 synthesizeToFile(text, profile, readyModel, targetFile)
                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (generationToken.get() == requestToken) {
-                        audioPlayer.play(targetFile)
+                        audioPlayer.play(targetFile, resolvePreferredDevice())
                     }
                 }
             }.onFailure { error ->
@@ -272,6 +281,13 @@ class OfflineNeuralTtsEngine(context: Context) {
         loadedModelId = null
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun resolvePreferredDevice(): android.media.AudioDeviceInfo? {
+        val settings =
+            (settingsRepository.settings as kotlinx.coroutines.flow.StateFlow<com.ziegler.kighelper.data.AppSettings>).value
+        return playbackDeviceProvider.resolveAudioDeviceInfo(settings.playbackDeviceId)
+    }
+
     private companion object {
         private const val TAG = "OfflineNeuralTts"
 
@@ -322,11 +338,10 @@ private fun File.resolveLexicons(): String {
     val preferredFiles = preferredOrder.map { File(this, it) }.filter { it.exists() && it.isFile }
     val files = preferredFiles.ifEmpty {
         listFiles()?.filter {
-                it.isFile && it.name.startsWith(
-                    "lexicon",
-                    ignoreCase = true
-                ) && it.extension.equals("txt", ignoreCase = true)
-            }?.sortedBy { it.name }.orEmpty()
+            it.isFile && it.name.startsWith(
+                "lexicon", ignoreCase = true
+            ) && it.extension.equals("txt", ignoreCase = true)
+        }?.sortedBy { it.name }.orEmpty()
     }
 
     return files.joinToString(",") { it.absolutePath }

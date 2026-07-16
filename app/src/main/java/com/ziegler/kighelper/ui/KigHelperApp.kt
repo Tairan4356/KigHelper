@@ -85,7 +85,8 @@ fun KigHelperApp(
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
     onPhraseSpoken: (Phrase) -> Unit = {},
-    onPlayAudio: (String) -> Unit = {}
+    onPlayAudio: (String) -> Unit = {},
+    onTestDevice: (Int) -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -381,7 +382,10 @@ fun KigHelperApp(
 
                 composable(AppRoutes.SETTINGS) {
                     SettingsScreen(
-                        viewModel = settingsViewModel, onBack = { navController.popBackStack() })
+                        viewModel = settingsViewModel,
+                        onBack = { navController.popBackStack() },
+                        onTestDevice = onTestDevice
+                    )
                 }
 
                 composable(AppRoutes.SOCIAL_CARD_EDIT) {

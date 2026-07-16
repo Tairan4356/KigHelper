@@ -13,14 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -43,13 +39,14 @@ import com.ziegler.kighelper.ui.components.ColorPickerDialog
 import com.ziegler.kighelper.ui.components.CustomColorSelector
 import com.ziegler.kighelper.ui.components.PresetColorGrid
 import com.ziegler.kighelper.ui.screens.settings.ColorModeSelector
-import com.ziegler.kighelper.ui.screens.settings.SettingDropdownMenuItem
-import com.ziegler.kighelper.ui.screens.settings.SettingRadioButton
-import com.ziegler.kighelper.ui.theme.FontType
-import kotlin.math.roundToInt
+import com.ziegler.kighelper.ui.screens.settings.DarkModeOptions
+import com.ziegler.kighelper.ui.screens.settings.FontTypeSelector
+import com.ziegler.kighelper.ui.screens.settings.PlaybackDeviceSelector
 import com.ziegler.kighelper.ui.screens.settings.SettingSection
 import com.ziegler.kighelper.ui.screens.settings.SettingSlider
 import com.ziegler.kighelper.ui.screens.settings.SettingSwitch
+import com.ziegler.kighelper.ui.theme.FontType
+import kotlin.math.roundToInt
 
 private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
     return weights.minByOrNull { kotlin.math.abs(it - value) } ?: 400
@@ -58,9 +55,10 @@ private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel, onBack: () -> Unit
+    viewModel: SettingsViewModel, onBack: () -> Unit, onTestDevice: (Int) -> Unit
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val playbackDevices by viewModel.playbackDevices.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
@@ -165,6 +163,22 @@ fun SettingsScreen(
             }
 
             item {
+                SettingSection(title = "播放设备") {
+                    PlaybackDeviceSelector(
+                        selectedDeviceId = settings.playbackDeviceId,
+                        devices = playbackDevices,
+                        onDeviceSelected = viewModel::updatePlaybackDevice,
+                        onTestDevice = onTestDevice
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "选择应用播放语音或音频时使用的输出设备",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            item {
                 val context = LocalContext.current
 
                 SettingSection(title = "功能开关") {
@@ -228,64 +242,6 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DarkModeOptions(
-    selectedMode: Int, onModeSelected: (Int) -> Unit
-) {
-    Row {
-        SettingRadioButton(
-            label = "浅色",
-            selected = selectedMode == 1,
-            onClick = { onModeSelected(1) },
-            modifier = Modifier.weight(1f)
-        )
-        SettingRadioButton(
-            label = "深色",
-            selected = selectedMode == 2,
-            onClick = { onModeSelected(2) },
-            modifier = Modifier.weight(1f)
-        )
-        SettingRadioButton(
-            label = "跟随系统",
-            selected = selectedMode == 0,
-            onClick = { onModeSelected(0) },
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FontTypeSelector(
-    selectedType: Int, onTypeSelected: (Int) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedFont = FontType.entries[selectedType]
-
-    ExposedDropdownMenuBox(
-        expanded = expanded, onExpandedChange = { expanded = it }) {
-        TextField(
-            value = selectedFont.displayName,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-        )
-        ExposedDropdownMenu(
-            expanded = expanded, onDismissRequest = { expanded = false }) {
-            FontType.entries.forEachIndexed { index, fontType ->
-                SettingDropdownMenuItem(
-                    text = fontType.displayName, onClick = {
-                        onTypeSelected(index)
-                        expanded = false
-                    })
             }
         }
     }

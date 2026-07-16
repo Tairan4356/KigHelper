@@ -2,6 +2,8 @@ package com.ziegler.kighelper.ui
 
 import androidx.lifecycle.ViewModel
 import com.ziegler.kighelper.data.AppSettings
+import com.ziegler.kighelper.data.PlaybackDevice
+import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.data.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -9,10 +11,18 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    playbackDeviceProvider: PlaybackDeviceProvider
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings as StateFlow<AppSettings>
+
+    /** 当前可用的音频输出设备列表，由 [PlaybackDeviceProvider] 在设备插拔时自动更新。 */
+    val playbackDevices: StateFlow<List<PlaybackDevice>> = playbackDeviceProvider.devices
+
+    fun updatePlaybackDevice(id: Int) {
+        settingsRepository.updatePlaybackDeviceId(id)
+    }
 
     fun updateFontSize(size: Float) {
         settingsRepository.updateFontSize(size)
