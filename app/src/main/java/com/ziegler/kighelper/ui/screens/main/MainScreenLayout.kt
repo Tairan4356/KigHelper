@@ -1,6 +1,5 @@
 package com.ziegler.kighelper.ui.screens.main
 
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +18,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,11 +47,8 @@ fun MainScreenLayout(
     state: MainScreenState,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
-    onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
-    onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true
 ) {
@@ -62,11 +59,8 @@ fun MainScreenLayout(
             state = state,
             onPhraseClick = onPhraseClick,
             onClearClick = onClearClick,
-            onAddPhrase = onAddPhrase,
             onDeletePhrase = onDeletePhrase,
-            onUpdatePhrase = onUpdatePhrase,
             onNavigateToEdit = onNavigateToEdit,
-            animatedVisibilityScope = animatedVisibilityScope,
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback
         )
@@ -77,11 +71,8 @@ fun MainScreenLayout(
             state = state,
             onPhraseClick = onPhraseClick,
             onClearClick = onClearClick,
-            onAddPhrase = onAddPhrase,
             onDeletePhrase = onDeletePhrase,
-            onUpdatePhrase = onUpdatePhrase,
             onNavigateToEdit = onNavigateToEdit,
-            animatedVisibilityScope = animatedVisibilityScope,
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback
         )
@@ -99,11 +90,8 @@ private fun LandscapeLayout(
     state: MainScreenState,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
-    onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
-    onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true
 ) {
@@ -139,17 +127,14 @@ private fun LandscapeLayout(
                     { state.onFullScreenChange(true) }
                 } else null,
                 modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                fontSizeMultiplier = fontSizeMultiplier
-            )
+                fontSizeMultiplier = fontSizeMultiplier)
         }
 
         Box(modifier = Modifier.weight(1f)) {
             PhraseAreaContent(
                 state = state,
                 onPhraseClick = onPhraseClick,
-                onClearClick = onClearClick,
                 onDeletePhrase = onDeletePhrase,
-                onUpdatePhrase = onUpdatePhrase,
                 onNavigateToEdit = onNavigateToEdit,
                 modifier = Modifier.fillMaxSize(),
                 hapticFeedback = hapticFeedback
@@ -169,11 +154,8 @@ private fun PortraitLayout(
     state: MainScreenState,
     onPhraseClick: (Phrase) -> Unit,
     onClearClick: () -> Unit,
-    onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
-    onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true
 ) {
@@ -182,6 +164,22 @@ private fun PortraitLayout(
     val outerTopPadding = contentPadding.calculateTopPadding()
     val outerEndPadding = contentPadding.calculateEndPadding(layoutDirection)
     val outerBottomPadding = contentPadding.calculateBottomPadding()
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(state.hasPhrases, state.displayText) {
+        val targetOffset = if (!state.hasPhrases || state.displayText.isEmpty()) {
+            state.maxCollapseDistancePx
+        } else {
+            0f
+        }
+        animate(
+            initialValue = state.collapseOffset,
+            targetValue = targetOffset,
+            animationSpec = spring(stiffness = Spring.StiffnessMedium)
+        ) { value, _ ->
+            state.collapseOffset = value
+        }
+    }
 
     val screenModifier = modifier
         .fillMaxSize()
@@ -198,13 +196,23 @@ private fun PortraitLayout(
                 text = state.effectiveDisplayText,
                 isSubtle = state.isShowingInitialHint,
                 scrollState = rememberScrollState(),
-                onClear = onClearClick,
+                onClear = {
+                    onClearClick()
+                    coroutineScope.launch {
+                        animate(
+                            initialValue = state.collapseOffset,
+                            targetValue = state.maxCollapseDistancePx,
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                        ) { value, _ ->
+                            state.collapseOffset = value
+                        }
+                    }
+                },
                 onClick = if (state.canEnterFullScreen) {
                     { state.onFullScreenChange(true) }
                 } else null,
                 modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                fontSizeMultiplier = fontSizeMultiplier
-            )
+                fontSizeMultiplier = fontSizeMultiplier)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -212,9 +220,7 @@ private fun PortraitLayout(
         PhraseAreaContent(
             state = state,
             onPhraseClick = onPhraseClick,
-            onClearClick = onClearClick,
             onDeletePhrase = onDeletePhrase,
-            onUpdatePhrase = onUpdatePhrase,
             onNavigateToEdit = onNavigateToEdit,
             modifier = Modifier
                 .weight(state.phraseAreaWeight)
@@ -231,15 +237,13 @@ private fun PortraitLayout(
 private fun PhraseAreaContent(
     state: MainScreenState,
     onPhraseClick: (Phrase) -> Unit,
-    onClearClick: () -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
-    onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
     hapticFeedback: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var expandJob: Job? by remember { mutableStateOf<Job?>(null) }
+    var expandJob: Job? by remember { mutableStateOf(null) }
     val groupedSections = state.getGroupedSections()
     val groupToFlatIndexMap = state.getGroupToFlatIndexMap(groupedSections)
     val selectedGroupIndex = state.getSelectedGroupIndex(groupedSections)
@@ -256,6 +260,15 @@ private fun PhraseAreaContent(
                             if (targetId != null) {
                                 state.selectedGroupId = targetId
                                 val targetFlatIndex = groupToFlatIndexMap[index] ?: 0
+                                coroutineScope.launch {
+                                    animate(
+                                        initialValue = state.collapseOffset,
+                                        targetValue = state.maxCollapseDistancePx,
+                                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                    ) { value, _ ->
+                                        state.collapseOffset = value
+                                    }
+                                }
                                 coroutineScope.launch {
                                     state.phraseGridState.animateScrollToItem(targetFlatIndex)
                                 }

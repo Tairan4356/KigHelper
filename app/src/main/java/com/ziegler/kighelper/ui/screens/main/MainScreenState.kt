@@ -24,16 +24,40 @@ import com.ziegler.kighelper.data.PhraseGroup
 class MainScreenState(
     val phrases: List<Phrase>,
     val groups: List<PhraseGroup>,
-    val displayText: String,
-    val isShowingInitialHint: Boolean,
+    displayText: String,
+    isShowingInitialHint: Boolean,
     val isPhrasesLoading: Boolean,
-    val isFullScreen: Boolean,
     val onFullScreenChange: (Boolean) -> Unit,
     val isLandscape: Boolean,
     val screenWidth: Int,
     val smallestScreenWidth: Int,
     val maxCollapseDistancePx: Float
 ) {
+    var displayText by mutableStateOf(displayText)
+        internal set
+
+    var isShowingInitialHint by mutableStateOf(isShowingInitialHint)
+        internal set
+
+    var effectiveDisplayText by mutableStateOf(
+        computeEffectiveDisplayText(displayText, isShowingInitialHint)
+    )
+        internal set
+
+    fun updateDisplayText(text: String, isHint: Boolean) {
+        displayText = text
+        isShowingInitialHint = isHint
+        effectiveDisplayText = computeEffectiveDisplayText(text, isHint)
+    }
+
+    private fun computeEffectiveDisplayText(text: String, isHint: Boolean): String {
+        return when {
+            isPhrasesLoading && isHint -> ""
+            !hasPhrases && isHint -> "先添加一个常用短语吧"
+            else -> text
+        }
+    }
+
     // 短语网格状态
     val phraseGridState = LazyGridState()
 
@@ -91,15 +115,9 @@ class MainScreenState(
     // 是否显示空状态
     val showEmptyState = !isPhrasesLoading && !hasPhrases
 
-    // 有效的显示文本
-    val effectiveDisplayText = when {
-        isPhrasesLoading && isShowingInitialHint -> ""
-        !hasPhrases && isShowingInitialHint -> "先添加一个常用短语吧"
-        else -> displayText
-    }
-
     // 是否可以进入全屏
-    val canEnterFullScreen = hasPhrases && !isShowingInitialHint
+    val canEnterFullScreen: Boolean
+        get() = hasPhrases && !isShowingInitialHint && displayText.isNotEmpty()
 
     // 分组后的短语列表
     @Composable
@@ -269,8 +287,6 @@ fun rememberMainScreenState(
     return remember(
         phrases,
         groups,
-        displayText,
-        isShowingInitialHint,
         isPhrasesLoading,
         isFullScreen,
         onFullScreenChange,
@@ -285,7 +301,6 @@ fun rememberMainScreenState(
             displayText = displayText,
             isShowingInitialHint = isShowingInitialHint,
             isPhrasesLoading = isPhrasesLoading,
-            isFullScreen = isFullScreen,
             onFullScreenChange = onFullScreenChange,
             isLandscape = isLandscape,
             screenWidth = screenWidth,

@@ -14,19 +14,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -37,7 +32,6 @@ import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.screens.main.AddPhraseDialog
 import com.ziegler.kighelper.ui.screens.main.DisplaySurface
-import com.ziegler.kighelper.ui.screens.main.DisplaySurfaceLayoutMode
 import com.ziegler.kighelper.ui.screens.main.MainScreenLayout
 import com.ziegler.kighelper.ui.screens.main.rememberMainScreenState
 import com.ziegler.kighelper.ui.utils.findActivity
@@ -84,6 +78,10 @@ fun MainScreen(
         onFullScreenChange = onFullScreenChange
     )
 
+    LaunchedEffect(displayText, isShowingInitialHint) {
+        state.updateDisplayText(displayText, isShowingInitialHint)
+    }
+
     // 将 Android 系统栏状态与应用内全屏展示状态保持同步。
     DisposableEffect(isFullScreen) {
         val activity = context.findActivity()
@@ -126,13 +124,6 @@ fun MainScreen(
             })
     }
 
-    // 布局模式
-    when {
-        isFullScreen -> DisplaySurfaceLayoutMode.Fullscreen
-        state.isLandscape -> DisplaySurfaceLayoutMode.Landscape
-        else -> DisplaySurfaceLayoutMode.Portrait
-    }
-
     // 引入共享元素过渡容器，协调切换
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
         // 非全屏状态
@@ -156,11 +147,8 @@ fun MainScreen(
                 state = state,
                 onPhraseClick = onPhraseClick,
                 onClearClick = onClearClick,
-                onAddPhrase = onAddPhrase,
                 onDeletePhrase = onDeletePhrase,
-                onUpdatePhrase = onUpdatePhrase,
                 onNavigateToEdit = onNavigateToEdit,
-                animatedVisibilityScope = animatedVisibilityScope,
                 fontSizeMultiplier = fontSize,
                 hapticFeedback = hapticFeedback
             )
@@ -173,24 +161,16 @@ fun MainScreen(
             exit = fadeOut(animationSpec = tween(250))
         ) {
             val fullscreenScrollState = rememberScrollState()
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(24.dp)
-            ) {
-                DisplaySurface(
-                    text = state.effectiveDisplayText,
-                    isSubtle = state.isShowingInitialHint,
-                    scrollState = fullscreenScrollState,
-                    onClear = {
-                        onClearClick()
-                        onFullScreenChange(false)
-                    },
-                    onClick = { onFullScreenChange(false) },
-                    modifier = Modifier.clip(RoundedCornerShape(24.dp))
-                )
-            }
+            DisplaySurface(
+                text = state.effectiveDisplayText,
+                isSubtle = state.isShowingInitialHint,
+                scrollState = fullscreenScrollState,
+                fontSizeMultiplier = fontSize,
+                onClear = {
+                    onClearClick()
+                    onFullScreenChange(false)
+                },
+                onClick = { onFullScreenChange(false) })
         }
     }
 }
