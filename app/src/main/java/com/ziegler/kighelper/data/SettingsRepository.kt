@@ -21,7 +21,8 @@ data class AppSettings(
     val hapticFeedback: Boolean = true,
     val notificationEnabled: Boolean = true,
     val lockScreenEnabled: Boolean = false,
-    val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID
+    val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID,
+    val selectedCustomFont: String? = null
 )
 
 @Singleton
@@ -43,6 +44,7 @@ class SettingsRepository @Inject constructor(
         const val NOTIFICATION_ENABLED = "notification_enabled"
         const val LOCK_SCREEN_ENABLED = "lock_screen_enabled"
         const val PLAYBACK_DEVICE_ID = "playback_device_id"
+        const val SELECTED_CUSTOM_FONT = "selected_custom_font"
     }
 
     private val _settings = MutableStateFlow(loadSettings())
@@ -60,7 +62,10 @@ class SettingsRepository @Inject constructor(
             hapticFeedback = prefs.getBoolean(Keys.HAPTIC_FEEDBACK, true),
             notificationEnabled = prefs.getBoolean(Keys.NOTIFICATION_ENABLED, true),
             lockScreenEnabled = prefs.getBoolean(Keys.LOCK_SCREEN_ENABLED, false),
-            playbackDeviceId = prefs.getInt(Keys.PLAYBACK_DEVICE_ID, PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID)
+            playbackDeviceId = prefs.getInt(
+                Keys.PLAYBACK_DEVICE_ID, PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID
+            ),
+            selectedCustomFont = prefs.getString(Keys.SELECTED_CUSTOM_FONT, null)
         )
     }
 
@@ -120,6 +125,11 @@ class SettingsRepository @Inject constructor(
 
     fun updatePlaybackDeviceId(id: Int) {
         prefs.edit { putInt(Keys.PLAYBACK_DEVICE_ID, id) }
+        saveAndEmit()
+    }
+
+    fun updateSelectedCustomFont(fontName: String?) {
+        prefs.edit { putString(Keys.SELECTED_CUSTOM_FONT, fontName) }
         saveAndEmit()
     }
 }

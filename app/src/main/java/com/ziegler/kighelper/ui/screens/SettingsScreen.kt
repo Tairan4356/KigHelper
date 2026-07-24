@@ -1,5 +1,8 @@
 package com.ziegler.kighelper.ui.screens
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,22 +20,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import com.ziegler.kighelper.utils.WindowConfig
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.SettingsViewModel
 import com.ziegler.kighelper.ui.components.ColorPickerDialog
@@ -40,12 +47,15 @@ import com.ziegler.kighelper.ui.components.CustomColorSelector
 import com.ziegler.kighelper.ui.components.PresetColorGrid
 import com.ziegler.kighelper.ui.screens.settings.ColorModeSelector
 import com.ziegler.kighelper.ui.screens.settings.DarkModeOptions
+import com.ziegler.kighelper.ui.screens.settings.FontManagementDialog
 import com.ziegler.kighelper.ui.screens.settings.FontTypeSelector
 import com.ziegler.kighelper.ui.screens.settings.PlaybackDeviceSelector
 import com.ziegler.kighelper.ui.screens.settings.SettingSection
 import com.ziegler.kighelper.ui.screens.settings.SettingSlider
 import com.ziegler.kighelper.ui.screens.settings.SettingSwitch
 import com.ziegler.kighelper.ui.theme.FontType
+import com.ziegler.kighelper.utils.WindowConfig
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
@@ -61,8 +71,34 @@ fun SettingsScreen(
     val playbackDevices by viewModel.playbackDevices.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
+    val fontCatalog by viewModel.fontCatalog.collectAsStateWithLifecycle()
+    val installedFonts by viewModel.installedFonts.collectAsStateWithLifecycle()
+    val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
+    val isLoadingCatalog by viewModel.isLoadingCatalog.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    var showFontManagementDialog by remember { mutableStateOf(false) }
+
+    val fontFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            viewModel.importFont(it)
+            scope.launch {
+                snackbarHostState.showSnackbar("字体导入成功")
+            }
+        }
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(title = { Text("偏好设置") }, navigationIcon = {
                 IconButton(onClick = onBack) {
@@ -80,32 +116,64 @@ fun SettingsScreen(
             item {
                 SettingSection(title = "字体") {
                     FontTypeSelector(
-                        selectedType = settings.fontType, onTypeSelected = { type ->
+                        selectedType = settings.fontType, onTypeSelected = { type, baseName ->
                             viewModel.updateFontType(type)
-                            val weights = FontType.entries[type].availableWeights
-                            viewModel.updateFontWeight(
-                                snapToNearestWeight(
-                                    settings.fontWeight, weights
+                            viewModel.selectCustomFont(baseName)
+                            val builtinCount = FontType.entries.size
+                            if (type < builtinCount) {
+                                val weights = FontType.entries[type].availableWeights
+                                viewModel.updateFontWeight(
+                                    snapToNearestWeight(settings.fontWeight, weights)
                                 )
-                            )
-                        })
+                            }
+                        }, installedFonts = installedFonts
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { showFontManagementDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("字体管理")
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
-                    val currentFontType = FontType.entries[settings.fontType]
-                    val weights = currentFontType.availableWeights
-                    if (weights.size > 1) {
-                        SettingSlider(
-                            title = "字重",
-                            value = weights.indexOf(
-                                snapToNearestWeight(
-                                    settings.fontWeight, weights
+                    val builtinCount = FontType.entries.size
+                    val isBuiltin = settings.fontType < builtinCount
+                    if (isBuiltin) {
+                        val currentFontType = FontType.entries[settings.fontType]
+                        val weights = currentFontType.availableWeights
+                        if (weights.size > 1) {
+                            SettingSlider(
+                                title = "字重",
+                                value = weights.indexOf(
+                                    snapToNearestWeight(settings.fontWeight, weights)
+                                ).toFloat(),
+                                onValueChange = { index ->
+                                    viewModel.updateFontWeight(weights[index.roundToInt()])
+                                },
+                                valueRange = 0f..(weights.size - 1).toFloat(),
+                                steps = weights.size - 2
+                            )
+                        }
+                    } else {
+                        val selectedCustomFont = settings.selectedCustomFont
+                        if (selectedCustomFont != null) {
+                            val customFont =
+                                installedFonts.find { it.baseName == selectedCustomFont }
+                            if (customFont != null && customFont.weights.size > 1) {
+                                val weightValues = customFont.weights.map { it.weight }
+                                SettingSlider(
+                                    title = "字重",
+                                    value = weightValues.indexOf(
+                                        snapToNearestWeight(settings.fontWeight, weightValues)
+                                    ).toFloat(),
+                                    onValueChange = { index ->
+                                        viewModel.updateFontWeight(weightValues[index.roundToInt()])
+                                    },
+                                    valueRange = 0f..(weightValues.size - 1).toFloat(),
+                                    steps = weightValues.size - 2
                                 )
-                            ).toFloat(),
-                            onValueChange = { index ->
-                                viewModel.updateFontWeight(weights[index.roundToInt()])
-                            },
-                            valueRange = 0f..(weights.size - 1).toFloat(),
-                            steps = weights.size - 2
-                        )
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     SettingSlider(
@@ -179,8 +247,6 @@ fun SettingsScreen(
             }
 
             item {
-                val context = LocalContext.current
-
                 SettingSection(title = "功能开关") {
                     SettingSwitch(
                         title = "触感反馈",
@@ -224,7 +290,9 @@ fun SettingsScreen(
                                         context
                                     )
                                 )
-                                val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
+                                val appName =
+                                    context.applicationInfo.loadLabel(context.packageManager)
+                                        .toString()
                                 Toast.makeText(
                                     context, "请找到并开启 $appName 的权限", Toast.LENGTH_LONG
                                 ).show()
@@ -244,6 +312,27 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showFontManagementDialog) {
+        FontManagementDialog(
+            fontCatalog = fontCatalog?.fonts,
+            isLoadingCatalog = isLoadingCatalog,
+            installedFonts = installedFonts,
+            downloadState = downloadState,
+            selectedFont = settings.selectedCustomFont,
+            onImportFont = {
+                fontFilePicker.launch(
+                    arrayOf(
+                        "font/ttf", "font/otf", "application/x-font-ttf", "application/x-font-otf"
+                    )
+                )
+            },
+            onDownload = viewModel::downloadFont,
+            onDeleteInstalled = viewModel::deleteInstalledFont,
+            onDeleteOnline = viewModel::deleteFont,
+            onRefreshCatalog = viewModel::loadFontCatalog,
+            onDismiss = { showFontManagementDialog = false })
     }
 }
 

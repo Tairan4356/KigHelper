@@ -98,7 +98,8 @@ class MainActivity : ComponentActivity() {
                 presetColorIndex = settings.presetColorIndex,
                 customColor = settings.customColor,
                 fontType = settings.fontType,
-                fontWeight = settings.fontWeight
+                fontWeight = settings.fontWeight,
+                selectedCustomFont = settings.selectedCustomFont
             ) {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
                 UpdateHandler() // 处理版本更新提示

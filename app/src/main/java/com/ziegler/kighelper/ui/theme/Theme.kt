@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -47,6 +48,7 @@ fun KigHelperTheme(
     customColor: Long = 0xFF6650A4,
     fontType: Int = 0,
     fontWeight: Int = 400,
+    selectedCustomFont: String? = null,
     content: @Composable () -> Unit
 ) {
     val isSystemDark = isSystemInDarkTheme()
@@ -68,16 +70,19 @@ fun KigHelperTheme(
                 LightColorScheme
             }
         }
+
         1 -> {
             // 预设颜色 - 使用 MaterialKolor 生成完整调色板
             val seedColor = PresetColors[presetColorIndex.coerceIn(0, PresetColors.lastIndex)]
             rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
         }
+
         2 -> {
             // 自定义颜色 - 使用 MaterialKolor 生成完整调色板
             val seedColor = Color(customColor.toInt())
             rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
         }
+
         else -> {
             if (darkTheme) DarkColorScheme else LightColorScheme
         }
@@ -91,9 +96,20 @@ fun KigHelperTheme(
         }
     }
 
+    val context = LocalContext.current
+    val builtinCount = FontType.entries.size
+    val fontFamily = remember(fontType, selectedCustomFont) {
+        if (fontType < builtinCount) {
+            FontType.entries[fontType].fontFamily
+        } else {
+            selectedCustomFont?.let { loadCustomFontFamily(context, it) }
+                ?: FontType.entries[0].fontFamily
+        }
+    }
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = createTypography(FontType.entries[fontType].fontFamily, FontWeight(fontWeight)),
+        typography = createTypography(fontFamily, FontWeight(fontWeight)),
         content = content
     )
 }

@@ -13,26 +13,35 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.ziegler.kighelper.ui.theme.FontType
+import com.ziegler.kighelper.utils.InstalledFont
 
-/**
- * 字体类型下拉选择器。状态全部上提，仅负责渲染与回调上抛。
- *
- * @param selectedType 当前选中的字体索引（对应 [FontType.entries] 下标）。
- * @param onTypeSelected 用户选择某字体时回调，参数为新的字体索引。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FontTypeSelector(
-    selectedType: Int, onTypeSelected: (Int) -> Unit, modifier: Modifier = Modifier
+    selectedType: Int,
+    onTypeSelected: (Int, String?) -> Unit,
+    installedFonts: List<InstalledFont>,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedFont = FontType.entries[selectedType]
+
+    val builtinCount = FontType.entries.size
+    val displayText = if (selectedType < builtinCount) {
+        FontType.entries[selectedType].displayName
+    } else {
+        val customIndex = selectedType - builtinCount
+        if (customIndex < installedFonts.size) {
+            installedFonts[customIndex].displayName
+        } else {
+            FontType.entries[0].displayName
+        }
+    }
 
     ExposedDropdownMenuBox(
         expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier
     ) {
         TextField(
-            value = selectedFont.displayName,
+            value = displayText,
             onValueChange = {},
             readOnly = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
@@ -45,9 +54,18 @@ fun FontTypeSelector(
             FontType.entries.forEachIndexed { index, fontType ->
                 SettingDropdownMenuItem(
                     text = fontType.displayName, onClick = {
-                        onTypeSelected(index)
+                        onTypeSelected(index, null)
                         expanded = false
                     })
+            }
+            if (installedFonts.isNotEmpty()) {
+                installedFonts.forEachIndexed { index, font ->
+                    SettingDropdownMenuItem(
+                        text = font.displayName, onClick = {
+                            onTypeSelected(builtinCount + index, font.baseName)
+                            expanded = false
+                        })
+                }
             }
         }
     }
