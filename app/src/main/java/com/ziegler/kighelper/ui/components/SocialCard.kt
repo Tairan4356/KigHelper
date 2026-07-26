@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import android.content.Context
+import android.graphics.BitmapFactory
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -56,6 +60,8 @@ import com.ziegler.kighelper.data.SocialCardProfile
 import com.ziegler.kighelper.data.SocialContact
 import com.ziegler.kighelper.data.SocialPlatformIcons
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 把一个字符串路径解析成 Coil 可识别的模型。
@@ -175,6 +181,49 @@ private fun socialCardLayoutMode(): SocialCardLayoutMode {
 }
 
 /**
+ * 异步读取图片文件的宽高比。
+ * 仅读取图片头信息（inJustDecodeBounds = true），不会分配像素内存。
+ */
+@Composable
+private fun rememberImageAspectRatio(context: Context, path: String?): Float? {
+    var aspectRatio by remember { mutableStateOf<Float?>(null) }
+
+    LaunchedEffect(path) {
+        if (!path.isNullOrBlank()) {
+            val dimensions = withContext(Dispatchers.IO) {
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                when {
+                    path.startsWith("content://") || path.startsWith("file://") -> {
+                        val uri = path.toUri()
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            BitmapFactory.decodeStream(stream, null, options)
+                            if (options.outWidth > 0 && options.outHeight > 0) {
+                                options.outWidth to options.outHeight
+                            } else null
+                        }
+                    }
+
+                    else -> {
+                        val file = File(path)
+                        if (file.exists()) {
+                            BitmapFactory.decodeFile(file.absolutePath, options)
+                            if (options.outWidth > 0 && options.outHeight > 0) {
+                                options.outWidth to options.outHeight
+                            } else null
+                        } else null
+                    }
+                }
+            }
+            aspectRatio = dimensions?.let { (w, h) -> w.toFloat() / h.toFloat() }
+        } else {
+            aspectRatio = null
+        }
+    }
+
+    return aspectRatio
+}
+
+/**
  * 社交卡片预览。在工具箱主页与编辑页之间复用。
  *
  * 布局自上而下：
@@ -221,171 +270,198 @@ fun SocialCard(
         shape = RoundedCornerShape(24.dp),
         color = Color.Transparent
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             // 背景层：自定义背景图优先；否则渐变背景由 Surface 持有
             val customBgPath = profile.customBackgroundPath
             val isCustomBg =
                 profile.templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && !customBgPath.isNullOrBlank()
-            if (isCustomBg) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(resolveModel(customBgPath)).build(),
-                    contentDescription = null,
-                    modifier = Modifier.matchParentSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(Color(0x66000000))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(rememberCardBackground(profile))
-                )
-            }
 
-            // 头像 + 昵称 + 平台图标：竖屏与横屏共用的主内容区
-            val mainContent: @Composable () -> Unit = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(
+            val imageAspectRatio = if (isCustomBg) {
+                rememberImageAspectRatio(context, profile.customBackgroundPath)
+            } else null
+
+            Box(
+                modifier = Modifier.fillMaxWidth().let { mod ->
+                        if (imageAspectRatio != null && imageAspectRatio > 0f) {
+                            mod.heightIn(min = maxWidth / imageAspectRatio)
+                        } else {
+                            mod
+                        }
+                    }) {
+                if (isCustomBg) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context).data(resolveModel(customBgPath))
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .size(128.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = profile.nickname.ifBlank { "扩列卡片" },
-                            style = MaterialTheme.typography.displayMedium,
-                            color = textColor,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (profile.signature.isNotBlank()) {
-                            Spacer(modifier = Modifier.size(6.dp))
-                            Text(
-                                text = profile.signature,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = textColor.copy(alpha = 0.9f),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                            .matchParentSize()
+                            .background(rememberCardBackground(profile))
+                    )
+                }
+
+                // 头像 + 昵称 + 平台图标：竖屏与横屏共用的主内容区
+                val mainContent: @Composable () -> Unit = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .size(128.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            val hasOtherContent =
+                                profile.signature.isNotBlank() || profile.avatarPath != null || visibleContacts.isNotEmpty() || isCustomBg
+                            val showPlaceholder = profile.nickname.isBlank() && !hasOtherContent
+                            val nicknameText = if (showPlaceholder) "扩列卡片" else profile.nickname
+
+                            if (nicknameText.isNotBlank()) {
+                                val nicknameFontSize = remember(nicknameText) {
+                                    when {
+                                        nicknameText.length <= 3 -> 48.sp
+                                        profile.signature.isBlank() && nicknameText.length <= 8 -> 36.sp
+                                        nicknameText.length <= 6 -> 36.sp
+                                        nicknameText.length <= 8 -> 24.sp
+                                        profile.signature.isBlank() || nicknameText.length <= 10 -> 24.sp
+                                        else -> 12.sp
+                                    }
+                                }
+                                Text(
+                                    text = nicknameText,
+                                    fontSize = nicknameFontSize,
+                                    color = textColor,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = if (profile.signature.isBlank()) 2 else 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (profile.signature.isNotBlank()) {
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text(
+                                    text = profile.signature,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = textColor.copy(alpha = 0.9f),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.size(20.dp))
+
+                        // 头像
+                        val avatarPath = profile.avatarPath
+                        if (avatarPath != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(resolveModel(avatarPath))
+                                    .build(),
+                                contentDescription = "头像",
+                                modifier = Modifier.size(96.dp),
+                                contentScale = ContentScale.Fit
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.size(20.dp))
 
-                    // 头像
-                    val avatarPath = profile.avatarPath
-                    if (avatarPath != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context).data(resolveModel(avatarPath))
-                                .build(),
-                            contentDescription = "头像",
-                            modifier = Modifier.size(96.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.size(20.dp))
-
-                // 平台图标行：每行 4 个
-                val rows = visibleContacts.chunked(4)
-                rows.forEachIndexed { rowIndex, row ->
-                    if (rowIndex > 0) Spacer(modifier = Modifier.size(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        row.forEach { contact ->
-                            val indexInList = visibleContacts.indexOf(contact)
-                            ContactIcon(
-                                contact = contact,
-                                textColor = textColor,
-                                selected = indexInList == safeIndex,
-                                onClick = { onSelectedChange(indexInList) })
-                        }
-                        // 不足 4 个时填充空占位，保持左对齐
-                        repeat(4 - row.size) {
-                            Spacer(modifier = Modifier.size(56.dp))
+                    // 平台图标行：每行 4 个
+                    val rows = visibleContacts.chunked(4)
+                    rows.forEachIndexed { rowIndex, row ->
+                        if (rowIndex > 0) Spacer(modifier = Modifier.size(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            row.forEach { contact ->
+                                val indexInList = visibleContacts.indexOf(contact)
+                                ContactIcon(
+                                    contact = contact,
+                                    textColor = textColor,
+                                    selected = indexInList == safeIndex,
+                                    onClick = { onSelectedChange(indexInList) })
+                            }
+                            // 不足 4 个时填充空占位，保持左对齐
+                            repeat(4 - row.size) {
+                                Spacer(modifier = Modifier.size(56.dp))
+                            }
                         }
                     }
                 }
-            }
 
-            when (layoutMode) {
-                SocialCardLayoutMode.LANDSCAPE_TABLET -> {
-                    // 横屏平板：二维码:主内容 = 2:1，卡片高度按屏幕高度比例
-                    val cardHeight =
-                        (LocalConfiguration.current.screenHeightDp * LANDSCAPE_TABLET_HEIGHT_FRACTION).dp
-                    Row(
-                        modifier = Modifier
-                            .height(cardHeight)
-                            .padding(24.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                when (layoutMode) {
+                    SocialCardLayoutMode.LANDSCAPE_TABLET -> {
+                        // 横屏平板：二维码:主内容 = 2:1，卡片高度按屏幕高度比例
+                        val cardHeight =
+                            (LocalConfiguration.current.screenHeightDp * LANDSCAPE_TABLET_HEIGHT_FRACTION).dp
+                        Row(
+                            modifier = Modifier
+                                .height(cardHeight)
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                mainContent()
+                            }
+
+                            Spacer(modifier = Modifier.size(32.dp))
+
+                            // 选中平台的二维码展示区
+                            if (selectedContact != null) {
+                                SelectedContactQrCode(
+                                    contact = selectedContact,
+                                    textColor = textColor,
+                                    layoutMode = layoutMode,
+                                    modifier = Modifier.weight(2f),
+                                    onQrClick = { fullscreenContact = selectedContact })
+                            }
+                        }
+                    }
+
+                    SocialCardLayoutMode.LANDSCAPE_PHONE -> {
+                        // 横屏手机：二维码固定尺寸在右，主内容占满剩余宽度
+                        Row(
+                            modifier = Modifier.padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                mainContent()
+                            }
+
+                            Spacer(modifier = Modifier.size(32.dp))
+
+                            // 选中平台的二维码展示区
+                            if (selectedContact != null) {
+                                SelectedContactQrCode(
+                                    contact = selectedContact,
+                                    textColor = textColor,
+                                    layoutMode = layoutMode,
+                                    onQrClick = { fullscreenContact = selectedContact })
+                            }
+                        }
+                    }
+
+                    SocialCardLayoutMode.PORTRAIT -> {
+                        // 竖屏：自上而下排列
+                        Column(
+                            modifier = Modifier.padding(24.dp)
+                        ) {
                             mainContent()
-                        }
 
-                        Spacer(modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.size(32.dp))
 
-                        // 选中平台的二维码展示区
-                        if (selectedContact != null) {
-                            SelectedContactQrCode(
-                                contact = selectedContact,
-                                textColor = textColor,
-                                layoutMode = layoutMode,
-                                modifier = Modifier.weight(2f),
-                                onQrClick = { fullscreenContact = selectedContact })
-                        }
-                    }
-                }
-
-                SocialCardLayoutMode.LANDSCAPE_PHONE -> {
-                    // 横屏手机：二维码固定尺寸在右，主内容占满剩余宽度
-                    Row(
-                        modifier = Modifier.padding(24.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            mainContent()
-                        }
-
-                        Spacer(modifier = Modifier.size(32.dp))
-
-                        // 选中平台的二维码展示区
-                        if (selectedContact != null) {
-                            SelectedContactQrCode(
-                                contact = selectedContact,
-                                textColor = textColor,
-                                layoutMode = layoutMode,
-                                onQrClick = { fullscreenContact = selectedContact })
-                        }
-                    }
-                }
-
-                SocialCardLayoutMode.PORTRAIT -> {
-                    // 竖屏：自上而下排列
-                    Column(
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        mainContent()
-
-                        Spacer(modifier = Modifier.size(32.dp))
-
-                        // 选中平台的二维码展示区
-                        if (selectedContact != null) {
-                            SelectedContactQrCode(
-                                contact = selectedContact,
-                                textColor = textColor,
-                                layoutMode = layoutMode,
-                                modifier = Modifier.fillMaxWidth(),
-                                onQrClick = { fullscreenContact = selectedContact })
+                            // 选中平台的二维码展示区
+                            if (selectedContact != null) {
+                                SelectedContactQrCode(
+                                    contact = selectedContact,
+                                    textColor = textColor,
+                                    layoutMode = layoutMode,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onQrClick = { fullscreenContact = selectedContact })
+                            }
                         }
                     }
                 }

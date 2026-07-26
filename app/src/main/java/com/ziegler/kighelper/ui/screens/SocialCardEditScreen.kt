@@ -63,7 +63,6 @@ import com.ziegler.kighelper.ui.components.CropShape
 import com.ziegler.kighelper.ui.components.ImageCropperDialog
 import com.ziegler.kighelper.ui.components.SectionTitle
 import com.ziegler.kighelper.ui.components.SocialCard
-import com.ziegler.kighelper.ui.screens.socialedit.AddContactDialog
 import com.ziegler.kighelper.ui.screens.socialedit.ContactEditor
 import com.ziegler.kighelper.ui.screens.socialedit.SocialCardEditDefaults
 import com.ziegler.kighelper.ui.screens.socialedit.TemplateThumb
@@ -172,7 +171,6 @@ fun SocialCardEditScreen(
             pendingIconContactId = null
         }
 
-    var showAddContactDialog by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
 
     fun handleSave() {
@@ -212,8 +210,7 @@ fun SocialCardEditScreen(
         // 按 id 配对比较；顺序变化不算修改
         val initialById = initial.associateBy { it.id }
         current.forEach { c ->
-            val other = initialById[c.id]
-            if (other == null) return true
+            val other = initialById[c.id] ?: return true
             if (c.displayName != other.displayName) return true
             if (c.iconKey != other.iconKey) return true
             if (c.handle != other.handle) return true
@@ -254,8 +251,7 @@ fun SocialCardEditScreen(
         })
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
             TopAppBar(
                 title = { Text("编辑卡片") }, navigationIcon = {
                 IconButton(onClick = ::handleBack) {
@@ -381,7 +377,7 @@ fun SocialCardEditScreen(
                         })
                 }
             }
-            if (templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && customBackgroundPath == null && backgroundUri == null) {
+            if (templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = { pickBackground.launch(arrayOf("image/*")) }) {
                     Text("选择背景图")
@@ -450,26 +446,19 @@ fun SocialCardEditScreen(
 
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
-                onClick = { showAddContactDialog = true }, modifier = Modifier.fillMaxWidth()
+                onClick = {
+                    contacts.add(
+                        SocialContact(
+                            id = UUID.randomUUID().toString(), displayName = ""
+                        )
+                    )
+                }, modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text("添加平台")
             }
         }
-    }
-
-    if (showAddContactDialog) {
-        AddContactDialog(
-            onDismiss = { showAddContactDialog = false },
-            onConfirm = { name, iconKey ->
-                contacts.add(
-                    SocialContact(
-                        id = UUID.randomUUID().toString(), displayName = name, iconKey = iconKey
-                    )
-                )
-                showAddContactDialog = false
-            })
     }
 
     if (showDiscardConfirm) {

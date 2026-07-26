@@ -104,12 +104,7 @@ object SocialPlatformIcons {
         SocialContact(id = KEY_QQ, displayName = "QQ", iconKey = KEY_QQ),
         SocialContact(id = KEY_WECHAT, displayName = "微信", iconKey = KEY_WECHAT),
         SocialContact(id = KEY_BILIBILI, displayName = "B站", iconKey = KEY_BILIBILI),
-        SocialContact(id = KEY_DOUYIN, displayName = "抖音", iconKey = KEY_DOUYIN),
-        SocialContact(id = KEY_WEIBO, displayName = "微博", iconKey = KEY_WEIBO),
-        SocialContact(id = KEY_X, displayName = "X", iconKey = KEY_X),
-        SocialContact(id = KEY_FACEBOOK, displayName = "Facebook", iconKey = KEY_FACEBOOK),
-        SocialContact(id = KEY_INSTAGRAM, displayName = "Instagram", iconKey = KEY_INSTAGRAM),
-        SocialContact(id = KEY_TELEGRAM, displayName = "Telegram", iconKey = KEY_TELEGRAM)
+        SocialContact(id = KEY_DOUYIN, displayName = "抖音", iconKey = KEY_DOUYIN)
     )
 }
 
@@ -128,22 +123,6 @@ data class CardTemplate(
 object CardTemplates {
     val presets: List<CardTemplate> = listOf(
         CardTemplate(
-            name = "极光紫蓝",
-            brush = Brush.linearGradient(listOf(Color(0xFF6650A4), Color(0xFF2196F3))),
-            onBackground = Color.White
-        ), CardTemplate(
-            name = "樱花粉",
-            brush = Brush.linearGradient(listOf(Color(0xFFFB7299), Color(0xFFFFEB3B))),
-            onBackground = Color.White
-        ), CardTemplate(
-            name = "墨韵黑金",
-            brush = Brush.linearGradient(listOf(Color(0xFF1C1B1F), Color(0xFF8D6E63))),
-            onBackground = Color.White
-        ), CardTemplate(
-            name = "薄荷青",
-            brush = Brush.linearGradient(listOf(Color(0xFF00BCD4), Color(0xFF4CAF50))),
-            onBackground = Color.White
-        ), CardTemplate(
             name = "暮色橙红",
             brush = Brush.linearGradient(listOf(Color(0xFFFF9800), Color(0xFFF44336))),
             onBackground = Color.White
