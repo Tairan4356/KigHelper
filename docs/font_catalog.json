@@ -1,0 +1,389 @@
+{
+  "fonts": [
+    {
+      "id": "source_han_sans_sc",
+      "name": "Source Han Sans SC",
+      "displayName": "思源黑体",
+      "description": "Google 与 Adobe 合作开发的开源字体",
+      "sizeKB": 57001,
+      "weights": [
+        {
+          "weight": 200,
+          "label": "ExtraLight",
+          "fileName": "SourceHanSansCN-ExtraLight.otf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "SourceHanSansCN-Light.otf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "SourceHanSansCN-Regular.otf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "SourceHanSansCN-Medium.otf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "SourceHanSansCN-Bold.otf"
+        },
+        {
+          "weight": 900,
+          "label": "Heavy",
+          "fileName": "SourceHanSansCN-Heavy.otf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/source_han_sans_sc/"
+    },
+    {
+      "id": "source_serif_sc",
+      "name": "Source Serif SC",
+      "displayName": "思源宋体",
+      "description": "Google 与 Adobe 合作开发的开源衬线字体",
+      "sizeKB": 79079,
+      "weights": [
+        {
+          "weight": 200,
+          "label": "ExtraLight",
+          "fileName": "SourceHanSerifCN-ExtraLight.otf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "SourceHanSerifCN-Light.otf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "SourceHanSerifCN-Regular.otf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "SourceHanSerifCN-Medium.otf"
+        },
+        {
+          "weight": 600,
+          "label": "SemiBold",
+          "fileName": "SourceHanSerifCN-SemiBold.otf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "SourceHanSerifCN-Bold.otf"
+        },
+        {
+          "weight": 900,
+          "label": "Heavy",
+          "fileName": "SourceHanSerifCN-Heavy.otf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/source_serif_sc/"
+    },
+    {
+      "id": "wenyuan_sans_sc",
+      "name": "WenYuan Sans SC",
+      "displayName": "文渊黑体",
+      "description": "基于思源黑体 更加适合在中文情景下使用",
+      "sizeKB": 63973,
+      "weights": [
+        {
+          "weight": 100,
+          "label": "Thin",
+          "fileName": "WenYuanSansSC-Thin.otf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "WenYuanSansSC-Light.otf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "WenYuanSansSC-Regular.otf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "WenYuanSansSC-Medium.otf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "WenYuanSansSC-Bold.otf"
+        },
+        {
+          "weight": 900,
+          "label": "Heavy",
+          "fileName": "WenYuanSansSC-Heavy.otf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/wenyuan_sans_sc/"
+    },
+    {
+      "id": "wenyuan_serif_sc",
+      "name": "WenYuan Serif SC",
+      "displayName": "文渊宋体",
+      "description": "基于思源宋体 更加适合在中文情景下使用",
+      "sizeKB": 88113,
+      "weights": [
+        {
+          "weight": 100,
+          "label": "Thin",
+          "fileName": "WenYuanSerifSC-Thin.otf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "WenYuanSerifSC-Light.otf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "WenYuanSerifSC-Regular.otf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "WenYuanSerifSC-Medium.otf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "WenYuanSerifSC-Bold.otf"
+        },
+        {
+          "weight": 900,
+          "label": "Heavy",
+          "fileName": "WenYuanSerifSC-Heavy.otf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/wenyuan_serif_sc/"
+    },
+    {
+      "id": "wenyuan_rounded_sc",
+      "name": "WenYuan Rounded SC",
+      "displayName": "文渊圆体",
+      "description": "基于思源黑体 更加适合在中文情景下使用",
+      "sizeKB": 110135,
+      "weights": [
+        {
+          "weight": 100,
+          "label": "Thin",
+          "fileName": "WenYuanSerifSC-Thin.otf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "WenYuanSerifSC-Light.otf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "WenYuanSerifSC-Regular.otf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "WenYuanSerifSC-Medium.otf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "WenYuanSerifSC-Bold.otf"
+        },
+        {
+          "weight": 900,
+          "label": "Heavy",
+          "fileName": "WenYuanSerifSC-Heavy.otf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/wenyuan_rounded_sc/"
+    },
+    {
+      "id": "lxgw_wenkai",
+      "name": "LXGW WenKai",
+      "displayName": "霞鹜文楷",
+      "description": "日文字体 Klee One 衍生楷体",
+      "sizeKB": 77365,
+      "weights": [
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "LXGWWenKai-Light.ttf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "LXGWWenKai-Regular.ttf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "LXGWWenKai-Medium.ttf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/lxgw_wenkai/"
+    },
+    {
+      "id": "lxgw_975_hei_sc",
+      "name": "LXGW 975 Hei SC",
+      "displayName": "霞鹜 975 黑体",
+      "description": "基于思源黑体优化 更适合于阅读",
+      "sizeKB": 50922,
+      "weights": [
+        {
+          "weight": 200,
+          "label": "ExtraLight",
+          "fileName": "LXGW975HeiSC-200W.ttf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "LXGW975HeiSC-300W.ttf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "LXGW975HeiSC-400W.ttf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "LXGW975HeiSC-500W.ttf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "LXGW975HeiSC-700W.ttf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/lxgw_975_hei_sc/"
+    },
+    {
+      "id": "lxgw_975_hazygo_sc",
+      "name": "LXGW 975 HazyGo SC",
+      "displayName": "霞鹜 975 朦胧黑体",
+      "description": "基于思源黑体边角圆润化处理",
+      "sizeKB": 50922,
+      "weights": [
+        {
+          "weight": 200,
+          "label": "ExtraLight",
+          "fileName": "Lxgw975HazyGoSC-200W.ttf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "Lxgw975HazyGoSC-300W.ttf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "Lxgw975HazyGoSC-400W.ttf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "Lxgw975HazyGoSC-500W.ttf"
+        },
+        {
+          "weight": 600,
+          "label": "SemiBold",
+          "fileName": "Lxgw975HazyGoSC-600W.ttf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/lxgw_975_hazygo_sc/"
+    },
+    {
+      "id": "lxgw_975_yuan_sc",
+      "name": "LXGW 975 Yuan SC",
+      "displayName": "霞鹜 975 圆体",
+      "description": "一款缩小字面中文字体的圆体",
+      "sizeKB": 50922,
+      "weights": [
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "LXGW975YuanSC-400W.ttf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "LXGW975YuanSC-500W.ttf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "LXGW975YuanSC-700W.ttf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/lxgw_975_yuan_sc/"
+    },
+    {
+      "id": "boutique_bitmap_9x9",
+      "name": "Boutique Bitmap 9x9",
+      "displayName": "精品点阵体 9×9",
+      "description": "一款带有极强烈的点阵风格的字型",
+      "sizeKB": 21269,
+      "weights": [
+        {
+          "weight": 200,
+          "label": "ExtraLight",
+          "fileName": "BoutiqueBitmap9x9_Circle_Dot.ttf"
+        },
+        {
+          "weight": 300,
+          "label": "Light",
+          "fileName": "BoutiqueBitmap9x9_Square_Dot.ttf"
+        },
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "BoutiqueBitmap9x9_Blur.ttf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "BoutiqueBitmap9x9_1.6.ttf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "BoutiqueBitmap9x9_Bold_1.6.ttf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/boutique_bitmap_9x9/"
+    },
+    {
+      "id": "fusion_pixel",
+      "name": "Fusion Pixel",
+      "displayName": "缝合怪像素字体",
+      "description": "使用多个第三方像素字体合并而成",
+      "sizeKB": 8084,
+      "weights": [
+        {
+          "weight": 400,
+          "label": "Regular",
+          "fileName": "fusion-pixel-12px-monospaced.otf"
+        },
+        {
+          "weight": 500,
+          "label": "Medium",
+          "fileName": "fusion-pixel-10px-monospaced.otf"
+        },
+        {
+          "weight": 700,
+          "label": "Bold",
+          "fileName": "fusion-pixel-8px-monospaced.otf"
+        }
+      ],
+      "downloadUrl": "https://gitee.com/tairan_4356/kig-helper/raw/master/docs/fonts/fusion_pixel/"
+    }
+  ]
+}
