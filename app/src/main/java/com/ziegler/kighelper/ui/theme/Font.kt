@@ -10,7 +10,10 @@ import java.io.File
 
 object CustomFonts {
     val MiSans = FontFamily(
-        Font(R.font.misans_normal, FontWeight.Normal),
+        Font(R.font.misans_extralight, FontWeight.ExtraLight),
+        Font(R.font.misans_light, FontWeight.Light),
+        Font(R.font.misans_regular, FontWeight.Normal),
+        Font(R.font.misans_medium, FontWeight.Medium),
         Font(R.font.misans_bold, FontWeight.Bold),
         Font(R.font.misans_heavy, FontWeight.ExtraBold)
     )
@@ -22,7 +25,7 @@ enum class FontType(
     val availableWeights: List<Int>
 ) {
     SYSTEM("系统默认", FontFamily.Default, listOf(400)),
-    MI_SANS("Mi Sans", CustomFonts.MiSans, listOf(400, 700, 800))
+    MI_SANS("Mi Sans", CustomFonts.MiSans, listOf(200, 300, 400, 500, 700, 900))
 }
 
 private fun extractWeightFromFile(fileName: String): FontWeight {

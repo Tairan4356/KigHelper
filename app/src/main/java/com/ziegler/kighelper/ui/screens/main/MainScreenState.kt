@@ -107,13 +107,13 @@ class MainScreenState(
         get() = 1f - displayWeight
 
     // 是否有短语
-    val hasPhrases = phrases.isNotEmpty()
+    val hasPhrases get() = phrases.isNotEmpty()
 
     // 是否显示短语网格
-    val showPhraseGrid = !isPhrasesLoading && hasPhrases
+    val showPhraseGrid get() = !isPhrasesLoading && hasPhrases
 
     // 是否显示空状态
-    val showEmptyState = !isPhrasesLoading && !hasPhrases
+    val showEmptyState get() = !isPhrasesLoading && !hasPhrases
 
     // 是否可以进入全屏
     val canEnterFullScreen: Boolean

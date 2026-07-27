@@ -109,7 +109,7 @@ fun KigHelperTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = createTypography(fontFamily, FontWeight(fontWeight)),
+        typography = createTypography(fontFamily, if (fontType == 0) FontWeight.Bold else FontWeight(fontWeight)),
         content = content
     )
 }

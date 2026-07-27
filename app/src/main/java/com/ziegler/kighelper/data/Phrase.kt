@@ -14,9 +14,12 @@ data class PhraseGroup(
     companion object {
         const val DEFAULT_ID = "default"
         const val DEFAULT_NAME = "默认分组"
+        const val COMMON_ID = "common"
+        const val COMMON_NAME = "常用"
 
         val DEFAULT_GROUPS = listOf(
-            PhraseGroup(id = DEFAULT_ID, name = DEFAULT_NAME, order = 0)
+            PhraseGroup(id = DEFAULT_ID, name = DEFAULT_NAME, order = 0),
+            PhraseGroup(id = COMMON_ID, name = COMMON_NAME, order = 1)
         )
     }
 }
@@ -46,7 +49,10 @@ data class Phrase(
             Phrase(label = "谢谢", speech = "谢谢你"),
             Phrase(label = "我的角色", speech = "我今天出的角色是……"),
             Phrase(label = "不能说话", speech = "我现在不能说话，可以打字沟通"),
-            Phrase(label = "喝水", speech = "我想喝点水")
+            Phrase(label = "喝水", speech = "我想喝点水", groupId = PhraseGroup.COMMON_ID),
+            Phrase(label = "休息", speech = "我想休息一下", groupId = PhraseGroup.COMMON_ID),
+            Phrase(label = "集邮", speech = "可以集邮吗？", groupId = PhraseGroup.COMMON_ID),
+            Phrase(label = "扩列", speech = "可以扩列吗？", groupId = PhraseGroup.COMMON_ID),
         )
     }
 }

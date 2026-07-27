@@ -146,7 +146,6 @@ fun InputScreen(
                 .focusRequester(focusRequester),
             textStyle = MaterialTheme.typography.displayLarge.copy(
                 fontSize = fontSize,
-                fontWeight = FontWeight.ExtraBold,
                 lineHeight = lineHeight,
                 letterSpacing = 0.sp,
                 textAlign = TextAlign.Center,
@@ -170,7 +169,6 @@ fun InputScreen(
                             text = "请输入文字",
                             style = MaterialTheme.typography.displayLarge.copy(
                                 fontSize = fontSize,
-                                fontWeight = FontWeight.ExtraBold,
                                 lineHeight = lineHeight,
                                 letterSpacing = 0.sp
                             ),

@@ -43,7 +43,7 @@ class FontRepository @Inject constructor(
     companion object {
         private const val TAG = "FontRepository"
         private const val CATALOG_URL =
-            "https://raw.giteeusercontent.com/tairan_4356/kig-helper/raw/master/docs/font_catalog.json"
+            "https://gitee.com/tairan_4356/kig-helper-repository/raw/master/font_catalog.json"
         private val CATALOG_URLS = listOf(
             CATALOG_URL
         )
