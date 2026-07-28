@@ -9,11 +9,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -51,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -85,7 +89,7 @@ private val AVATAR_CROP_SHAPES = SocialCardEditDefaults.AVATAR_CROP_SHAPES
  * @param onBack 返回回调
  * @param onSave 保存回调，传入更新后的资料 + 待写入的图片 URI
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SocialCardEditScreen(
     initialProfile: SocialCardProfile, onBack: () -> Unit, onSave: (
@@ -94,6 +98,7 @@ fun SocialCardEditScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // 文本字段：使用 rememberSaveable 以在进程被回收后仍能恢复
     var nickname by rememberSaveable { mutableStateOf(initialProfile.nickname) }
@@ -172,6 +177,12 @@ fun SocialCardEditScreen(
         }
 
     var showDiscardConfirm by remember { mutableStateOf(false) }
+
+    // 输入法可见时拦截返回键，先收起输入法而不是直接返回上一级
+    val isImeVisible = WindowInsets.isImeVisible
+    BackHandler(enabled = isImeVisible) {
+        keyboardController?.hide()
+    }
 
     fun handleSave() {
         // 把「移除自定义图标」的 contact 在 contacts 中清掉 customIconPath

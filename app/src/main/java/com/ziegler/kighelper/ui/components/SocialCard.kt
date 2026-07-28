@@ -296,6 +296,16 @@ fun SocialCard(
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop
                     )
+                    val hasOtherContent =
+                        profile.signature.isNotBlank() || profile.avatarPath != null || visibleContacts.isNotEmpty()
+                    val hideCover = profile.nickname.isBlank() && !hasOtherContent
+                    if (!hideCover) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color(0x66000000))
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier
