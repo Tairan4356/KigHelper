@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -8,119 +8,107 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700&display=swap');
-        body { font-family: 'Noto Sans SC', sans-serif; background-color: #fffafb; }
-        .hero-gradient { background: linear-gradient(135deg, #f472b6 0%, #fb7185 100%); }
-        .feature-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
-        .screenshot-container { width: 100%; max-width: 240px; position: relative; border: 6px solid #333; border-bottom-width: 10px; border-radius: 1rem; overflow: hidden; box-shadow: 0 20px 50px rgba(244, 114, 182, 0.3); background: #f0f0f0; }
-        .screenshot-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(244, 114, 182, 0.15); }
-        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body class="text-gray-800">
 <!-- Header / Hero Section -->
-<header class="hero-gradient text-white py-16 px-6 text-center">
+<header class="hero-gradient text-white py-10 md:py-16 px-4 md:px-6 text-center">
     <div class="max-w-4xl mx-auto">
-        <h1 class="text-5xl font-extrabold mb-4 tracking-tight text-white drop-shadow-sm">
+        <!-- Logo -->
+        <div class="flex justify-center mb-6">
+            <div class="w-24 h-24 md:w-32 md:h-32 flex items-center justify-center">
+                <img src="favicon.png" alt="娃语 Logo"
+                     class="w-full h-full object-cover">
+            </div>
+        </div>
+
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-3 tracking-tight text-white drop-shadow-sm">
             娃语 | 娃娃的神之嘴</h1>
-        <p class="text-2xl mb-6 opacity-95 font-light">送给 Kiger 的辅助沟通工具</p>
-        <p class="text-2xl mb-6 font-bold text-pink-200">KigHelper 现正式更名为“娃语”，感谢大家的集思广益！</p>
+        <p class="text-lg md:text-2xl mb-5 opacity-95 font-light">送给 Kiger 的辅助沟通工具</p>
+        <p class="text-base md:text-xl mb-5 font-bold text-cyan-100">
+            「云·娃语」已上线！不限设备，点击即用！</p>
 
         <!-- Badges -->
-        <div class="flex justify-center gap-3 mb-6 flex-wrap">
-            <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-sm font-medium">Android 8.0+</span>
-            <span class="bg-pink-100/20 backdrop-blur-sm border border-pink-200/30 px-3 py-1 rounded-full text-sm font-medium">Kotlin & Compose</span>
-            <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-sm font-medium underline"><a
+        <div class="flex justify-center gap-2 md:gap-3 mb-5 flex-wrap">
+            <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-xs md:text-sm font-medium">Android 9.0+</span>
+            <span class="bg-pink-100/20 backdrop-blur-sm border border-pink-200/30 px-3 py-1 rounded-full text-xs md:text-sm font-medium">Kotlin & Compose</span>
+            <span class="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-xs md:text-sm font-medium underline"><a
                     href="https://github.com/Tairan4356/KigHelper/blob/main/LICENSE">GPL v3</a></span>
         </div>
 
         <!-- Version & Update Highlights -->
-        <div class="mb-10 max-w-2xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-left shadow-lg">
-            <div class="flex items-center justify-between border-b border-white/20 pb-3 mb-4">
-                <span class="flex items-center gap-2">
-                    <span class="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded">LATEST</span>
-                    <span class="font-mono text-pink-100 font-bold">v1.3.0 版本已发布</span>
-                </span>
-                <span class="text-xs text-pink-100/80"><i class="far fa-clock mr-1"></i> 2026-07-12</span>
+        <div class="mb-8 max-w-xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 text-center shadow-lg flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center justify-center gap-3 flex-wrap">
+                <span class="bg-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded">LATEST</span>
+                <span class="font-mono text-pink-100 font-bold text-sm md:text-base">v1.3.1</span>
+                <span class="text-xs text-pink-100/70"><i
+                        class="far fa-clock mr-1"></i>2026-07-29</span>
             </div>
-            <h4 class="font-bold text-white mb-2 text-sm md:text-base flex items-center gap-2">
-                <i class="fas fa-circle-info text-pink-200"></i> 近期更新亮点
-            </h4>
-            <ul class="space-y-2 text-xs md:text-sm text-pink-50/90 leading-relaxed">
-                <li class="flex items-start gap-2">
-                    <span class="text-pink-200">✦</span>
-                    <span><strong>新增个人信息扩列卡片：</strong>支持一键展示专属社交名片与社交平台二维码。</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-pink-200">✦</span>
-                    <span><strong>品牌命名重构：</strong>应用正式更名为“娃语”（中）、“KiguSay”（英）、“着ぐ声”（日）。</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-pink-200">✦</span>
-                    <span><strong>新增偏好设置页面：</strong>可自定义软件字体、字重和字号，自定义软件主题色等。</span>
-                </li>
-            </ul>
+            <p class="text-xs md:text-sm text-pink-50/80">新增快速拉起社交平台</p>
         </div>
 
         <!-- Download Buttons -->
-        <div class="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <a href="https://github.com/Tairan4356/KigHelper/releases/download/v1.3.0/KiguSay-v1.3.0.apk"
-               class="bg-white text-pink-500 px-8 py-4 rounded-2xl font-bold hover:scale-105 transition-transform shadow-xl flex items-center justify-center">
-                <i class="fas fa-download mr-3"></i>立即下载 (GitHub)
+        <div class="flex flex-col sm:flex-row justify-center gap-3 md:gap-4 mb-10">
+            <a href="https://github.com/Tairan4356/KigHelper/releases/download/v1.3.1/KiguSay-v1.3.1.apk"
+               class="bg-white text-pink-500 px-6 md:px-8 py-3 md:py-4 rounded-2xl font-bold hover:scale-105 transition-transform shadow-xl flex items-center justify-center text-sm md:text-base">
+                <i class="fas fa-download mr-2 md:mr-3"></i>立即下载 (GitHub)
             </a>
-            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/v1.3.0/KiguSay-v1.3.0.apk"
-               class="bg-pink-900/20 backdrop-blur text-white border border-white/30 px-8 py-4 rounded-2xl font-bold hover:bg-pink-900/30 transition flex items-center justify-center">
-                <i class="fas fa-rocket mr-3"></i>国内镜像 (Gitee)
+            <a href="https://gitee.com/tairan_4356/kig-helper/releases/download/v1.3.1/KiguSay-v1.3.1.apk"
+               class="bg-pink-900/20 backdrop-blur text-white border border-white/30 px-6 md:px-8 py-3 md:py-4 rounded-2xl font-bold hover:bg-pink-900/30 transition flex items-center justify-center text-sm md:text-base">
+                <i class="fas fa-rocket mr-2 md:mr-3"></i>国内镜像 (Gitee)
+            </a>
+            <a href="https://tairan4356.github.io/KigHelper-Cloud" target="_blank"
+               class="bg-pink-900/20 backdrop-blur text-white border border-white/30 px-6 md:px-8 py-3 md:py-4 rounded-2xl font-bold hover:bg-pink-900/30 transition flex items-center justify-center text-sm md:text-base">
+                <i class="fas fa-cloud mr-2 md:mr-3"></i>云·娃语 (网页端)
             </a>
         </div>
 
-        <div class="flex justify-center gap-6 flex-wrap">
+        <div class="flex justify-center gap-4 md:gap-6 flex-wrap">
             <a href="https://github.com/Tairan4356/KigHelper"
-               class="text-white/80 hover:text-white transition flex items-center">
-                <i class="fab fa-github mr-2 text-xl"></i> GitHub 仓库
+               class="text-white/80 hover:text-white transition flex items-center text-sm md:text-base">
+                <i class="fab fa-github mr-1.5 md:mr-2 text-lg md:text-xl"></i> GitHub 仓库
             </a>
             <a href="https://space.bilibili.com/353197379" target="_blank"
-               class="text-white/80 hover:text-white transition flex items-center">
-                <i class="fab fa-bilibili mr-2 text-xl"></i> 作者 B 站
+               class="text-white/80 hover:text-white transition flex items-center text-sm md:text-base">
+                <i class="fab fa-bilibili mr-1.5 md:mr-2 text-lg md:text-xl"></i> 作者 B 站
             </a>
             <a href="https://qm.qq.com/q/qqN05HHWDK" target="_blank"
-               class="text-white/80 hover:text-white transition flex items-center">
-                <i class="fab fa-qq mr-2 text-xl"></i> 内测反馈群 (1103795582)
+               class="text-white/80 hover:text-white transition flex items-center text-sm md:text-base">
+                <i class="fab fa-qq mr-1.5 md:mr-2 text-lg md:text-xl"></i> 内测反馈群 (1103795582)
             </a>
         </div>
     </div>
 </header>
 
 <!-- Video Demonstration -->
-<section class="py-16 px-6 -mt-10">
+<section class="py-10 md:py-16 px-4 md:px-6 -mt-8 md:-mt-10">
     <div class="max-w-4xl mx-auto">
         <div class="video-container">
             <iframe src="//player.bilibili.com/player.html?aid=116498135783607&allallowfullscreen=false&autoplay=false"></iframe>
         </div>
-        <p class="text-center mt-4 text-pink-400">📺 演示视频：看一看娃语如何改变你的沟通体验</p>
+        <p class="text-center mt-3 md:mt-4 text-pink-400 text-sm md:text-base">📺
+            演示视频：看一看娃语如何改变你的沟通体验</p>
     </div>
 </section>
 
 <!-- Core Highlight: Lock Screen -->
-<section class="py-16 px-6 bg-white">
+<section class="py-10 md:py-16 px-4 md:px-6 bg-white">
     <div class="max-w-5xl mx-auto">
-        <div class="flex flex-col md:flex-row items-center gap-12">
+        <div class="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             <div class="flex-1">
-                <h2 class="text-3xl font-bold mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
                     🌟 锁屏显示：点亮屏幕直接使用</h2>
-                <p class="text-gray-600 leading-relaxed mb-6">
+                <p class="text-gray-600 leading-relaxed mb-4 md:mb-6 text-sm md:text-base">
                     在变娃状态下，指纹识别和面部解锁几乎完全失效。在嘈杂的漫展或外景现场，频繁输入密码解锁手机极其痛苦。
                 </p>
-                <div class="bg-pink-50 p-6 rounded-2xl border border-pink-100">
-                    <p class="font-bold text-pink-900 mb-2 italic text-lg">
-                        “无需解锁，最懂你的痛点”</p>
-                    <p class="text-sm text-pink-700">
+                <div class="bg-pink-50 p-4 md:p-6 rounded-2xl border border-pink-100">
+                    <p class="font-bold text-pink-900 mb-2 italic text-base md:text-lg">
+                        "无需解锁，最懂你的痛点"</p>
+                    <p class="text-xs md:text-sm text-pink-700">
                         请授予软件在锁屏时显示的权限，部分厂商可能需要悬浮窗或应用上层权限</p>
                 </div>
             </div>
-            <div class="flex-1 flex justify-center gap-6">
+            <div class="flex-1 flex justify-center gap-4 md:gap-6">
                 <div class="screenshot-container">
                     <img src="screenshots/main.jpg" alt="主界面" class="screenshot-img">
                 </div>
@@ -133,17 +121,14 @@
 </section>
 
 <!-- Core Highlight: Social Card Profile -->
-<section class="py-16 px-6 bg-pink-50/10 border-t border-b border-pink-100/50">
+<section class="py-10 md:py-16 px-4 md:px-6 bg-pink-50/10 border-t border-b border-pink-100/50">
     <div class="max-w-5xl mx-auto">
-        <div class="flex flex-col md:flex-row-reverse items-center gap-12">
-            <div class="flex flex-col lg:flex-row items-center gap-12">
+        <div class="flex flex-col md:flex-row-reverse items-center gap-8 md:gap-12">
+            <div class="flex flex-col lg:flex-row items-center gap-8 md:gap-12">
                 <!-- Left Content: Text & Feature Details -->
-                <div class="flex-1 space-y-6">
-                    <div class="inline-flex items-center gap-2 bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">
-                        NEW FEATURE · 新功能
-                    </div>
-                    <h2 class="text-3xl font-bold mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
-                        📇 扩列卡片：展会面基快速扩列</span>
+                <div class="flex-1 space-y-4 md:space-y-6">
+                    <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
+                        📇 扩列卡片：展会面基快速扩列
                     </h2>
                     <p class="text-gray-600 leading-relaxed text-sm md:text-base">
                         在漫展、外景现场与同好交流时，打字和查找各个平台的个人主页往往极其繁琐。
@@ -153,17 +138,20 @@
                     <!-- Feature Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                         <div class="flex items-start gap-3">
-                            <div class="text-pink-500 mt-1"><i class="fas fa-address-book"></i></div>
+                            <div class="text-pink-500 mt-1"><i class="fas fa-address-book"></i>
+                            </div>
                             <div>
                                 <h4 class="font-bold text-gray-800 text-sm">多平台聚合展示</h4>
-                                <p class="text-xs text-gray-500">一屏配置包含 QQ、B站、微信、微博等多个社交平台账号的二维码。</p>
+                                <p class="text-xs text-gray-500">一屏配置包含
+                                    QQ、B站、微信、微博等多个社交平台账号的二维码。</p>
                             </div>
                         </div>
                         <div class="flex items-start gap-3">
                             <div class="text-pink-500 mt-1"><i class="fas fa-image"></i></div>
                             <div>
                                 <h4 class="font-bold text-gray-800 text-sm">自定义排版与二维码</h4>
-                                <p class="text-xs text-gray-500">支持自主上传头像，设置背景和形状，贴合角色人设，</p>
+                                <p class="text-xs text-gray-500">
+                                    支持自主上传头像，设置背景和形状，贴合角色人设，</p>
                             </div>
                         </div>
                     </div>
@@ -194,18 +182,18 @@
 </section>
 
 <!-- Core Highlight: Voice Model Import (Sherpa-Onnx) -->
-<section class="py-16 px-6 bg-white">
+<section class="py-10 md:py-16 px-4 md:px-6 bg-white">
     <div class="max-w-5xl mx-auto">
-        <div class="flex flex-col md:flex-row-reverse items-center gap-12">
+        <div class="flex flex-col md:flex-row-reverse items-center gap-8 md:gap-12">
             <div class="flex-1">
-                <h2 class="text-3xl font-bold mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-pink-600 border-l-4 border-pink-400 pl-4">
                     🎙️ 离线语音：变娃也能开口说话</h2>
-                <p class="text-gray-600 leading-relaxed mb-6">
+                <p class="text-gray-600 leading-relaxed mb-4 md:mb-6 text-sm md:text-base">
                     无需联网，不依赖第三方云端，完全离线运行保护隐私。集成 <b>Sherpa-Onnx</b>
                     引擎，支持在本地导入离线语音模型，赋予你的角色独特的发音质感。
                 </p>
-                <div class="space-y-4">
-                    <div class="bg-white p-5 rounded-2xl border border-pink-100 shadow-sm flex items-start gap-4">
+                <div class="space-y-3 md:space-y-4">
+                    <div class="bg-white p-4 md:p-5 rounded-2xl border border-pink-100 shadow-sm flex items-start gap-3 md:gap-4">
                         <div class="bg-pink-100 text-pink-500 rounded-lg p-2 mt-1">
                             <i class="fas fa-sliders-h"></i>
                         </div>
@@ -239,51 +227,107 @@
     </div>
 </section>
 
-<!-- Features Grid -->
-<section class="py-16 px-6 bg-pink-50/30">
-    <div class="max-w-5xl mx-auto text-center mb-12">
-        <h2 class="text-3xl font-bold text-gray-800">✨ 功能特性</h2>
+<!-- Core Highlight: Lightweight Web Version -->
+<section class="py-10 md:py-16 px-4 md:px-6 bg-pink-50/10 border-t border-b border-pink-100/50">
+    <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+            <!-- Left: Text Content -->
+            <div class="flex-1 order-2 md:order-1">
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 text-pink-600 border-l-4 border-pink-400 pl-4">
+                    ☁ 云·娃语：全平台即开即用</h2>
+                <p class="text-gray-600 leading-relaxed mb-5 text-sm md:text-base">
+                    适用于无法安装原生 Android 应用的 IOS 等用户，打开浏览器即可使用，覆盖核心沟通功能，方便快捷。
+                </p>
+                <div class="bg-blue-50 p-4 md:p-5 rounded-2xl border border-blue-100 mb-6">
+                    <p class="font-bold text-blue-900 mb-1 text-sm md:text-base">💡
+                        将应用添加到主屏幕</p>
+                    <p class="text-xs md:text-sm text-blue-700">
+                        点击浏览器菜单按钮，将「云·娃语」添加到桌面，断网也可用，获得类原生应用体验。</p>
+                </div>
+                <a href="https://tairan4356.github.io/KigHelper-Cloud" target="_blank"
+                   class="inline-flex items-center justify-center bg-pink-500 hover:bg-pink-600 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all text-sm md:text-base">
+                    <i class="fas fa-rocket mr-2"></i>立即体验网页端
+                </a>
+            </div>
+
+            <!-- Right: iPhone Frame with Screenshot + Clouds -->
+            <div class="flex-1 order-1 md:order-2 flex justify-center items-center relative py-6 min-h-[340px]">
+                <!-- Subtle glow -->
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-300 to-pink-300 rounded-full filter blur-3xl opacity-15 transform scale-75"></div>
+
+                <!-- iPhone Frame -->
+                <div class="relative z-10">
+                    <div class="iphone-frame">
+                        <div class="iphone-screen">
+                            <img src="screenshots/cloud.jpg" alt="网页版界面"
+                                 class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <!-- Clouds around iPhone -->
+                    <div class="cloud absolute -top-4 -left-8 text-3xl opacity-80 pointer-events-none select-none">
+                        ☁️
+                    </div>
+                    <div class="cloud absolute -bottom-6 -left-6 text-5xl md:text-6xl opacity-80 pointer-events-none select-none"
+                         style="animation-delay:-2s;">☁️
+                    </div>
+                    <div class="cloud absolute bottom-8 -right-10 text-5xl md:text-6xl opacity-80 pointer-events-none select-none"
+                         style="animation-delay:-0.5s;">☁️
+                    </div>
+                    <div class="cloud absolute -top-2 -right-10 text-2xl opacity-80 pointer-events-none select-none"
+                         style="animation-delay:-1s;">☁️
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-        <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-pink-100">
-            <div class="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center text-pink-500 text-xl mb-6 mx-auto md:mx-0">
+</section>
+
+<!-- Features Grid -->
+<section class="py-10 md:py-16 px-4 md:px-6 bg-pink-50/30">
+    <div class="max-w-5xl mx-auto text-center mb-8 md:mb-12">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-800">✨ 功能特性</h2>
+    </div>
+    <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-center md:text-left">
+        <div class="feature-card bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-pink-100">
+            <div class="bg-pink-100 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-pink-500 text-lg md:text-xl mb-4 md:mb-6 mx-auto md:mx-0">
                 <i class="fas fa-bell"></i>
             </div>
-            <h3 class="text-xl font-bold mb-3">实况通知与状态栏上岛</h3>
-            <p class="text-gray-500 text-sm leading-relaxed">
-                常驻后台时自动转换为静默实况通知，兼容各品牌系统的灵动岛、状态栏胶囊等设计，实现“秒回”应用。
+            <h3 class="text-lg md:text-xl font-bold mb-2 md:mb-3">实况通知与状态栏上岛</h3>
+            <p class="text-gray-500 text-xs md:text-sm leading-relaxed">
+                常驻后台时自动转换为静默实况通知，兼容各品牌系统的灵动岛、状态栏胶囊等设计，实现"秒回"应用。
             </p>
         </div>
-        <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-pink-100">
-            <div class="bg-rose-100 w-12 h-12 rounded-xl flex items-center justify-center text-rose-500 text-xl mb-6 mx-auto md:mx-0">
+        <div class="feature-card bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-pink-100">
+            <div class="bg-rose-100 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-rose-500 text-lg md:text-xl mb-4 md:mb-6 mx-auto md:mx-0">
                 <i class="fas fa-comment-dots"></i>
             </div>
-            <h3 class="text-xl font-bold mb-3">短语分组</h3>
-            <p class="text-gray-500 text-sm leading-relaxed">
+            <h3 class="text-lg md:text-xl font-bold mb-2 md:mb-3">短语分组</h3>
+            <p class="text-gray-500 text-xs md:text-sm leading-relaxed">
                 支持用户自定义短语分组，快速切换不同场景的常用语库，满足漫展、外景、日常等多样化沟通需求。
             </p>
         </div>
-        <div class="feature-card bg-white p-8 rounded-3xl shadow-sm border border-pink-100">
-            <div class="bg-fuchsia-100 w-12 h-12 rounded-xl flex items-center justify-center text-fuchsia-500 text-xl mb-6 mx-auto md:mx-0">
+        <div class="feature-card bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-pink-100">
+            <div class="bg-fuchsia-100 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-fuchsia-500 text-lg md:text-xl mb-4 md:mb-6 mx-auto md:mx-0">
                 <i class="fas fa-wand-magic-sparkles"></i>
             </div>
-            <h3 class="text-xl font-bold mb-3">动态配色</h3>
-            <p class="text-gray-500 text-sm leading-relaxed">基于 Material 3 开发，支持 Android 12+
+            <h3 class="text-lg md:text-xl font-bold mb-2 md:mb-3">动态配色</h3>
+            <p class="text-gray-500 text-xs md:text-sm leading-relaxed">基于 Material 3 开发，支持
+                Android 12+
                 动态壁纸取色，美观且现代化。</p>
         </div>
     </div>
 </section>
 
 <!-- Community Section -->
-<section class="py-16 px-6 bg-white">
+<section class="py-10 md:py-16 px-4 md:px-6 bg-white">
     <div class="max-w-4xl mx-auto text-center">
-        <h2 class="text-3xl font-bold mb-6 text-pink-600">
+        <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-pink-600">
             <i class="fas fa-users mr-3"></i>同好交流群
         </h2>
-        <p class="text-gray-600 max-w-2xl mx-auto mb-10 text-sm md:text-base">
-            欢迎加入官方群组，这里可供 Kiger 同好交流使用体验、反馈新需求，或者分享和讨论你调制的专属角色离线语音声线。
+        <p class="text-gray-600 max-w-2xl mx-auto mb-6 md:mb-10 text-sm md:text-base">
+            欢迎加入官方群组，交流使用体验、反馈新需求，或分享你调制的专属角色离线语音声线。
         </p>
-        <div class="flex flex-col md:flex-row items-center justify-center gap-10 bg-pink-50/50 p-8 rounded-3xl border border-pink-100 max-w-2xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 bg-pink-50/50 p-5 md:p-8 rounded-3xl border border-pink-100 max-w-2xl mx-auto">
             <div class="w-44 h-44 bg-white p-3 rounded-2xl shadow-sm border border-pink-100 flex flex-col justify-between items-center">
                 <img src="qrcode.jpg" alt="QQ群二维码"
                      class="w-36 h-36 object-cover rounded-lg"
@@ -292,7 +336,7 @@
             </div>
             <div class="text-left flex-1 space-y-4 w-full">
                 <div>
-                    <h4 class="font-bold text-gray-800 text-lg">娃语内测反馈群</h4>
+                    <h4 class="font-bold text-gray-800 text-lg">娃语 | KiguSay 内测反馈群</h4>
                     <p class="text-sm text-gray-500 mt-1">
                         群号：<span
                             class="font-mono bg-pink-100 text-pink-600 px-2 py-0.5 rounded font-bold text-sm">1103795582</span>
@@ -300,7 +344,7 @@
                 </div>
                 <a href="https://qm.qq.com/q/qqN05HHWDK" target="_blank"
                    class="inline-flex items-center justify-center bg-pink-500 hover:bg-pink-600 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all text-sm w-full sm:w-auto">
-                    <i class="fab fa-qq mr-2"></i>一键唤醒 QQ 加群
+                    <i class="fab fa-qq mr-2"></i>加入群聊
                 </a>
             </div>
         </div>
@@ -308,12 +352,12 @@
 </section>
 
 <!-- Roadmap -->
-<section class="py-20 px-6 bg-gray-900 text-white">
+<section class="py-12 md:py-20 px-4 md:px-6 bg-gray-900 text-white">
     <div class="max-w-4xl mx-auto">
-        <h2 class="text-3xl font-bold mb-10 flex items-center justify-center text-pink-300">
-            <i class="fas fa-list-check mr-4 text-pink-400"></i> TODO 路线图
+        <h2 class="text-2xl md:text-3xl font-bold mb-6 md:mb-10 flex items-center justify-center text-pink-300">
+            <i class="fas fa-list-check mr-3 md:mr-4 text-pink-400"></i> TODO 路线图
         </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             <div class="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/10">
                 <i class="far fa-circle text-pink-500"></i>
                 <span>多语言支持</span>
@@ -343,12 +387,12 @@
 </section>
 
 <!-- Contributors Section -->
-<section class="py-16 px-6 bg-pink-50/20 border-t border-pink-100/30">
+<section class="py-10 md:py-16 px-4 md:px-6 bg-pink-50/20 border-t border-pink-100/30">
     <div class="max-w-4xl mx-auto text-center">
-        <h2 class="text-3xl font-bold mb-6 text-pink-600">
+        <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-pink-600">
             <i class="fas fa-handshake mr-3"></i>特别鸣谢与贡献者
         </h2>
-        <p class="text-gray-600 max-w-2xl mx-auto mb-10 text-sm">
+        <p class="text-gray-600 max-w-2xl mx-auto mb-6 md:mb-10 text-xs md:text-sm">
             感谢以下伙伴通过代码提交、问题反馈或意见建议等方式对娃语提供的无私帮助（排名不分先后）
         </p>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 max-w-4xl mx-auto justify-center">
@@ -401,14 +445,14 @@
 </section>
 
 <!-- Footer -->
-<footer class="py-12 px-6 bg-gray-900 text-center text-gray-400 text-sm">
-    <div class="max-w-4xl mx-auto border-t border-white/10 pt-8">
-        <p class="mb-4">献给所有热爱 Kigurumi 文化的同好，以及每一个在沉默中努力沟通的灵魂。</p>
+<footer class="py-8 md:py-12 px-4 md:px-6 bg-gray-900 text-center text-gray-400 text-xs md:text-sm">
+    <div class="max-w-4xl mx-auto border-t border-white/10 pt-6 md:pt-8">
+        <p class="mb-3 md:mb-4">献给所有热爱 Kigurumi
+            文化的同好，以及每一个在沉默中努力沟通的灵魂。</p>
         <p>© 2026 KigHelper Project | <a
                 href="https://github.com/Tairan4356/KigHelper/blob/main/LICENSE"
                 class="underline hover:text-pink-300 transition-colors">GPL v3 License</a></p>
     </div>
 </footer>
-
 </body>
 </html>

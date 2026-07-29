@@ -15,11 +15,11 @@ android {
 
     defaultConfig {
         applicationId = "com.ziegler.kighelper"
-        minSdk = 26
+        minSdk = 28
         //noinspection OldTargetApi
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.3.0"
+        versionCode = 8
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resConfigs("zh", "ja", "en")

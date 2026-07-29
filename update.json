@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "1.3.0",
-  "updateContent": "扩列卡片\n1. 工具页面新增扩列卡片功能\n2. 支持自定义文字内容\n3. 支持自定义背景\n4. 支持自定义头像和形状\n5. 支持展示多个平台的二维码",
+  "versionCode": 8,
+  "versionName": "1.3.1",
+  "updateContent": "1. 工具页面新增社交平台拉起按钮\n2. 设置页面新增字体修改\n3. 设置页面新增声音播放设备选择\n4. 优化了主页面的交互逻辑\n5. 优化了扩列卡片的显示逻辑",
   "downloadUrl": "https://tairan4356.github.io/KigHelper/"
 }
