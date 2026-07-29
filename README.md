@@ -5,7 +5,7 @@
 [![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-orange.svg)](https://developer.android.com/jetpack/compose)
 [![License](https://img.shields.io/badge/License-GPL%20v3-lightgrey.svg)](LICENSE)
 
-## 💡 「云·娃语」已上线！不限设备，[点击即用](https://tairan4356.github.io/KigHelper-Cloud)！
+## 💡 「云·娃语」已上线！不限设备，[点击即用](https://kighelper-cloud.pages.dev)！
 
 此应用的初衷，是为了 Kiger 们方便与他人进行快速高效的沟通。用户可以通过点击预设的卡片，快速在屏幕上显示大字体文字并同步通过语音朗读。
 
