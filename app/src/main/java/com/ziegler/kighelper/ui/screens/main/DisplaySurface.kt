@@ -65,14 +65,26 @@ internal fun DisplaySurface(
     modifier: Modifier = Modifier,
     layoutMode: DisplaySurfaceLayoutMode = DisplaySurfaceLayoutMode.Portrait,
     onClick: (() -> Unit)? = null,
-    fontSizeMultiplier: Float = 1.0f
+    fontSizeMultiplier: Float = 1.0f,
+    displayColorInverted: Boolean = false
 ) {
+    val surfaceColor = if (displayColorInverted) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val textColor = if (displayColorInverted) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onPrimary
+    }
+
     Surface(
         modifier = modifier
             .fillMaxSize()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.primary,
+        color = surfaceColor,
         tonalElevation = 8.dp,
         shadowElevation = 4.dp
     ) {
@@ -109,12 +121,9 @@ internal fun DisplaySurface(
                         .verticalScroll(scrollState), contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = targetText,
-                        style = displayTextStyle.copy(
+                        text = targetText, style = displayTextStyle.copy(
                             fontSize = scaledFontSize, lineHeight = lineHeight
-                        ),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(
+                        ), textAlign = TextAlign.Center, color = textColor.copy(
                             alpha = if (currentTextIsHint) 0.55f else 1f
                         )
                     )
@@ -123,16 +132,12 @@ internal fun DisplaySurface(
 
             if (text.isNotEmpty()) {
                 IconButton(
-                    onClick = onClear, modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape
-                        )
+                    onClick = onClear, modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "清除",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = textColor
                     )
                 }
             }

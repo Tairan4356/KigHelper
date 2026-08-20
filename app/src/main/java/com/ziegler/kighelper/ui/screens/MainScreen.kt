@@ -59,10 +59,10 @@ fun MainScreen(
     onClearClick: () -> Unit,
     onAddPhrase: (label: String, speech: String) -> Unit,
     onDeletePhrase: (Phrase) -> Unit,
-    onUpdatePhrase: (phrase: Phrase, label: String, speech: String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
     fontSize: Float = 1.0f,
     hapticFeedback: Boolean = true,
+    displayColorInverted: Boolean = false,
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -150,7 +150,8 @@ fun MainScreen(
                 onDeletePhrase = onDeletePhrase,
                 onNavigateToEdit = onNavigateToEdit,
                 fontSizeMultiplier = fontSize,
-                hapticFeedback = hapticFeedback
+                hapticFeedback = hapticFeedback,
+                displayColorInverted = displayColorInverted
             )
         }
 
@@ -170,7 +171,9 @@ fun MainScreen(
                     onClearClick()
                     onFullScreenChange(false)
                 },
-                onClick = { onFullScreenChange(false) })
+                onClick = { onFullScreenChange(false) },
+                displayColorInverted = displayColorInverted
+            )
         }
     }
 }

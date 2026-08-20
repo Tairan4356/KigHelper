@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
@@ -16,9 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 
 @Composable
 fun SettingSlider(
@@ -45,20 +47,14 @@ fun SettingSlider(
             }
         }
         Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            steps = steps
+            value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps
         )
     }
 }
 
 @Composable
 fun SettingSwitch(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -74,26 +70,20 @@ fun SettingSwitch(
             )
         }
         Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
+            checked = checked, onCheckedChange = onCheckedChange
         )
     }
 }
 
 @Composable
 fun SettingRadioButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = modifier, verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(
-            selected = selected,
-            onClick = onClick
+            selected = selected, onClick = onClick
         )
         Text(
             text = label,
@@ -106,27 +96,54 @@ fun SettingRadioButton(
 @Composable
 fun SettingSection(
     title: String,
+    icon: ImageVector? = null,
+    showDivider: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    Column {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        if (icon != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 18.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.padding(start = 8.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        } else {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
         content()
-        Spacer(modifier = Modifier.height(16.dp))
+        if (showDivider) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
+        }
     }
 }
 
 @Composable
 fun SettingDropdownMenuItem(
-    text: String,
-    onClick: () -> Unit
+    text: String, onClick: () -> Unit
 ) {
     DropdownMenuItem(
-        text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
-        onClick = onClick
+        text = { Text(text, style = MaterialTheme.typography.bodyMedium) }, onClick = onClick
     )
 }

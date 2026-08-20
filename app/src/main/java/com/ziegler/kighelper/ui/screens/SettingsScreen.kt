@@ -1,6 +1,7 @@
 package com.ziegler.kighelper.ui.screens
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -15,17 +16,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.TextFormat
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,13 +40,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.SettingsViewModel
 import com.ziegler.kighelper.ui.components.ColorPickerDialog
@@ -109,12 +112,12 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding), contentPadding = PaddingValues(
-                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp
-            ), verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                SettingSection(title = "字体") {
+                SettingSection(title = "字体", icon = Icons.Filled.TextFormat) {
                     FontTypeSelector(
                         selectedType = settings.fontType, onTypeSelected = { type, baseName ->
                             viewModel.updateFontType(type)
@@ -187,22 +190,26 @@ fun SettingsScreen(
             }
 
             item {
-                SettingSection(title = "颜色模式") {
+                SettingSection(title = "外观", icon = Icons.Filled.Palette) {
+                    Text(
+                        "颜色模式",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                    )
                     DarkModeOptions(
                         selectedMode = settings.darkMode, onModeSelected = viewModel::updateDarkMode
                     )
-                }
-            }
-
-            item {
-                var showColorPicker by remember { mutableStateOf(false) }
-
-                SettingSection(title = "主题颜色") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "主题颜色",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                    )
+                    var showColorPicker by remember { mutableStateOf(false) }
                     ColorModeSelector(
                         colorMode = settings.colorMode,
                         onColorModeChange = viewModel::updateColorMode
                     )
-
                     if (settings.colorMode == 1) {
                         Spacer(modifier = Modifier.height(12.dp))
                         PresetColorGrid(
@@ -210,51 +217,67 @@ fun SettingsScreen(
                             onColorSelected = viewModel::updatePresetColorIndex
                         )
                     }
-
                     if (settings.colorMode == 2) {
                         Spacer(modifier = Modifier.height(12.dp))
                         CustomColorSelector(
                             customColor = settings.customColor,
                             onClick = { showColorPicker = true })
                     }
-                }
-
-                if (showColorPicker) {
-                    ColorPickerDialog(
-                        initialColor = settings.customColor,
-                        onColorSelected = { color ->
-                            viewModel.updateCustomColor(color)
-                            showColorPicker = false
-                        },
-                        onDismiss = { showColorPicker = false })
+                    if (showColorPicker) {
+                        ColorPickerDialog(
+                            initialColor = settings.customColor,
+                            onColorSelected = { color ->
+                                viewModel.updateCustomColor(color)
+                                showColorPicker = false
+                            },
+                            onDismiss = { showColorPicker = false })
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SettingSwitch(
+                        title = "反转文字显示区颜色",
+                        subtitle = "文字显示区背景为浅色，文字颜色为深色",
+                        checked = settings.displayColorInverted,
+                        onCheckedChange = viewModel::updateDisplayColorInverted
+                    )
                 }
             }
 
             item {
-                SettingSection(title = "播放设备") {
+                SettingSection(title = "系统", icon = Icons.Filled.Tune) {
+                    Text(
+                        "播放设备",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     PlaybackDeviceSelector(
                         selectedDeviceId = settings.playbackDeviceId,
                         devices = playbackDevices,
                         onDeviceSelected = viewModel::updatePlaybackDevice,
                         onTestDevice = onTestDevice
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "选择应用播放语音或音频时使用的输出设备",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-
-            item {
-                SettingSection(title = "功能开关") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "功能",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     SettingSwitch(
                         title = "触感反馈",
                         subtitle = "点击短语时震动",
                         checked = settings.hapticFeedback,
                         onCheckedChange = viewModel::updateHapticFeedback
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            item {
+                SettingSection(title = "权限", icon = Icons.Filled.Security, showDivider = false) {
                     SettingSwitch(
                         title = "通知显示",
                         subtitle = "应用置于后台时显示通知",
@@ -268,7 +291,7 @@ fun SettingsScreen(
                         checked = settings.lockScreenEnabled,
                         onCheckedChange = viewModel::updateLockScreenEnabled
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -286,9 +309,7 @@ fun SettingsScreen(
                         TextButton(onClick = {
                             try {
                                 context.startActivity(
-                                    WindowConfig.getOverlayPermissionIntent(
-                                        context
-                                    )
+                                    WindowConfig.getOverlayPermissionIntent(context)
                                 )
                                 val appName =
                                     context.applicationInfo.loadLabel(context.packageManager)
@@ -307,7 +328,8 @@ fun SettingsScreen(
                     }
                     Text(
                         "不同机型的系统权限设置存在差异，请根据实际情况手动开启锁屏显示、应用上层或悬浮窗等相关权限。",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -335,4 +357,3 @@ fun SettingsScreen(
             onDismiss = { showFontManagementDialog = false })
     }
 }
-

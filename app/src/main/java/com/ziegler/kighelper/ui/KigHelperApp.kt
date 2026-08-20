@@ -181,14 +181,12 @@ fun KigHelperApp(
                         },
                         onAddPhrase = viewModel::addPhrase,
                         onDeletePhrase = viewModel::deletePhrase,
-                        onUpdatePhrase = { phrase, label, speech ->
-                            viewModel.updatePhrase(phrase.id, label, speech)
-                        },
                         onNavigateToEdit = { phraseId ->
                             navController.navigate(AppRoutes.addEditRoute(phraseId))
                         },
                         fontSize = settings.fontSize,
-                        hapticFeedback = settings.hapticFeedback
+                        hapticFeedback = settings.hapticFeedback,
+                        displayColorInverted = settings.displayColorInverted
                     )
                 }
 

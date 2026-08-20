@@ -8,7 +8,6 @@ import com.ziegler.kighelper.data.AppSettings
 import com.ziegler.kighelper.data.FontCatalog
 import com.ziegler.kighelper.data.FontCatalogItem
 import com.ziegler.kighelper.data.FontRepository
-import com.ziegler.kighelper.data.FontWeightInfo
 import com.ziegler.kighelper.data.PlaybackDevice
 import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.data.SettingsRepository
@@ -137,40 +136,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun downloadSingleWeight(font: FontCatalogItem, weight: FontWeightInfo) {
-        if (_downloadState.value.isDownloading) return
-
-        viewModelScope.launch {
-            _downloadState.value = FontDownloadState(
-                isDownloading = true,
-                currentFont = font.displayName,
-                currentWeight = weight.label,
-                totalWeights = 1
-            )
-
-            val result = fontRepository.downloadFontFile(font, weight) { progress ->
-                _downloadState.update { it.copy(progress = progress) }
-            }
-
-            result.onSuccess {
-                _downloadState.update {
-                    it.copy(
-                        isDownloading = false, completedWeights = 1, progress = 1f
-                    )
-                }
-                refreshInstalledFonts()
-            }
-
-            result.onFailure { error ->
-                _downloadState.update {
-                    it.copy(
-                        isDownloading = false, error = error.message ?: "Download failed"
-                    )
-                }
-            }
-        }
-    }
-
     fun deleteFont(font: FontCatalogItem) {
         viewModelScope.launch {
             fontRepository.deleteFont(font)
@@ -275,5 +240,9 @@ class SettingsViewModel @Inject constructor(
 
     fun updateLockScreenEnabled(enabled: Boolean) {
         settingsRepository.updateLockScreenEnabled(enabled)
+    }
+
+    fun updateDisplayColorInverted(inverted: Boolean) {
+        settingsRepository.updateDisplayColorInverted(inverted)
     }
 }

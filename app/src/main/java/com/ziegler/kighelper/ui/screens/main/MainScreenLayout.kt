@@ -50,7 +50,8 @@ fun MainScreenLayout(
     onDeletePhrase: (Phrase) -> Unit,
     onNavigateToEdit: (String) -> Unit,
     fontSizeMultiplier: Float = 1.0f,
-    hapticFeedback: Boolean = true
+    hapticFeedback: Boolean = true,
+    displayColorInverted: Boolean = false
 ) {
     if (state.isLandscape) {
         LandscapeLayout(
@@ -62,7 +63,8 @@ fun MainScreenLayout(
             onDeletePhrase = onDeletePhrase,
             onNavigateToEdit = onNavigateToEdit,
             fontSizeMultiplier = fontSizeMultiplier,
-            hapticFeedback = hapticFeedback
+            hapticFeedback = hapticFeedback,
+            displayColorInverted = displayColorInverted
         )
     } else {
         PortraitLayout(
@@ -74,7 +76,8 @@ fun MainScreenLayout(
             onDeletePhrase = onDeletePhrase,
             onNavigateToEdit = onNavigateToEdit,
             fontSizeMultiplier = fontSizeMultiplier,
-            hapticFeedback = hapticFeedback
+            hapticFeedback = hapticFeedback,
+            displayColorInverted = displayColorInverted
         )
     }
 }
@@ -93,7 +96,8 @@ private fun LandscapeLayout(
     onDeletePhrase: (Phrase) -> Unit,
     onNavigateToEdit: (String) -> Unit,
     fontSizeMultiplier: Float = 1.0f,
-    hapticFeedback: Boolean = true
+    hapticFeedback: Boolean = true,
+    displayColorInverted: Boolean = false
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -127,7 +131,8 @@ private fun LandscapeLayout(
                     { state.onFullScreenChange(true) }
                 } else null,
                 modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                fontSizeMultiplier = fontSizeMultiplier)
+                fontSizeMultiplier = fontSizeMultiplier,
+                displayColorInverted = displayColorInverted)
         }
 
         Box(modifier = Modifier.weight(1f)) {
@@ -157,7 +162,8 @@ private fun PortraitLayout(
     onDeletePhrase: (Phrase) -> Unit,
     onNavigateToEdit: (String) -> Unit,
     fontSizeMultiplier: Float = 1.0f,
-    hapticFeedback: Boolean = true
+    hapticFeedback: Boolean = true,
+    displayColorInverted: Boolean = false
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -212,7 +218,8 @@ private fun PortraitLayout(
                     { state.onFullScreenChange(true) }
                 } else null,
                 modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                fontSizeMultiplier = fontSizeMultiplier)
+                fontSizeMultiplier = fontSizeMultiplier,
+                displayColorInverted = displayColorInverted)
         }
 
         Spacer(Modifier.height(16.dp))

@@ -21,6 +21,7 @@ data class AppSettings(
     val hapticFeedback: Boolean = true,
     val notificationEnabled: Boolean = true,
     val lockScreenEnabled: Boolean = false,
+    val displayColorInverted: Boolean = false,
     val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID,
     val selectedCustomFont: String? = null
 )
@@ -43,6 +44,7 @@ class SettingsRepository @Inject constructor(
         const val HAPTIC_FEEDBACK = "haptic_feedback"
         const val NOTIFICATION_ENABLED = "notification_enabled"
         const val LOCK_SCREEN_ENABLED = "lock_screen_enabled"
+        const val DISPLAY_COLOR_INVERTED = "display_color_inverted"
         const val PLAYBACK_DEVICE_ID = "playback_device_id"
         const val SELECTED_CUSTOM_FONT = "selected_custom_font"
     }
@@ -62,6 +64,7 @@ class SettingsRepository @Inject constructor(
             hapticFeedback = prefs.getBoolean(Keys.HAPTIC_FEEDBACK, true),
             notificationEnabled = prefs.getBoolean(Keys.NOTIFICATION_ENABLED, true),
             lockScreenEnabled = prefs.getBoolean(Keys.LOCK_SCREEN_ENABLED, false),
+            displayColorInverted = prefs.getBoolean(Keys.DISPLAY_COLOR_INVERTED, false),
             playbackDeviceId = prefs.getInt(
                 Keys.PLAYBACK_DEVICE_ID, PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID
             ),
@@ -120,6 +123,11 @@ class SettingsRepository @Inject constructor(
 
     fun updateLockScreenEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Keys.LOCK_SCREEN_ENABLED, enabled) }
+        saveAndEmit()
+    }
+
+    fun updateDisplayColorInverted(inverted: Boolean) {
+        prefs.edit { putBoolean(Keys.DISPLAY_COLOR_INVERTED, inverted) }
         saveAndEmit()
     }
 
