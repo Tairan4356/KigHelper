@@ -3,6 +3,7 @@ package com.ziegler.kighelper.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +41,13 @@ private val LightColorScheme = lightColorScheme(
     onBackground = Color(0xFF1C1B1F),
     onSurface = Color(0xFF1C1B1F)
 )
+
+@Composable
+private fun seedColorScheme(seedColor: Color, isDark: Boolean): ColorScheme {
+    val base = rememberDynamicColorScheme(seedColor = seedColor, isDark = isDark)
+    val onPrimary = if (seedColor.luminance() > 0.5f) Color.Black else Color.White
+    return base.copy(primary = seedColor, onPrimary = onPrimary)
+}
 
 @Composable
 fun KigHelperTheme(
@@ -72,15 +81,15 @@ fun KigHelperTheme(
         }
 
         1 -> {
-            // 预设颜色 - 使用 MaterialKolor 生成完整调色板
+            // 预设颜色 - 所选颜色直接作为 primary，其余由 MaterialKolor 生成
             val seedColor = PresetColors[presetColorIndex.coerceIn(0, PresetColors.lastIndex)]
-            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
+            seedColorScheme(seedColor = seedColor, isDark = darkTheme)
         }
 
         2 -> {
-            // 自定义颜色 - 使用 MaterialKolor 生成完整调色板
+            // 自定义颜色 - 所选颜色直接作为 primary，其余由 MaterialKolor 生成
             val seedColor = Color(customColor.toInt())
-            rememberDynamicColorScheme(seedColor = seedColor, isDark = darkTheme)
+            seedColorScheme(seedColor = seedColor, isDark = darkTheme)
         }
 
         else -> {
