@@ -57,6 +57,7 @@ import com.ziegler.kighelper.ui.screens.edit.ExportResult
 import com.ziegler.kighelper.ui.screens.edit.PhraseExportDialog
 import com.ziegler.kighelper.ui.screens.edit.PhraseExportResultDialog
 import com.ziegler.kighelper.ui.screens.edit.PhraseImportDialog
+import com.ziegler.kighelper.ui.screens.onboarding.OnboardingScreen
 import com.ziegler.kighelper.ui.screens.edit.exportPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.importPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.openExportDirectory
@@ -82,11 +83,13 @@ fun KigHelperApp(
     settingsViewModel: SettingsViewModel,
     socialCardViewModel: SocialCardViewModel,
     notificationHelper: NotificationHelper,
+    onboardingViewModel: OnboardingViewModel,
     onSpeak: (String) -> Unit,
     onStop: () -> Unit,
     onPhraseSpoken: (Phrase) -> Unit = {},
     onPlayAudio: (String) -> Unit = {},
-    onTestDevice: (Int) -> Unit = {}
+    onTestDevice: (Int) -> Unit = {},
+    initialRoute: String? = null
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -122,7 +125,7 @@ fun KigHelperApp(
             }) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = AppRoutes.MAIN,
+                startDestination = initialRoute ?: AppRoutes.MAIN,
                 modifier = Modifier.fillMaxSize(),
                 enterTransition = {
                     slideIntoContainer(
@@ -148,6 +151,30 @@ fun KigHelperApp(
                         animationSpec = tween(NavTransitionDurationMillis)
                     )
                 }) {
+                composable(AppRoutes.ONBOARDING) {
+                    OnboardingScreen(
+                        onboardingViewModel = onboardingViewModel,
+                        settingsViewModel = settingsViewModel,
+                        mainViewModel = viewModel,
+                        socialCardViewModel = socialCardViewModel,
+                        onComplete = { route ->
+                            onboardingViewModel.completeOnboarding()
+                            if (route != null) {
+                                navController.navigate(route) {
+                                    popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(AppRoutes.MAIN) {
+                                    popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
+                                }
+                            }
+                        },
+                        onNavigateToRoute = { route ->
+                            navController.navigate(route)
+                        }
+                    )
+                }
+
                 composable(AppRoutes.MAIN) {
                     val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
                     val groups by viewModel.groupList.collectAsStateWithLifecycle()

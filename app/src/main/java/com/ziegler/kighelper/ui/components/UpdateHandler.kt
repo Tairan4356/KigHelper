@@ -21,32 +21,37 @@ import com.ziegler.kighelper.utils.UpdateManager
 import kotlinx.coroutines.launch
 
 @Composable
-fun UpdateHandler(viewModel: UpdateViewModel = viewModel()) {
+fun UpdateHandler(
+    viewModel: UpdateViewModel = viewModel(),
+    suppressDialog: Boolean = false
+) {
     val context = LocalContext.current
 
     LaunchedEffect(viewModel) {
         viewModel.checkUpdateOnce(context)
     }
 
-    viewModel.updateInfo?.let { info ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissUpdate() },
-            title = { Text("发现新版本 v${info.versionName}") },
-            text = { Text(info.updateContent) },
-            confirmButton = {
-                Button(onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, info.downloadUrl.toUri())
-                    context.startActivity(intent)
-                    viewModel.dismissUpdate()
-                }) {
-                    Text("更新")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissUpdate() }) {
-                    Text("暂不")
-                }
-            })
+    if (!suppressDialog) {
+        viewModel.updateInfo?.let { info ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissUpdate() },
+                title = { Text("发现新版本 v${info.versionName}") },
+                text = { Text(info.updateContent) },
+                confirmButton = {
+                    Button(onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, info.downloadUrl.toUri())
+                        context.startActivity(intent)
+                        viewModel.dismissUpdate()
+                    }) {
+                        Text("更新")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissUpdate() }) {
+                        Text("暂不")
+                    }
+                })
+        }
     }
 }
 

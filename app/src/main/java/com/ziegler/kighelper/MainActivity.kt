@@ -14,17 +14,24 @@ import androidx.annotation.RequiresApi
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ziegler.kighelper.data.OnboardingState
 import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.ui.KigHelperApp
 import com.ziegler.kighelper.ui.MainViewModel
+import com.ziegler.kighelper.ui.OnboardingViewModel
 import com.ziegler.kighelper.ui.SettingsViewModel
 import com.ziegler.kighelper.ui.SocialCardViewModel
 import com.ziegler.kighelper.ui.VoiceViewModel
 import com.ziegler.kighelper.ui.components.PermissionHandler
 import com.ziegler.kighelper.ui.components.PreviewDialog
 import com.ziegler.kighelper.ui.components.UpdateHandler
+import com.ziegler.kighelper.ui.navigation.AppRoutes
 import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.AudioPlayerManager
 import com.ziegler.kighelper.utils.NotificationHelper
@@ -57,6 +64,7 @@ class MainActivity : ComponentActivity() {
     private val voiceViewModel: VoiceViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val socialCardViewModel: SocialCardViewModel by viewModels()
+    private val onboardingViewModel: OnboardingViewModel by viewModels()
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -77,9 +85,15 @@ class MainActivity : ComponentActivity() {
         registerScreenReceiver()
 
         setContent {
+            PreviewDialog() // 开发版本提示
+
             val windowSizeClass = calculateWindowSizeClass(this)
             val settingsState = settingsViewModel.settings.collectAsStateWithLifecycle()
             val settings = settingsState.value
+
+            val initialRoute = remember {
+                if (OnboardingState.isCompleted(this)) AppRoutes.MAIN else AppRoutes.ONBOARDING
+            }
 
             // 根据锁屏显示设置控制窗口标志
             LaunchedEffect(settings.lockScreenEnabled) {
@@ -102,8 +116,7 @@ class MainActivity : ComponentActivity() {
                 selectedCustomFont = settings.selectedCustomFont
             ) {
                 PermissionHandler() // 检查必要权限（通知、悬浮窗）
-                UpdateHandler() // 处理版本更新提示
-                PreviewDialog() // 开发版本提示
+                UpdateHandler(suppressDialog = initialRoute == AppRoutes.ONBOARDING) // 引导页不显示升级弹窗
 
                 KigHelperApp(
                     windowSize = windowSizeClass,
@@ -112,6 +125,8 @@ class MainActivity : ComponentActivity() {
                     settingsViewModel = settingsViewModel,
                     socialCardViewModel = socialCardViewModel,
                     notificationHelper = notificationHelper,
+                    onboardingViewModel = onboardingViewModel,
+                    initialRoute = initialRoute,
                     onSpeak = { text ->
                         audioPlayerManager.stop()
                         ttsManager.speak(text, voiceViewModel.activeProfile)
@@ -121,8 +136,6 @@ class MainActivity : ComponentActivity() {
                         audioPlayerManager.stop()
                     },
                     onPhraseSpoken = { phrase ->
-                        // 当短语被使用时更新通知
-                        // 传递 label 用于显示，speech 用于 TTS 播放
                         notificationHelper.showSilentLockScreenNotification(
                             phraseLabel = phrase.label, phraseSpeech = phrase.speech
                         )

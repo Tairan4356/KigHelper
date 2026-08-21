@@ -21,6 +21,7 @@ object AppRoutes {
     const val ABOUT = "about"
     const val SETTINGS = "settings"
     const val SOCIAL_CARD_EDIT = "social_card_edit"
+    const val ONBOARDING = "onboarding"
 
     const val ADD_EDIT = "add_edit"
     const val PHRASE_ID_ARG = "id"
