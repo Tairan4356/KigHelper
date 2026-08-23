@@ -1,7 +1,6 @@
 package com.ziegler.kighelper.data
 
 import androidx.annotation.DrawableRes
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.ziegler.kighelper.R
 import java.util.UUID
@@ -31,8 +30,11 @@ data class SocialContact(
  * @param nickname 昵称
  * @param signature 个性签名
  * @param avatarPath 头像本地路径，null 表示使用默认占位
- * @param templateIndex 选用的预设模板索引；为 [CUSTOM_TEMPLATE_INDEX] 时使用自定义背景
+ * @param templateIndex 选用的预设模板索引；为 [CUSTOM_TEMPLATE_INDEX] 时使用自定义背景，
+ *                      为 [ADAPTIVE_TEMPLATE_INDEX] 时使用自适应颜色（primary），
+ *                      为 [CUSTOM_COLOR_TEMPLATE_INDEX] 时使用自定义颜色
  * @param customBackgroundPath 自定义背景图本地路径
+ * @param customColor 自定义背景颜色（仅当 templateIndex 为 [CUSTOM_COLOR_TEMPLATE_INDEX] 时使用）
  * @param contacts 已配置的社交平台列表，按用户排序
  */
 data class SocialCardProfile(
@@ -41,6 +43,7 @@ data class SocialCardProfile(
     val avatarPath: String? = null,
     val templateIndex: Int = 0,
     val customBackgroundPath: String? = null,
+    val customColor: Long = 0xFF6650A4, // 默认紫色
     val contacts: List<SocialContact> = emptyList()
 ) {
     /**
@@ -54,10 +57,16 @@ data class SocialCardProfile(
         /** 表示使用自定义背景的模板索引哨兵值 */
         const val CUSTOM_TEMPLATE_INDEX = -1
 
+        /** 表示使用自适应颜色（primary）的模板索引哨兵值 */
+        const val ADAPTIVE_TEMPLATE_INDEX = -2
+
+        /** 表示使用自定义颜色的模板索引哨兵值 */
+        const val CUSTOM_COLOR_TEMPLATE_INDEX = -3
+
         val DEFAULT: SocialCardProfile = SocialCardProfile(
             nickname = "",
             signature = "",
-            templateIndex = 0,
+            templateIndex = ADAPTIVE_TEMPLATE_INDEX,
             contacts = SocialPlatformIcons.DEFAULT_CONTACTS
         )
     }
@@ -112,56 +121,36 @@ object SocialPlatformIcons {
  * 卡片模板定义。
  *
  * @param name 模板名称（用于模板选择列表展示）
- * @param brush 卡片背景渐变
+ * @param background 卡片背景色（纯色，符合 md3 设计规范）
  * @param onBackground 在该背景上文字的颜色（一般为白或黑）
  */
 data class CardTemplate(
-    val name: String, val brush: Brush, val onBackground: Color
+    val name: String, val background: Color, val onBackground: Color
 )
 
-/** 预设卡片模板。 */
+/** 预设卡片模板（纯色，符合 md3 设计规范）。 */
 object CardTemplates {
     val presets: List<CardTemplate> = listOf(
         CardTemplate(
-            name = "暮色橙红",
-            brush = Brush.linearGradient(listOf(Color(0xFFFF9800), Color(0xFFF44336))),
-            onBackground = Color.White
+            name = "暮色橙", background = Color(0xFFFF9800), onBackground = Color.White
         ), CardTemplate(
-            name = "罪业红莲",
-            brush = Brush.linearGradient(listOf(Color(0xFF1A0202), Color(0xFFFF1744))),
-            onBackground = Color.White
+            name = "罪业红", background = Color(0xFFFF1744), onBackground = Color.White
         ), CardTemplate(
-            name = "极夜极光",
-            brush = Brush.linearGradient(listOf(Color(0xFF0D1B2A), Color(0xFF00E5FF))),
-            onBackground = Color.White
+            name = "极夜蓝", background = Color(0xFF0D1B2A), onBackground = Color.White
         ), CardTemplate(
-            name = "时溯流光",
-            brush = Brush.linearGradient(listOf(Color(0xFF311B92), Color(0xFF00E5FF))),
-            onBackground = Color.White
+            name = "极光青", background = Color(0xFF00E5FF), onBackground = Color(0xFF1C1B1F)
         ), CardTemplate(
-            name = "业火红莲",
-            brush = Brush.linearGradient(listOf(Color(0xFF1A0A00), Color(0xFFFF6F00))),
-            onBackground = Color.White
+            name = "业火橙", background = Color(0xFFFF6F00), onBackground = Color.White
         ), CardTemplate(
-            name = "鸣神紫雷",
-            brush = Brush.linearGradient(listOf(Color(0xFF4A148C), Color(0xFFFFEB3B))),
-            onBackground = Color.White
+            name = "紫雷", background = Color(0xFF4A148C), onBackground = Color.White
         ), CardTemplate(
-            name = "龙脉苍穹",
-            brush = Brush.linearGradient(listOf(Color(0xFF004D40), Color(0xFF4FC3F7))),
-            onBackground = Color.White
+            name = "苍穹绿", background = Color(0xFF004D40), onBackground = Color.White
         ), CardTemplate(
-            name = "彼岸曼珠",
-            brush = Brush.linearGradient(listOf(Color(0xFF0B0000), Color(0xFFD50000))),
-            onBackground = Color.White
+            name = "彼岸红", background = Color(0xFFD50000), onBackground = Color.White
         ), CardTemplate(
-            name = "镜花水月",
-            brush = Brush.linearGradient(listOf(Color(0xFFB3E5FC), Color(0xFFE0F7FA))),
-            onBackground = Color(0xFF1C1B1F)
+            name = "镜花蓝", background = Color(0xFFB3E5FC), onBackground = Color(0xFF1C1B1F)
         ), CardTemplate(
-            name = "终焉之白",
-            brush = Brush.linearGradient(listOf(Color(0xFFFFFFFF), Color(0xFFCFD8DC))),
-            onBackground = Color(0xFF1C1B1F)
+            name = "终焉白", background = Color(0xFFCFD8DC), onBackground = Color(0xFF1C1B1F)
         )
     )
 }

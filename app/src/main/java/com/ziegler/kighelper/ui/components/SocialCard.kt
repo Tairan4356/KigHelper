@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -127,13 +126,16 @@ private val DesaturateColorFilter = ColorFilter.colorMatrix(
 )
 
 @Composable
-private fun rememberCardBackground(profile: SocialCardProfile): Brush {
+private fun rememberCardBackground(profile: SocialCardProfile): Color {
     return if (profile.templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && !profile.customBackgroundPath.isNullOrBlank()) {
-        // 自定义背景在父 Box 中用 AsyncImage 覆盖渲染；此处返回透明占位
-        Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+        Color.Transparent
+    } else if (profile.templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX) {
+        MaterialTheme.colorScheme.primary
+    } else if (profile.templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX) {
+        Color(profile.customColor)
     } else {
         val index = profile.templateIndex.coerceIn(0, CardTemplates.presets.lastIndex)
-        CardTemplates.presets[index].brush
+        CardTemplates.presets[index].background
     }
 }
 
@@ -141,6 +143,17 @@ private fun rememberCardBackground(profile: SocialCardProfile): Brush {
 private fun cardTextColor(profile: SocialCardProfile): Color {
     return if (profile.templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && !profile.customBackgroundPath.isNullOrBlank()) {
         Color.White
+    } else if (profile.templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX) {
+        // 自适应模式：根据 primary 颜色亮度决定文字颜色
+        val primary = MaterialTheme.colorScheme.primary
+        val luminance = 0.299f * primary.red + 0.587f * primary.green + 0.114f * primary.blue
+        if (luminance > 0.5f) Color(0xFF1C1B1F) else Color.White
+    } else if (profile.templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX) {
+        // 自定义颜色模式：根据自定义颜色亮度决定文字颜色
+        val customColor = Color(profile.customColor)
+        val luminance =
+            0.299f * customColor.red + 0.587f * customColor.green + 0.114f * customColor.blue
+        if (luminance > 0.5f) Color(0xFF1C1B1F) else Color.White
     } else {
         val index = profile.templateIndex.coerceIn(0, CardTemplates.presets.lastIndex)
         CardTemplates.presets[index].onBackground
@@ -282,12 +295,12 @@ fun SocialCard(
 
             Box(
                 modifier = Modifier.fillMaxWidth().let { mod ->
-                        if (imageAspectRatio != null && imageAspectRatio > 0f) {
-                            mod.heightIn(min = maxWidth / imageAspectRatio)
-                        } else {
-                            mod
-                        }
-                    }) {
+                    if (imageAspectRatio != null && imageAspectRatio > 0f) {
+                        mod.heightIn(min = maxWidth / imageAspectRatio)
+                    } else {
+                        mod
+                    }
+                }) {
                 if (isCustomBg) {
                     AsyncImage(
                         model = ImageRequest.Builder(context).data(resolveModel(customBgPath))

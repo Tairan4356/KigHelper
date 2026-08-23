@@ -42,6 +42,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +64,7 @@ import com.smarttoolfactory.cropper.model.AspectRatio
 import com.ziegler.kighelper.data.CardTemplates
 import com.ziegler.kighelper.data.SocialCardProfile
 import com.ziegler.kighelper.data.SocialContact
+import com.ziegler.kighelper.ui.components.ColorPickerDialog
 import com.ziegler.kighelper.ui.components.CropRequest
 import com.ziegler.kighelper.ui.components.CropShape
 import com.ziegler.kighelper.ui.components.ImageCropperDialog
@@ -109,6 +112,7 @@ fun SocialCardEditScreen(
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
     var templateIndex by rememberSaveable { mutableIntStateOf(initialProfile.templateIndex) }
     var customBackgroundPath by remember { mutableStateOf(initialProfile.customBackgroundPath) }
+    var customColor by rememberSaveable { mutableLongStateOf(initialProfile.customColor) }
     var backgroundUri by remember { mutableStateOf<Uri?>(null) }
 
     val contacts = remember {
@@ -177,6 +181,7 @@ fun SocialCardEditScreen(
         }
 
     var showDiscardConfirm by remember { mutableStateOf(false) }
+    var showColorPicker by remember { mutableStateOf(false) }
 
     // 输入法可见时拦截返回键，先收起输入法而不是直接返回上一级
     val isImeVisible = WindowInsets.isImeVisible
@@ -195,6 +200,7 @@ fun SocialCardEditScreen(
             avatarPath = avatarPath,
             templateIndex = templateIndex,
             customBackgroundPath = customBackgroundPath,
+            customColor = customColor,
             contacts = finalContacts
         )
         onSave(finalProfile, avatarUri, backgroundUri, qrCodeUris.toMap(), iconUris.toMap())
@@ -212,6 +218,7 @@ fun SocialCardEditScreen(
         if (avatarUri != null) return true
         if (templateIndex != initialProfile.templateIndex) return true
         if (customBackgroundPath != initialProfile.customBackgroundPath) return true
+        if (customColor != initialProfile.customColor) return true
         if (backgroundUri != null) return true
 
         // 联系人列表差异检测
@@ -252,6 +259,7 @@ fun SocialCardEditScreen(
         avatarPath = avatarPath ?: avatarUri?.toString(),
         templateIndex = templateIndex,
         customBackgroundPath = customBackgroundPath ?: backgroundUri?.toString(),
+        customColor = customColor,
         contacts = contacts.map { c ->
             val pendingQr = qrCodeUris[c.id]
             val pendingIcon = iconUris[c.id]
@@ -363,11 +371,23 @@ fun SocialCardEditScreen(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item {
+                    // 自适应选项：使用 MaterialTheme 的 primary 颜色（默认选项）
+                    TemplateThumb(
+                        name = "自适应",
+                        background = MaterialTheme.colorScheme.primary,
+                        selected = templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX,
+                        onClick = {
+                            templateIndex = SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX
+                            customBackgroundPath = null
+                            backgroundUri = null
+                        })
+                }
                 items(CardTemplates.presets.size) { index ->
                     val template = CardTemplates.presets[index]
                     TemplateThumb(
                         name = template.name,
-                        brush = template.brush,
+                        background = template.background,
                         selected = templateIndex == index,
                         onClick = {
                             templateIndex = index
@@ -376,10 +396,23 @@ fun SocialCardEditScreen(
                         })
                 }
                 item {
+                    // 自定义颜色选项
+                    TemplateThumb(
+                        name = "自定义颜色",
+                        background = Color(customColor),
+                        selected = templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX,
+                        onClick = {
+                            templateIndex = SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX
+                            customBackgroundPath = null
+                            backgroundUri = null
+                            showColorPicker = true
+                        })
+                }
+                item {
                     val hasCustomBg = customBackgroundPath != null || backgroundUri != null
                     TemplateThumb(
                         name = "自定义",
-                        brush = null,
+                        background = null,
                         customImageModel = customBackgroundPath?.let { File(it) } ?: backgroundUri,
                         selected = templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX,
                         onClick = {
@@ -392,6 +425,12 @@ fun SocialCardEditScreen(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = { pickBackground.launch(arrayOf("image/*")) }) {
                     Text("选择背景图")
+                }
+            }
+            if (templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { showColorPicker = true }) {
+                    Text("选择颜色")
                 }
             }
 
@@ -519,5 +558,13 @@ fun SocialCardEditScreen(
         }
         cropRequest = null
     }, onDismiss = { cropRequest = null })
+
+    // 颜色选择器对话框
+    if (showColorPicker) {
+        ColorPickerDialog(initialColor = customColor, onColorSelected = { selectedColor ->
+            customColor = selectedColor
+            showColorPicker = false
+        }, onDismiss = { showColorPicker = false })
+    }
 }
 

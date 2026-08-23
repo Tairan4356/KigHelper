@@ -16,7 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -31,20 +31,20 @@ import coil.request.ImageRequest
  * 用于在编辑页的横向模板列表中展示单个模板预览。点击切换当前选中模板。
  *
  * 渲染规则：
- * - [brush] 非空：渲染渐变背景
+ * - [background] 非空：渲染纯色背景（符合 md3 设计规范）
  * - [customImageModel] 非空：用 Coil 加载自定义背景图
  * - 两者都为空：渲染占位的 "+" 号
  *
  * @param name 模板名称，显示在缩略图下方
- * @param brush 渐变画刷；与 [customImageModel] 互斥
+ * @param background 背景颜色；与 [customImageModel] 互斥
  * @param selected 是否选中。选中时边框使用主色，否则使用 outlineVariant
- * @param customImageModel 自定义背景图模型（File/Uri 等）；与 [brush] 互斥
+ * @param customImageModel 自定义背景图模型（File/Uri 等）；与 [background] 互斥
  * @param onClick 点击回调
  */
 @Composable
 internal fun TemplateThumb(
     name: String,
-    brush: Brush?,
+    background: Color?,
     selected: Boolean,
     onClick: () -> Unit,
     customImageModel: Any? = null
@@ -63,10 +63,10 @@ internal fun TemplateThumb(
                 .border(2.dp, borderColor, RoundedCornerShape(12.dp))
         ) {
             when {
-                brush != null -> Box(
+                background != null -> Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(brush)
+                        .background(background)
                 )
 
                 customImageModel != null -> AsyncImage(
