@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">着ぐ声</string>
+    <string name="widget_social_card_description">ホーム画面にソーシャルカードを表示（4x2）</string>
+    <string name="widget_social_card_description_large">ホーム画面にソーシャルカードを表示（4x4）</string>
 </resources>

@@ -101,6 +101,8 @@ dependencies {
     implementation(libs.materialKolor)
     implementation(libs.coil.compose)
     implementation(libs.compose.cropper)
+    implementation(libs.glance)
+    implementation(libs.glance.appwidget)
     implementation(files("libs/sherpa-onnx-1.13.2.aar"))
 
 

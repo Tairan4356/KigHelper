@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E86F8F"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Row 1: Name + Avatar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_gravity="top"
+                android:orientation="vertical">
+
+                <View
+                    android:layout_width="120dp"
+                    android:layout_height="28dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="#44FFFFFF" />
+
+                <View
+                    android:layout_width="80dp"
+                    android:layout_height="28dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="#44FFFFFF" />
+
+                <View
+                    android:layout_width="160dp"
+                    android:layout_height="10dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="#33FFFFFF" />
+
+                <View
+                    android:layout_width="100dp"
+                    android:layout_height="10dp"
+                    android:background="#33FFFFFF" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="20dp"
+                android:layout_height="0dp" />
+
+            <View
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_gravity="top"
+                android:background="#F5CED3" />
+        </LinearLayout>
+
+        <!-- Spacer before icons -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="20dp" />
+
+        <!-- Row 2: Platform icons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Icon 1 -->
+            <View
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginEnd="8dp"
+                android:background="#55FFFFFF" />
+
+            <!-- Icon 2 -->
+            <View
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginEnd="8dp"
+                android:background="#55FFFFFF" />
+
+            <!-- Icon 3 -->
+            <View
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginEnd="8dp"
+                android:background="#55FFFFFF" />
+
+            <!-- Icon 4 -->
+            <View
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="#55FFFFFF" />
+        </LinearLayout>
+
+        <!-- Spacer before QR -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="32dp" />
+
+        <!-- Row 3: QR code placeholder -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <!-- QR square -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_gravity="center_horizontal"
+                android:maxWidth="200dp"
+                android:maxHeight="200dp"
+                android:background="#33FFFFFF" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="16dp" />
+
+            <!-- Platform name -->
+            <View
+                android:layout_width="80dp"
+                android:layout_height="12dp"
+                android:layout_marginBottom="4dp"
+                android:background="#33FFFFFF" />
+
+            <!-- Handle -->
+            <View
+                android:layout_width="60dp"
+                android:layout_height="10dp"
+                android:background="#22FFFFFF" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

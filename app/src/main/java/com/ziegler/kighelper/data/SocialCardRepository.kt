@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit
 import com.google.gson.Gson
+import com.ziegler.kighelper.widget.SocialCardWidgetReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -131,6 +132,10 @@ class SocialCardRepository @Inject constructor(
             putString(KEY_PROFILE, gson.toJson(final))
         }
         _profile.value = final
+
+        // 通知桌面小组件刷新
+        SocialCardWidgetReceiver.updateAllWidgets(context)
+
         final
     }
 
