@@ -1,6 +1,7 @@
 package com.ziegler.kighelper.ui.screens.onboarding
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -31,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,7 +105,10 @@ fun OnboardingScreen(
     ) {
         if (isExpanded) {
             Row(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
                 Column(
                     modifier = Modifier
@@ -113,7 +118,7 @@ fun OnboardingScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     PagerContent(
-                        modifier = Modifier.padding(top = 28.dp, bottom = 28.dp),
+                        modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
                         pagerState = pagerState,
                         steps = steps,
                         settingsViewModel = settingsViewModel,
@@ -141,10 +146,13 @@ fun OnboardingScreen(
             }
         } else {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
                 PagerContent(
-                    modifier = Modifier.weight(1f).padding(top = 96.dp, bottom = 48.dp),
+                    modifier = Modifier.weight(1f).padding(top = 16.dp, bottom = 16.dp),
                     pagerState = pagerState,
                     steps = steps,
                     settingsViewModel = settingsViewModel,

@@ -110,7 +110,7 @@ fun WelcomeStep(
         Spacer(modifier = Modifier.height(48.dp))
 
         Text(
-            text = "一款为 Kigurumi 和无声人群\n设计的辅助沟通 APP",
+            text = "在开始之前，让我们先进行一些必要的设置",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
