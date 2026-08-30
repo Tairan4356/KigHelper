@@ -121,9 +121,9 @@ UI 调试，都是在 AI 的辅助下完成的。
 #### 开发环境
 
 - Android Studio Iguana | 2023.2.1 或更高版本
-- Kotlin 2.3.x
+- Kotlin 2.4.x
 - JDK 17
-- Android SDK 26+ (Android 8.0+)
+- Android SDK 27+ (Android 9.0+)
 
 #### 运行项目
 
