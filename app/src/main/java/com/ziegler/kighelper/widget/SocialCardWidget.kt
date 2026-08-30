@@ -1,7 +1,6 @@
 package com.ziegler.kighelper.widget
 
 import android.annotation.SuppressLint
-import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -47,6 +46,7 @@ import com.ziegler.kighelper.data.CardTemplates
 import com.ziegler.kighelper.data.SocialCardProfile
 import com.ziegler.kighelper.data.SocialPlatformIcons
 import com.google.gson.Gson
+import com.ziegler.kighelper.MainActivity
 import com.ziegler.kighelper.data.SocialContact
 import androidx.core.graphics.get
 import androidx.core.graphics.toColorInt
@@ -84,17 +84,25 @@ class SocialCardWidget : GlanceAppWidget() {
         val safeIndex = selectedIndex.coerceIn(0, visibleContacts.lastIndex.coerceAtLeast(0))
         val selectedContact = visibleContacts.getOrNull(safeIndex)
 
-        // 4x2: only name+avatar; 4x4+: show platform icons; larger: show QR
-        val showPlatformIcons = size.height >= 180.dp
+        // 4x2: only name+avatar; 4x4+: show platform icons; larger: show QR.
+        // Icons need enough height (24dp padding top+bottom + 96dp name/avatar row +
+        // 20dp spacer + 64dp icon row = 228dp) and width (24dp padding each side +
+        // 64dp per icon) or they get cut off at the widget's minimum size.
+        val iconCount = visibleContacts.take(4).size
+        val iconsRequiredWidth = 48.dp + 64.dp * iconCount
+        val iconsRequiredHeight = 48.dp + 96.dp + 20.dp + 64.dp
+        val showPlatformIcons =
+            iconCount > 0 && size.height >= iconsRequiredHeight && size.width >= iconsRequiredWidth
         val showQrCode = size.height >= 340.dp
 
         Box(
             modifier = GlanceModifier.fillMaxSize().background(bgColor).cornerRadius(24.dp)
-                .clickable(
-                    actionStartActivity(
-                        ComponentName(context.packageName, "${context.packageName}.MainActivity")
-                    )
-                ).padding(24.dp), contentAlignment = Alignment.Center
+                // Reference MainActivity directly instead of building a ComponentName from
+                // context.packageName: the "preview"/"debug" build flavors apply an
+                // applicationIdSuffix, so packageName no longer matches the activity's
+                // actual (namespace-based) package, which silently broke the click action.
+                .clickable(actionStartActivity<MainActivity>())
+                .padding(24.dp), contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = GlanceModifier.fillMaxSize(),

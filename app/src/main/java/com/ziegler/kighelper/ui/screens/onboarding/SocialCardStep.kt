@@ -41,11 +41,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.ui.SocialCardViewModel
 import com.ziegler.kighelper.ui.components.SocialCard
 import com.ziegler.kighelper.widget.SocialCardWidgetReceiver
-import com.ziegler.kighelper.widget.SocialCardWidgetReceiverLarge
 
 private const val ACTION_PIN_WIDGET_RESULT = "com.ziegler.kighelper.ACTION_PIN_WIDGET_RESULT"
-private const val REQUEST_CODE_PIN_4X2 = 0
-private const val REQUEST_CODE_PIN_4X4 = 1
+private const val REQUEST_CODE_PIN_WIDGET = 0
 
 @Composable
 fun SocialCardStep(
@@ -165,37 +163,21 @@ fun SocialCardStep(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "将扩列卡片添加到主屏幕展示",
+                    text = "将扩列卡片添加到主屏幕展示，添加后可拖动调整大小，展示更多平台图标和二维码",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                OutlinedButton(
+                    onClick = {
+                        pinWidgetToHomeScreen(
+                            SocialCardWidgetReceiver::class.java,
+                            REQUEST_CODE_PIN_WIDGET
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            pinWidgetToHomeScreen(
-                                SocialCardWidgetReceiver::class.java,
-                                REQUEST_CODE_PIN_4X2
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("添加小卡片")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            pinWidgetToHomeScreen(
-                                SocialCardWidgetReceiverLarge::class.java,
-                                REQUEST_CODE_PIN_4X4
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("添加大卡片")
-                    }
+                    Text("添加到桌面")
                 }
             }
         }

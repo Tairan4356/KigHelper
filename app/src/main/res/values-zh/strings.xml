@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">娃语</string>
-    <string name="widget_social_card_description">在桌面上展示你的社交卡片（4x2）</string>
-    <string name="widget_social_card_description_large">在桌面上展示你的社交卡片（4x4）</string>
+    <string name="widget_social_card_description">在桌面上展示你的社交卡片，拖动调整大小可显示更多平台图标和二维码</string>
 </resources>

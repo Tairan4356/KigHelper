@@ -1,61 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Preview shown in the widget picker on API 31+ (rendered live via RemoteViews, unlike
+  the static drawable used on older versions). Restyled to match the color palette and
+  shapes of widget_social_card_preview.xml exactly: card background #FC7A9C, nickname/
+  signature bars #FEBDCE, avatar blob #FDBCCD.
+  Only RemoteViews-safe views are used here (FrameLayout/LinearLayout/ImageView) —
+  plain <View> is not supported and fails to inflate on the widget picker.
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#E86F8F"
-    android:padding="24dp">
+    android:background="@drawable/widget_preview_card_bg"
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-        <!-- Name + signature column -->
+        <!-- Nickname + signature bars -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_gravity="top"
+            android:gravity="center_vertical"
             android:orientation="vertical">
 
-            <!-- Nickname line 1 -->
-            <View
-                android:layout_width="120dp"
-                android:layout_height="28dp"
-                android:layout_marginBottom="4dp"
-                android:background="#44FFFFFF" />
-
-            <!-- Nickname line 2 -->
-            <View
-                android:layout_width="80dp"
-                android:layout_height="28dp"
-                android:layout_marginBottom="12dp"
-                android:background="#44FFFFFF" />
-
-            <!-- Signature line 1 -->
-            <View
-                android:layout_width="160dp"
-                android:layout_height="10dp"
-                android:layout_marginBottom="6dp"
-                android:background="#33FFFFFF" />
-
-            <!-- Signature line 2 -->
-            <View
+            <!-- Nickname bar -->
+            <ImageView
                 android:layout_width="100dp"
-                android:layout_height="10dp"
-                android:background="#33FFFFFF" />
+                android:layout_height="20dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/widget_preview_bar" />
+
+            <!-- Signature bar -->
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="8dp"
+                android:background="@drawable/widget_preview_bar" />
         </LinearLayout>
 
-        <!-- Spacer -->
-        <View
-            android:layout_width="20dp"
-            android:layout_height="0dp" />
-
-        <!-- Avatar circle -->
-        <View
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:layout_gravity="top"
-            android:background="#F5CED3" />
+        <!-- Avatar blob -->
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/widget_preview_avatar" />
     </LinearLayout>
 </FrameLayout>

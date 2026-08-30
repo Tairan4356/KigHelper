@@ -5,7 +5,7 @@
     android:minHeight="110dp"
     android:minResizeWidth="250dp"
     android:minResizeHeight="110dp"
-    android:resizeMode="none"
+    android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="3600000"
     android:description="@string/widget_social_card_description"
     android:previewImage="@drawable/widget_social_card_preview"
