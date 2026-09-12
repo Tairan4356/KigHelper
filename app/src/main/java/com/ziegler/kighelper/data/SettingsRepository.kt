@@ -23,7 +23,8 @@ data class AppSettings(
     val lockScreenEnabled: Boolean = false,
     val displayColorInverted: Boolean = false,
     val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID,
-    val selectedCustomFont: String? = null
+    val selectedCustomFont: String? = null,
+    val displayHintText: String = "点击下面按钮文字在此显示"
 )
 
 @Singleton
@@ -47,6 +48,7 @@ class SettingsRepository @Inject constructor(
         const val DISPLAY_COLOR_INVERTED = "display_color_inverted"
         const val PLAYBACK_DEVICE_ID = "playback_device_id"
         const val SELECTED_CUSTOM_FONT = "selected_custom_font"
+        const val DISPLAY_HINT_TEXT = "display_hint_text"
     }
 
     private val _settings = MutableStateFlow(loadSettings())
@@ -68,7 +70,10 @@ class SettingsRepository @Inject constructor(
             playbackDeviceId = prefs.getInt(
                 Keys.PLAYBACK_DEVICE_ID, PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID
             ),
-            selectedCustomFont = prefs.getString(Keys.SELECTED_CUSTOM_FONT, null)
+            selectedCustomFont = prefs.getString(Keys.SELECTED_CUSTOM_FONT, null),
+            displayHintText = prefs.getString(
+                Keys.DISPLAY_HINT_TEXT, "点击下面按钮文字在此显示"
+            ) ?: ""
         )
     }
 
@@ -138,6 +143,11 @@ class SettingsRepository @Inject constructor(
 
     fun updateSelectedCustomFont(fontName: String?) {
         prefs.edit { putString(Keys.SELECTED_CUSTOM_FONT, fontName) }
+        saveAndEmit()
+    }
+
+    fun updateDisplayHintText(text: String) {
+        prefs.edit { putString(Keys.DISPLAY_HINT_TEXT, text) }
         saveAndEmit()
     }
 }

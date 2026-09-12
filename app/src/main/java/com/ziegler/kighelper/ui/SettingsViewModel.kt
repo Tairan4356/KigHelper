@@ -245,4 +245,8 @@ class SettingsViewModel @Inject constructor(
     fun updateDisplayColorInverted(inverted: Boolean) {
         settingsRepository.updateDisplayColorInverted(inverted)
     }
+
+    fun updateDisplayHintText(text: String) {
+        settingsRepository.updateDisplayHintText(text)
+    }
 }

@@ -25,7 +25,7 @@ class DisplayViewModel : ViewModel() {
 
     fun clearDisplayText() {
         _displayState.value = DisplayState(
-            text = "", isInitialHint = false
+            text = "", isInitialHint = true
         )
     }
 

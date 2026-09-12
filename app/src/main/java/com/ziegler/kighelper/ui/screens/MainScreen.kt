@@ -63,6 +63,7 @@ fun MainScreen(
     fontSize: Float = 1.0f,
     hapticFeedback: Boolean = true,
     displayColorInverted: Boolean = false,
+    hintText: String = "点击下面按钮文字在此显示",
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -73,12 +74,13 @@ fun MainScreen(
         groups = groups,
         displayText = displayText,
         isShowingInitialHint = isShowingInitialHint,
+        hintText = hintText,
         isPhrasesLoading = isPhrasesLoading,
         isFullScreen = isFullScreen,
         onFullScreenChange = onFullScreenChange
     )
 
-    LaunchedEffect(displayText, isShowingInitialHint) {
+    LaunchedEffect(displayText, isShowingInitialHint, hintText) {
         state.updateDisplayText(displayText, isShowingInitialHint)
     }
 

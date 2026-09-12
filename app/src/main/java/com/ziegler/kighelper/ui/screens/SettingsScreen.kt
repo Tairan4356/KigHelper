@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -238,6 +239,26 @@ fun SettingsScreen(
                         subtitle = "文字显示区背景为浅色，文字颜色为深色",
                         checked = settings.displayColorInverted,
                         onCheckedChange = viewModel::updateDisplayColorInverted
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "显示区提示词",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = settings.displayHintText,
+                        onValueChange = viewModel::updateDisplayHintText,
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 3,
+                        placeholder = { Text("点击下面按钮文字在此显示") }
+                    )
+                    Text(
+                        "未显示短语时的提示词，留空则不显示",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
                     )
                 }
             }

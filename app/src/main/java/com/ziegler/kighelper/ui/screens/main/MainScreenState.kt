@@ -26,6 +26,7 @@ class MainScreenState(
     val groups: List<PhraseGroup>,
     displayText: String,
     isShowingInitialHint: Boolean,
+    val hintText: String,
     val isPhrasesLoading: Boolean,
     val onFullScreenChange: (Boolean) -> Unit,
     val isLandscape: Boolean,
@@ -53,7 +54,7 @@ class MainScreenState(
     private fun computeEffectiveDisplayText(text: String, isHint: Boolean): String {
         return when {
             isPhrasesLoading && isHint -> ""
-            !hasPhrases && isHint -> "先添加一个常用短语吧"
+            isHint -> hintText
             else -> text
         }
     }
@@ -272,6 +273,7 @@ fun rememberMainScreenState(
     groups: List<PhraseGroup>,
     displayText: String,
     isShowingInitialHint: Boolean,
+    hintText: String,
     isPhrasesLoading: Boolean,
     isFullScreen: Boolean,
     onFullScreenChange: (Boolean) -> Unit
@@ -300,6 +302,7 @@ fun rememberMainScreenState(
             groups = groups,
             displayText = displayText,
             isShowingInitialHint = isShowingInitialHint,
+            hintText = hintText,
             isPhrasesLoading = isPhrasesLoading,
             onFullScreenChange = onFullScreenChange,
             isLandscape = isLandscape,

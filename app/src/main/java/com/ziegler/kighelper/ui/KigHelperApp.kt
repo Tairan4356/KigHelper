@@ -213,7 +213,8 @@ fun KigHelperApp(
                         },
                         fontSize = settings.fontSize,
                         hapticFeedback = settings.hapticFeedback,
-                        displayColorInverted = settings.displayColorInverted
+                        displayColorInverted = settings.displayColorInverted,
+                        hintText = settings.displayHintText
                     )
                 }
 

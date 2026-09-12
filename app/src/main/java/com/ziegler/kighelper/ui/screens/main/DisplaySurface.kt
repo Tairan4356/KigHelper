@@ -112,7 +112,7 @@ internal fun DisplaySurface(
                 val lineHeight = scaledFontSize * DisplayLineHeightMultiplier
 
                 val currentTextIsHint =
-                    targetText == "点击下面按钮文字在此显示" || targetText == "先添加一个常用短语吧" || (targetText == text && isSubtle)
+                    targetText == text && isSubtle
 
                 Box(
                     modifier = Modifier
@@ -130,7 +130,7 @@ internal fun DisplaySurface(
                 }
             }
 
-            if (text.isNotEmpty()) {
+            if (text.isNotEmpty() && !isSubtle) {
                 IconButton(
                     onClick = onClear, modifier = Modifier.align(Alignment.BottomEnd)
                 ) {

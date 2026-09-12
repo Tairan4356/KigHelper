@@ -1,6 +1,6 @@
 package com.ziegler.kighelper.data
 
 data class DisplayState(
-    val text: String = "点击下面按钮文字在此显示",
+    val text: String = "",
     val isInitialHint: Boolean = true
 )
