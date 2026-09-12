@@ -1,6 +1,12 @@
 package com.ziegler.kighelper.ui.screens
 
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
+import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,7 +33,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +66,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -73,6 +83,8 @@ import com.ziegler.kighelper.ui.components.SocialCard
 import com.ziegler.kighelper.ui.screens.socialedit.ContactEditor
 import com.ziegler.kighelper.ui.screens.socialedit.SocialCardEditDefaults
 import com.ziegler.kighelper.ui.screens.socialedit.TemplateThumb
+import com.ziegler.kighelper.widget.SocialCardWidgetReceiver
+import com.ziegler.kighelper.widget.SocialCardWidgetReceiverLarge
 import java.io.File
 import java.util.UUID
 
@@ -81,6 +93,9 @@ private const val TAG_BACKGROUND = SocialCardEditDefaults.TAG_BACKGROUND
 private const val TAG_QR_PREFIX = SocialCardEditDefaults.TAG_QR_PREFIX
 private const val TAG_ICON_PREFIX = SocialCardEditDefaults.TAG_ICON_PREFIX
 private val AVATAR_CROP_SHAPES = SocialCardEditDefaults.AVATAR_CROP_SHAPES
+private const val ACTION_PIN_WIDGET_RESULT = "com.ziegler.kighelper.ACTION_PIN_WIDGET_RESULT"
+private const val REQUEST_CODE_PIN_4X2 = 0
+private const val REQUEST_CODE_PIN_4X4 = 1
 
 /**
  * 编辑社交卡片信息页面。
@@ -246,6 +261,28 @@ fun SocialCardEditScreen(
 
     fun handleBack() {
         if (hasUnsavedChanges()) showDiscardConfirm = true else onBack()
+    }
+
+    val appWidgetManager = remember(context) { AppWidgetManager.getInstance(context) }
+
+    fun pinWidgetToHomeScreen(receiver: Class<out AppWidgetProvider>, requestCode: Int) {
+        val provider = ComponentName(context, receiver)
+        if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
+            Toast.makeText(context, "当前设备不支持桌面小组件", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // 用户完成摆放时通知应用的回调（操作失败时不会回调）
+        val successCallback = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            Intent(ACTION_PIN_WIDGET_RESULT),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val pinned = appWidgetManager.requestPinAppWidget(provider, null, successCallback)
+        if (!pinned) {
+            Toast.makeText(context, "无法添加到桌面，请手动长按桌面添加小组件", Toast.LENGTH_SHORT)
+                .show()
+        }
     }
 
     // 仅在有未保存修改时拦截系统返回（弹确认框）；
@@ -507,6 +544,65 @@ fun SocialCardEditScreen(
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text("添加平台")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Widgets,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = "添加到主屏幕",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "将扩列卡片添加到主屏幕展示",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                pinWidgetToHomeScreen(
+                                    SocialCardWidgetReceiver::class.java, REQUEST_CODE_PIN_4X2
+                                )
+                            }, modifier = Modifier.weight(1f)
+                        ) {
+                            Text("添加小卡片")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                pinWidgetToHomeScreen(
+                                    SocialCardWidgetReceiverLarge::class.java, REQUEST_CODE_PIN_4X4
+                                )
+                            }, modifier = Modifier.weight(1f)
+                        ) {
+                            Text("添加大卡片")
+                        }
+                    }
+                }
             }
         }
     }

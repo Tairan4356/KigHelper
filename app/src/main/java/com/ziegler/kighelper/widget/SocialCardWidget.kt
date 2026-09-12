@@ -85,7 +85,7 @@ class SocialCardWidget : GlanceAppWidget() {
         val selectedContact = visibleContacts.getOrNull(safeIndex)
 
         // 4x2: only name+avatar; 4x4+: show platform icons; larger: show QR
-        val showPlatformIcons = size.height >= 180.dp
+        val showPlatformIcons = size.height >= 240.dp
         val showQrCode = size.height >= 340.dp
 
         Box(

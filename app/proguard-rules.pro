@@ -41,3 +41,13 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# Keep Glance AppWidget ActionCallback implementations to avoid issues with reflection.
+-keep class * implements androidx.glance.appwidget.action.ActionCallback {
+    public <init>();
+}
+
+# Keep Glance AppWidget classes to avoid issues with reflection.
+-keep class * extends androidx.glance.appwidget.GlanceAppWidget {
+    *;
+}
