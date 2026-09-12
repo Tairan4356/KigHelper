@@ -24,7 +24,8 @@ data class AppSettings(
     val displayColorInverted: Boolean = false,
     val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID,
     val selectedCustomFont: String? = null,
-    val displayHintText: String = "点击下面按钮文字在此显示"
+    val displayHintText: String = "点击下面按钮文字在此显示",
+    val predictiveBackEnabled: Boolean = true
 )
 
 @Singleton
@@ -49,6 +50,7 @@ class SettingsRepository @Inject constructor(
         const val PLAYBACK_DEVICE_ID = "playback_device_id"
         const val SELECTED_CUSTOM_FONT = "selected_custom_font"
         const val DISPLAY_HINT_TEXT = "display_hint_text"
+        const val PREDICTIVE_BACK_ENABLED = "predictive_back_enabled"
     }
 
     private val _settings = MutableStateFlow(loadSettings())
@@ -73,7 +75,10 @@ class SettingsRepository @Inject constructor(
             selectedCustomFont = prefs.getString(Keys.SELECTED_CUSTOM_FONT, null),
             displayHintText = prefs.getString(
                 Keys.DISPLAY_HINT_TEXT, "点击下面按钮文字在此显示"
-            ) ?: ""
+            ) ?: "",
+            predictiveBackEnabled = prefs.getBoolean(
+                Keys.PREDICTIVE_BACK_ENABLED, true
+            )
         )
     }
 
@@ -148,6 +153,11 @@ class SettingsRepository @Inject constructor(
 
     fun updateDisplayHintText(text: String) {
         prefs.edit { putString(Keys.DISPLAY_HINT_TEXT, text) }
+        saveAndEmit()
+    }
+
+    fun updatePredictiveBackEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(Keys.PREDICTIVE_BACK_ENABLED, enabled) }
         saveAndEmit()
     }
 }

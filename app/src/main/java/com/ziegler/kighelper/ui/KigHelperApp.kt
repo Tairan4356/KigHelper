@@ -1,7 +1,17 @@
 package com.ziegler.kighelper.ui
 
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
@@ -26,11 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -42,6 +48,9 @@ import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.ui.navigation.AppBottomBar
 import com.ziegler.kighelper.ui.navigation.AppNavigationRail
 import com.ziegler.kighelper.ui.navigation.AppRoutes
+import com.ziegler.kighelper.ui.navigation.NavTransitionDurationMillis
+import com.ziegler.kighelper.ui.navigation.PredictiveBackGate
+import com.ziegler.kighelper.ui.navigation.navSlideDirection
 import com.ziegler.kighelper.ui.navigation.navigateToTopLevelDestination
 import com.ziegler.kighelper.ui.navigation.topLevelRoutes
 import com.ziegler.kighelper.ui.screens.AboutScreen
@@ -57,12 +66,14 @@ import com.ziegler.kighelper.ui.screens.edit.ExportResult
 import com.ziegler.kighelper.ui.screens.edit.PhraseExportDialog
 import com.ziegler.kighelper.ui.screens.edit.PhraseExportResultDialog
 import com.ziegler.kighelper.ui.screens.edit.PhraseImportDialog
-import com.ziegler.kighelper.ui.screens.onboarding.OnboardingScreen
 import com.ziegler.kighelper.ui.screens.edit.exportPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.importPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.openExportDirectory
 import com.ziegler.kighelper.ui.screens.edit.shareExportedFile
+import com.ziegler.kighelper.ui.screens.onboarding.OnboardingScreen
+import com.ziegler.kighelper.ui.utils.findActivity
 import com.ziegler.kighelper.utils.NotificationHelper
+import kotlinx.coroutines.launch
 
 /**
  * 应用的主入口 Composable，负责设置导航和整体布局。
@@ -74,7 +85,7 @@ import com.ziegler.kighelper.utils.NotificationHelper
  * @param onStop 当需要停止朗读时调用的回调函数。
  * @param onPhraseSpoken 当一个短语被朗读后调用的回调函数，默认为空实现。
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun KigHelperApp(
     windowSize: WindowSizeClass,
@@ -96,6 +107,17 @@ fun KigHelperApp(
     val currentRoute = navBackStackEntry?.destination?.route ?: AppRoutes.MAIN
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val socialCardProfile by socialCardViewModel.profile.collectAsStateWithLifecycle()
+
+    // 关闭预见式返回动画时，对所有页面注册平台返回回调，阻断系统预测返回动画与手势预览。
+    // 拦截后路由到 AndroidX OnBackPressedDispatcher，保证自定义 BackHandler（未保存确认、
+    // 引导页）以及起始页退出应用的默认行为仍然生效。
+    val context = LocalContext.current
+    val componentActivity = context.findActivity() as? ComponentActivity
+    PredictiveBackGate(
+        enabled = !settings.predictiveBackEnabled, reRegisterKey = navBackStackEntry?.id
+    ) {
+        componentActivity?.onBackPressedDispatcher?.onBackPressed()
+    }
 
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
@@ -123,333 +145,364 @@ fun KigHelperApp(
                     onDestinationClick = navController::navigateToTopLevelDestination
                 )
             }) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = initialRoute ?: AppRoutes.MAIN,
-                modifier = Modifier.fillMaxSize(),
-                enterTransition = {
-                    slideIntoContainer(
-                        towards = navSlideDirection(isPop = false),
-                        animationSpec = tween(NavTransitionDurationMillis)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        towards = navSlideDirection(isPop = false),
-                        animationSpec = tween(NavTransitionDurationMillis)
-                    )
-                },
-                popEnterTransition = {
-                    slideIntoContainer(
-                        towards = navSlideDirection(isPop = true),
-                        animationSpec = tween(NavTransitionDurationMillis)
-                    )
-                },
-                popExitTransition = {
-                    slideOutOfContainer(
-                        towards = navSlideDirection(isPop = true),
-                        animationSpec = tween(NavTransitionDurationMillis)
-                    )
-                }) {
-                composable(AppRoutes.ONBOARDING) {
-                    OnboardingScreen(
-                        onboardingViewModel = onboardingViewModel,
-                        settingsViewModel = settingsViewModel,
-                        mainViewModel = viewModel,
-                        socialCardViewModel = socialCardViewModel,
-                        onComplete = { route ->
-                            onboardingViewModel.completeOnboarding()
-                            if (route != null) {
-                                navController.navigate(route) {
-                                    popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
-                                }
-                            } else {
-                                navController.navigate(AppRoutes.MAIN) {
-                                    popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
-                                }
-                            }
-                        },
-                        onNavigateToRoute = { route ->
-                            navController.navigate(route)
+            SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+                NavHost(
+                    navController = navController,
+                    startDestination = initialRoute ?: AppRoutes.MAIN,
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = {
+                        if (!settings.predictiveBackEnabled) {
+                            EnterTransition.None
+                        } else if (isTopLevelSwitch()) {
+                            slideIntoContainer(
+                                towards = navSlideDirection(isPop = false),
+                                animationSpec = tween(NavTransitionDurationMillis)
+                            )
+                        } else {
+                            slideIntoContainer(
+                                towards = navSlideDirection(isPop = false),
+                                animationSpec = tween(NavTransitionDurationMillis)
+                            ) + fadeIn(tween(NavTransitionDurationMillis))
                         }
-                    )
-                }
-
-                composable(AppRoutes.MAIN) {
-                    val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
-                    val groups by viewModel.groupList.collectAsStateWithLifecycle()
-                    val isPhrasesLoading by viewModel.isPhrasesLoading.collectAsStateWithLifecycle()
-
-                    val displayState by viewModel.displayState.collectAsStateWithLifecycle()
-
-                    MainScreen(
-                        contentPadding = innerPadding,
-                        phrases = phrases,
-                        groups = groups,
-                        displayText = displayState.text,
-                        isShowingInitialHint = displayState.isInitialHint,
-                        isPhrasesLoading = isPhrasesLoading,
-                        isFullScreen = isFullScreen,
-                        onFullScreenChange = { isFullScreen = it },
-                        onPhraseClick = { phrase ->
-                            viewModel.showPhrase(phrase)
-                            if (phrase.hasAudio && phrase.audioPath != null) {
-                                onPlayAudio(phrase.audioPath)
-                            } else {
-                                onSpeak(phrase.speech)
-                            }
-                            viewModel.markPhraseAsUsed(phrase)
-                            onPhraseSpoken(phrase)
-                        },
-                        onClearClick = {
-                            viewModel.clearDisplayText()
-                            onStop()
-                            notificationHelper.clearPhraseAndRefresh()
-                        },
-                        onAddPhrase = viewModel::addPhrase,
-                        onDeletePhrase = viewModel::deletePhrase,
-                        onNavigateToEdit = { phraseId ->
-                            navController.navigate(AppRoutes.addEditRoute(phraseId))
-                        },
-                        fontSize = settings.fontSize,
-                        hapticFeedback = settings.hapticFeedback,
-                        displayColorInverted = settings.displayColorInverted,
-                        hintText = settings.displayHintText
-                    )
-                }
-
-                composable(AppRoutes.INPUT) {
-                    InputScreen(
-                        contentPadding = innerPadding,
-                        onSpeak = onSpeak,
-                        onStop = onStop,
-                        fontSizeMultiplier = settings.fontSize
-                    )
-                }
-
-                composable(AppRoutes.EDIT) {
-                    ToolboxScreen(
-                        contentPadding = innerPadding,
-                        socialCardProfile = socialCardProfile,
-                        onNavigateToSocialCardEdit = {
-                            navController.navigate(AppRoutes.SOCIAL_CARD_EDIT)
-                        },
-                        onNavigateToPhraseManager = {
-                            navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
-                        },
-                        onNavigateToVoiceSettings = {
-                            navController.navigate(AppRoutes.VOICE_SETTINGS)
-                        },
-                        onNavigateToAbout = {
-                            navController.navigate(AppRoutes.ABOUT)
-                        },
-                        onNavigateToSettings = {
-                            navController.navigate(AppRoutes.SETTINGS)
-                        })
-                }
-
-                composable(AppRoutes.PHRASE_MANAGEMENT) {
-                    val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
-                    val groups by viewModel.groupList.collectAsStateWithLifecycle()
-                    val context = LocalContext.current
-                    val coroutineScope = rememberCoroutineScope()
-
-                    var showExportDialog by rememberSaveable { mutableStateOf(false) }
-                    var showImportDialog by rememberSaveable { mutableStateOf(false) }
-                    var pendingImportOverwrite by rememberSaveable { mutableStateOf(false) }
-                    var isExporting by rememberSaveable { mutableStateOf(false) }
-                    var exportResult by remember { mutableStateOf<ExportResult?>(null) }
-
-                    val importLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.OpenDocument()
-                    ) { uri ->
-                        uri?.let {
-                            coroutineScope.launch {
-                                val success = importPhraseArchive(
-                                    context, it, viewModel, pendingImportOverwrite
+                    },
+                    exitTransition = {
+                        if (!settings.predictiveBackEnabled) {
+                            ExitTransition.None
+                        } else if (isTopLevelSwitch()) {
+                            slideOutOfContainer(
+                                towards = navSlideDirection(isPop = false),
+                                animationSpec = tween(NavTransitionDurationMillis)
+                            )
+                        } else {
+                            slideOutOfContainer(
+                                towards = navSlideDirection(isPop = false),
+                                animationSpec = tween(NavTransitionDurationMillis),
+                                targetOffset = { fullSlide -> fullSlide / 4 }) + fadeOut(
+                                tween(
+                                    NavTransitionDurationMillis
                                 )
-                                Toast.makeText(
-                                    context,
-                                    if (success) "导入成功" else "导入失败",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                            )
                         }
-                    }
-
-                    EditScreen(
-                        contentPadding = innerPadding,
-                        phrases = phrases,
-                        groups = groups,
-                        onDelete = viewModel::deletePhrase,
-                        onMove = { updatedList -> viewModel.updatePhrasesOrder(updatedList) },
-                        onBack = { navController.popBackStack() },
-                        onNavigateToAdd = { groupId ->
-                            navController.navigate(AppRoutes.addEditRoute(groupId = groupId))
-                        },
-                        onNavigateToEdit = { id ->
-                            navController.navigate(AppRoutes.addEditRoute(id))
-                        },
-                        onAddGroup = viewModel::addGroup,
-                        onDeleteGroup = viewModel::deleteGroup,
-                        onRenameGroup = viewModel::renameGroup,
-                        onReorderGroups = viewModel::updateGroupsOrder,
-                        onMovePhraseToGroup = viewModel::movePhraseToGroup,
-                        onExport = { showExportDialog = true },
-                        onImport = { showImportDialog = true })
-
-                    if (showExportDialog) {
-                        PhraseExportDialog(
-                            groups = groups,
-                            onDismiss = { showExportDialog = false },
-                            onConfirm = { selectedGroupIds, includeAudio, fileName ->
-                                showExportDialog = false
-                                isExporting = true
-                                coroutineScope.launch {
-                                    try {
-                                        val result = exportPhraseArchive(
-                                            context,
-                                            viewModel,
-                                            selectedGroupIds,
-                                            includeAudio,
-                                            fileName
-                                        )
-                                        exportResult = result
-                                    } finally {
-                                        isExporting = false
+                    },
+                    popEnterTransition = {
+                        if (!settings.predictiveBackEnabled) {
+                            EnterTransition.None
+                        } else if (isTopLevelSwitch()) {
+                            slideIntoContainer(
+                                towards = navSlideDirection(isPop = true),
+                                animationSpec = tween(NavTransitionDurationMillis)
+                            )
+                        } else {
+                            slideIntoContainer(
+                                towards = navSlideDirection(isPop = true),
+                                animationSpec = tween(NavTransitionDurationMillis),
+                                initialOffset = { fullSlide -> fullSlide / 4 }) + fadeIn(
+                                tween(
+                                    NavTransitionDurationMillis
+                                )
+                            )
+                        }
+                    },
+                    popExitTransition = {
+                        if (!settings.predictiveBackEnabled) {
+                            ExitTransition.None
+                        } else if (isTopLevelSwitch()) {
+                            slideOutOfContainer(
+                                towards = navSlideDirection(isPop = true),
+                                animationSpec = tween(NavTransitionDurationMillis)
+                            )
+                        } else {
+                            slideOutOfContainer(
+                                towards = navSlideDirection(isPop = true),
+                                animationSpec = tween(NavTransitionDurationMillis)
+                            ) + fadeOut(tween(NavTransitionDurationMillis))
+                        }
+                    }) {
+                    composable(AppRoutes.ONBOARDING) {
+                        OnboardingScreen(
+                            onboardingViewModel = onboardingViewModel,
+                            settingsViewModel = settingsViewModel,
+                            mainViewModel = viewModel,
+                            socialCardViewModel = socialCardViewModel,
+                            onComplete = { route ->
+                                onboardingViewModel.completeOnboarding()
+                                if (route != null) {
+                                    navController.navigate(route) {
+                                        popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
+                                    }
+                                } else {
+                                    navController.navigate(AppRoutes.MAIN) {
+                                        popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
                                     }
                                 }
+                            },
+                            onNavigateToRoute = { route ->
+                                navController.navigate(route)
                             })
                     }
 
-                    if (showImportDialog) {
-                        PhraseImportDialog(
-                            onDismiss = { showImportDialog = false },
-                            onConfirm = { overwrite ->
-                                showImportDialog = false
-                                pendingImportOverwrite = overwrite
-                                importLauncher.launch(
-                                    arrayOf(
-                                        "application/zip", "application/octet-stream"
+                    composable(AppRoutes.MAIN) {
+                        val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
+                        val groups by viewModel.groupList.collectAsStateWithLifecycle()
+                        val isPhrasesLoading by viewModel.isPhrasesLoading.collectAsStateWithLifecycle()
+
+                        val displayState by viewModel.displayState.collectAsStateWithLifecycle()
+
+                        MainScreen(
+                            contentPadding = innerPadding,
+                            phrases = phrases,
+                            groups = groups,
+                            displayText = displayState.text,
+                            isShowingInitialHint = displayState.isInitialHint,
+                            isPhrasesLoading = isPhrasesLoading,
+                            isFullScreen = isFullScreen,
+                            onFullScreenChange = { isFullScreen = it },
+                            onPhraseClick = { phrase ->
+                                viewModel.showPhrase(phrase)
+                                if (phrase.hasAudio && phrase.audioPath != null) {
+                                    onPlayAudio(phrase.audioPath)
+                                } else {
+                                    onSpeak(phrase.speech)
+                                }
+                                viewModel.markPhraseAsUsed(phrase)
+                                onPhraseSpoken(phrase)
+                            },
+                            onClearClick = {
+                                viewModel.clearDisplayText()
+                                onStop()
+                                notificationHelper.clearPhraseAndRefresh()
+                            },
+                            onAddPhrase = viewModel::addPhrase,
+                            onDeletePhrase = viewModel::deletePhrase,
+                            onNavigateToEdit = { phraseId ->
+                                navController.navigate(AppRoutes.addEditRoute(phraseId))
+                            },
+                            fontSize = settings.fontSize,
+                            hapticFeedback = settings.hapticFeedback,
+                            displayColorInverted = settings.displayColorInverted,
+                            hintText = settings.displayHintText,
+                            sharedTransitionScope = this@SharedTransitionLayout
+                        )
+                    }
+
+                    composable(AppRoutes.INPUT) {
+                        InputScreen(
+                            contentPadding = innerPadding,
+                            onSpeak = onSpeak,
+                            onStop = onStop,
+                            fontSizeMultiplier = settings.fontSize
+                        )
+                    }
+
+                    composable(AppRoutes.EDIT) {
+                        ToolboxScreen(
+                            contentPadding = innerPadding,
+                            socialCardProfile = socialCardProfile,
+                            onNavigateToSocialCardEdit = {
+                                navController.navigate(AppRoutes.SOCIAL_CARD_EDIT)
+                            },
+                            onNavigateToPhraseManager = {
+                                navController.navigate(AppRoutes.PHRASE_MANAGEMENT)
+                            },
+                            onNavigateToVoiceSettings = {
+                                navController.navigate(AppRoutes.VOICE_SETTINGS)
+                            },
+                            onNavigateToAbout = {
+                                navController.navigate(AppRoutes.ABOUT)
+                            },
+                            onNavigateToSettings = {
+                                navController.navigate(AppRoutes.SETTINGS)
+                            })
+                    }
+
+                    composable(AppRoutes.PHRASE_MANAGEMENT) {
+                        val phrases by viewModel.phraseList.collectAsStateWithLifecycle()
+                        val groups by viewModel.groupList.collectAsStateWithLifecycle()
+                        val context = LocalContext.current
+                        val coroutineScope = rememberCoroutineScope()
+
+                        var showExportDialog by rememberSaveable { mutableStateOf(false) }
+                        var showImportDialog by rememberSaveable { mutableStateOf(false) }
+                        var pendingImportOverwrite by rememberSaveable { mutableStateOf(false) }
+                        var isExporting by rememberSaveable { mutableStateOf(false) }
+                        var exportResult by remember { mutableStateOf<ExportResult?>(null) }
+
+                        val importLauncher = rememberLauncherForActivityResult(
+                            ActivityResultContracts.OpenDocument()
+                        ) { uri ->
+                            uri?.let {
+                                coroutineScope.launch {
+                                    val success = importPhraseArchive(
+                                        context, it, viewModel, pendingImportOverwrite
                                     )
+                                    Toast.makeText(
+                                        context,
+                                        if (success) "导入成功" else "导入失败",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }
+
+                        EditScreen(
+                            contentPadding = innerPadding,
+                            phrases = phrases,
+                            groups = groups,
+                            onDelete = viewModel::deletePhrase,
+                            onMove = { updatedList -> viewModel.updatePhrasesOrder(updatedList) },
+                            onBack = { navController.popBackStack() },
+                            onNavigateToAdd = { groupId ->
+                                navController.navigate(AppRoutes.addEditRoute(groupId = groupId))
+                            },
+                            onNavigateToEdit = { id ->
+                                navController.navigate(AppRoutes.addEditRoute(id))
+                            },
+                            onAddGroup = viewModel::addGroup,
+                            onDeleteGroup = viewModel::deleteGroup,
+                            onRenameGroup = viewModel::renameGroup,
+                            onReorderGroups = viewModel::updateGroupsOrder,
+                            onMovePhraseToGroup = viewModel::movePhraseToGroup,
+                            onExport = { showExportDialog = true },
+                            onImport = { showImportDialog = true })
+
+                        if (showExportDialog) {
+                            PhraseExportDialog(
+                                groups = groups,
+                                onDismiss = { showExportDialog = false },
+                                onConfirm = { selectedGroupIds, includeAudio, fileName ->
+                                    showExportDialog = false
+                                    isExporting = true
+                                    coroutineScope.launch {
+                                        try {
+                                            val result = exportPhraseArchive(
+                                                context,
+                                                viewModel,
+                                                selectedGroupIds,
+                                                includeAudio,
+                                                fileName
+                                            )
+                                            exportResult = result
+                                        } finally {
+                                            isExporting = false
+                                        }
+                                    }
+                                })
+                        }
+
+                        if (showImportDialog) {
+                            PhraseImportDialog(
+                                onDismiss = { showImportDialog = false },
+                                onConfirm = { overwrite ->
+                                    showImportDialog = false
+                                    pendingImportOverwrite = overwrite
+                                    importLauncher.launch(
+                                        arrayOf(
+                                            "application/zip", "application/octet-stream"
+                                        )
+                                    )
+                                })
+                        }
+
+                        if (isExporting) {
+                            AlertDialog(onDismissRequest = {}, title = { Text("导出中") }, text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    Text("正在生成短语文件…")
+                                }
+                            }, confirmButton = {})
+                        }
+
+                        exportResult?.let { result ->
+                            PhraseExportResultDialog(result = result, onOpenFolder = {
+                                exportResult = null
+                                openExportDirectory(context)
+                            }, onShare = {
+                                exportResult = null
+                                shareExportedFile(context, result)
+                            }, onDismiss = { exportResult = null })
+                        }
+                    }
+
+                    composable(AppRoutes.VOICE_SETTINGS) {
+                        VoiceSettingsScreen(
+                            viewModel = voiceViewModel,
+                            onBack = { navController.popBackStack() },
+                            onPreview = onSpeak
+                        )
+                    }
+
+                    composable(
+                        route = AppRoutes.ADD_EDIT_PATTERN,
+                        arguments = listOf(navArgument(AppRoutes.PHRASE_ID_ARG) {
+                            nullable = true
+                            type = NavType.StringType
+                            defaultValue = null
+                        }, navArgument(AppRoutes.GROUP_ID_ARG) {
+                            nullable = true
+                            type = NavType.StringType
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val phraseId = backStackEntry.arguments?.getString(AppRoutes.PHRASE_ID_ARG)
+                        val initialGroupId =
+                            backStackEntry.arguments?.getString(AppRoutes.GROUP_ID_ARG)
+
+                        val groups by viewModel.groupList.collectAsStateWithLifecycle()
+
+                        AddEditPhraseScreen(
+                            phrase = viewModel.findPhraseById(phraseId),
+                            isEditMode = phraseId != null,
+                            groups = groups,
+                            initialGroupId = initialGroupId,
+                            onSave = { label, speech, groupId, audioPath, cardColor ->
+                                if (phraseId == null) {
+                                    viewModel.addPhrase(
+                                        label, speech, groupId, audioPath, cardColor
+                                    )
+                                } else {
+                                    viewModel.updatePhrase(
+                                        phraseId, label, speech, groupId, audioPath, cardColor
+                                    )
+                                }
+                                navController.popBackStack()
+                            },
+                            onBack = { navController.popBackStack() })
+                    }
+
+                    composable(AppRoutes.ABOUT) {
+                        AboutScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(AppRoutes.SETTINGS) {
+                        SettingsScreen(
+                            viewModel = settingsViewModel,
+                            onBack = { navController.popBackStack() },
+                            onTestDevice = onTestDevice
+                        )
+                    }
+
+                    composable(AppRoutes.SOCIAL_CARD_EDIT) {
+                        SocialCardEditScreen(
+                            initialProfile = socialCardProfile,
+                            onBack = { navController.popBackStack() },
+                            onSave = { profile, avatarUri, backgroundUri, qrCodeUris, iconUris ->
+                                socialCardViewModel.commit(
+                                    profile, avatarUri, backgroundUri, qrCodeUris, iconUris
                                 )
                             })
                     }
-
-                    if (isExporting) {
-                        AlertDialog(onDismissRequest = {}, title = { Text("导出中") }, text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                Text("正在生成短语文件…")
-                            }
-                        }, confirmButton = {})
-                    }
-
-                    exportResult?.let { result ->
-                        PhraseExportResultDialog(result = result, onOpenFolder = {
-                            exportResult = null
-                            openExportDirectory(context)
-                        }, onShare = {
-                            exportResult = null
-                            shareExportedFile(context, result)
-                        }, onDismiss = { exportResult = null })
-                    }
-                }
-
-                composable(AppRoutes.VOICE_SETTINGS) {
-                    VoiceSettingsScreen(
-                        viewModel = voiceViewModel,
-                        onBack = { navController.popBackStack() },
-                        onPreview = onSpeak
-                    )
-                }
-
-                composable(
-                    route = AppRoutes.ADD_EDIT_PATTERN,
-                    arguments = listOf(navArgument(AppRoutes.PHRASE_ID_ARG) {
-                        nullable = true
-                        type = NavType.StringType
-                        defaultValue = null
-                    }, navArgument(AppRoutes.GROUP_ID_ARG) {
-                        nullable = true
-                        type = NavType.StringType
-                        defaultValue = null
-                    })
-                ) { backStackEntry ->
-                    val phraseId = backStackEntry.arguments?.getString(AppRoutes.PHRASE_ID_ARG)
-                    val initialGroupId = backStackEntry.arguments?.getString(AppRoutes.GROUP_ID_ARG)
-
-                    val groups by viewModel.groupList.collectAsStateWithLifecycle()
-
-                    AddEditPhraseScreen(
-                        phrase = viewModel.findPhraseById(phraseId),
-                        isEditMode = phraseId != null,
-                        groups = groups,
-                        initialGroupId = initialGroupId,
-                        onSave = { label, speech, groupId, audioPath, cardColor ->
-                            if (phraseId == null) {
-                                viewModel.addPhrase(label, speech, groupId, audioPath, cardColor)
-                            } else {
-                                viewModel.updatePhrase(
-                                    phraseId, label, speech, groupId, audioPath, cardColor
-                                )
-                            }
-                            navController.popBackStack()
-                        },
-                        onBack = { navController.popBackStack() })
-                }
-
-                composable(AppRoutes.ABOUT) {
-                    AboutScreen(onBack = { navController.popBackStack() })
-                }
-
-                composable(AppRoutes.SETTINGS) {
-                    SettingsScreen(
-                        viewModel = settingsViewModel,
-                        onBack = { navController.popBackStack() },
-                        onTestDevice = onTestDevice
-                    )
-                }
-
-                composable(AppRoutes.SOCIAL_CARD_EDIT) {
-                    SocialCardEditScreen(
-                        initialProfile = socialCardProfile,
-                        onBack = { navController.popBackStack() },
-                        onSave = { profile, avatarUri, backgroundUri, qrCodeUris, iconUris ->
-                            socialCardViewModel.commit(
-                                profile, avatarUri, backgroundUri, qrCodeUris, iconUris
-                            )
-                        })
                 }
             }
         }
     }
 }
 
-private const val NavTransitionDurationMillis = 300
-
-private val topLevelRouteOrder = listOf(
-    AppRoutes.MAIN, AppRoutes.INPUT, AppRoutes.EDIT
-)
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection(
-    isPop: Boolean
-): AnimatedContentTransitionScope.SlideDirection {
-    val initialIndex = topLevelRouteOrder.indexOf(initialState.destination.route)
-    val targetIndex = topLevelRouteOrder.indexOf(targetState.destination.route)
-
-    return if (initialIndex != -1 && targetIndex != -1 && initialIndex != targetIndex) {
-        if (targetIndex > initialIndex) {
-            AnimatedContentTransitionScope.SlideDirection.Left
-        } else {
-            AnimatedContentTransitionScope.SlideDirection.Right
-        }
-    } else if (isPop) {
-        AnimatedContentTransitionScope.SlideDirection.Right
-    } else {
-        AnimatedContentTransitionScope.SlideDirection.Left
-    }
+// 一级页面相互切换使用普通横滑，进出二级页面时启用视差 + 淡入淡出。
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTopLevelSwitch(): Boolean {
+    val initialRoute = initialState.destination.route
+    val targetRoute = targetState.destination.route
+    return initialRoute != null && targetRoute != null && initialRoute in topLevelRoutes && targetRoute in topLevelRoutes
 }

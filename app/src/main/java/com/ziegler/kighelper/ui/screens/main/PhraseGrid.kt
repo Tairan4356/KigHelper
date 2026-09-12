@@ -35,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -71,6 +70,7 @@ import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
  * @param modifier 可选的修饰符，供外部布局使用。
  * @param cardFontSize 短语按钮文本的字体大小，供不同屏幕尺寸适配使用。
  * @param cardHeight 短语按钮的高度，供不同屏幕尺寸适配使用。
+ * @param hapticFeedback 是否启用物理按键触感反馈。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -168,7 +168,6 @@ private fun PhraseButton(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(buttonShape)
                 .combinedClickable(role = Role.Button, onClick = {
                     performButtonHaptic()
                     onDisplayShouldExpand()
@@ -265,13 +264,7 @@ private fun PhraseContextMenu(
                     itemIcon = Icons.Default.Delete,
                     onClick = onDelete,
                     style = PCMI_STYLE_DELETE
-                )/*
-                * 手动增加短语菜单项时需要完成三步：
-                * 1. 在 PhraseContextMenu 的参数列表中新增对应回调，并在 PhraseButton 调用处把当前 phrase 传给业务层；
-                * 2. 在 PhraseContextMenu 的 Column 中新增一个 PhraseContextMenuItem；如果需要新样式，先新增 PCMI_STYLE_ 常量，
-                *    再在 PhraseContextMenuItem 的 when 分支里集中覆盖该样式需要修改的视觉属性；
-                * 3. 点击菜单项前先关闭 isMenuExpanded，避免业务弹窗、删除刷新列表后，旧 Popup 仍挂在已移除的按钮锚点上。
-                */
+                )
             }
         }
     }
@@ -294,7 +287,7 @@ private fun PhraseContextMenuItem(
 ) {
     var backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh
     var contentColor = MaterialTheme.colorScheme.onSurface
-    var itemModifier = Modifier
+    val itemModifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 6.dp, vertical = 4.dp)
     var itemShape = MaterialTheme.shapes.extraSmall

@@ -8,13 +8,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,6 +42,9 @@ import androidx.compose.ui.unit.sp
 internal enum class DisplaySurfaceLayoutMode {
     Portrait, Landscape, Fullscreen
 }
+
+/** 内联展示区与全屏展示区共享边界动画的匹配键。 */
+internal const val DisplaySurfaceSharedBoundsKey = "main-display-surface"
 
 /**
  * 以响应式字号显示当前 AAC 文本，并提供清除按钮。
@@ -111,8 +112,7 @@ internal fun DisplaySurface(
                 val scaledFontSize = baseFontSize * fontSizeMultiplier
                 val lineHeight = scaledFontSize * DisplayLineHeightMultiplier
 
-                val currentTextIsHint =
-                    targetText == text && isSubtle
+                val currentTextIsHint = targetText == text && isSubtle
 
                 Box(
                     modifier = Modifier

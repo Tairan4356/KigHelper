@@ -6,14 +6,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +28,7 @@ import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
 import com.ziegler.kighelper.ui.screens.main.AddPhraseDialog
 import com.ziegler.kighelper.ui.screens.main.DisplaySurface
+import com.ziegler.kighelper.ui.screens.main.DisplaySurfaceSharedBoundsKey
 import com.ziegler.kighelper.ui.screens.main.MainScreenLayout
 import com.ziegler.kighelper.ui.screens.main.rememberMainScreenState
 import com.ziegler.kighelper.ui.utils.findActivity
@@ -64,6 +61,7 @@ fun MainScreen(
     hapticFeedback: Boolean = true,
     displayColorInverted: Boolean = false,
     hintText: String = "点击下面按钮文字在此显示",
+    sharedTransitionScope: SharedTransitionScope
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -127,22 +125,14 @@ fun MainScreen(
     }
 
     // 引入共享元素过渡容器，协调切换
-    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+    with(sharedTransitionScope) {
         // 非全屏状态
         AnimatedVisibility(
             visible = !isFullScreen,
             modifier = Modifier.fillMaxSize(),
-            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-                initialOffsetY = { it / 6 },
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-            ),
-            exit = fadeOut(animationSpec = tween(250)) + slideOutVertically(
-                targetOffsetY = { it / 6 },
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-            )
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200))
         ) {
-            val animatedVisibilityScope = this
-
             MainScreenLayout(
                 modifier = modifier,
                 contentPadding = contentPadding,
@@ -153,28 +143,33 @@ fun MainScreen(
                 onNavigateToEdit = onNavigateToEdit,
                 fontSizeMultiplier = fontSize,
                 hapticFeedback = hapticFeedback,
-                displayColorInverted = displayColorInverted
+                displayColorInverted = displayColorInverted,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this
             )
         }
 
         // 全屏显示的过渡动画层
         AnimatedVisibility(
             visible = isFullScreen,
-            enter = fadeIn(animationSpec = tween(300)),
-            exit = fadeOut(animationSpec = tween(250))
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200))
         ) {
-            val fullscreenScrollState = rememberScrollState()
             DisplaySurface(
                 text = state.effectiveDisplayText,
                 isSubtle = state.isShowingInitialHint,
-                scrollState = fullscreenScrollState,
+                scrollState = rememberScrollState(),
                 fontSizeMultiplier = fontSize,
                 onClear = {
                     onClearClick()
                     onFullScreenChange(false)
                 },
                 onClick = { onFullScreenChange(false) },
-                displayColorInverted = displayColorInverted
+                displayColorInverted = displayColorInverted,
+                modifier = Modifier.sharedBounds(
+                    sharedContentState = rememberSharedContentState(DisplaySurfaceSharedBoundsKey),
+                    animatedVisibilityScope = this
+                )
             )
         }
     }

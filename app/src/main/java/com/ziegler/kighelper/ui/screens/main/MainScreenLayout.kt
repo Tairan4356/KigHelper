@@ -1,5 +1,11 @@
 package com.ziegler.kighelper.ui.screens.main
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,9 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +42,7 @@ import kotlinx.coroutines.launch
 /**
  * MainScreen 的布局组件，处理横屏和竖屏布局
  */
-@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainScreenLayout(
     modifier: Modifier = Modifier,
@@ -51,7 +54,9 @@ fun MainScreenLayout(
     onNavigateToEdit: (String) -> Unit,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true,
-    displayColorInverted: Boolean = false
+    displayColorInverted: Boolean = false,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
 ) {
     if (state.isLandscape) {
         LandscapeLayout(
@@ -64,7 +69,9 @@ fun MainScreenLayout(
             onNavigateToEdit = onNavigateToEdit,
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback,
-            displayColorInverted = displayColorInverted
+            displayColorInverted = displayColorInverted,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope
         )
     } else {
         PortraitLayout(
@@ -77,7 +84,9 @@ fun MainScreenLayout(
             onNavigateToEdit = onNavigateToEdit,
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback,
-            displayColorInverted = displayColorInverted
+            displayColorInverted = displayColorInverted,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope
         )
     }
 }
@@ -85,7 +94,7 @@ fun MainScreenLayout(
 /**
  * 横屏布局
  */
-@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun LandscapeLayout(
     modifier: Modifier,
@@ -97,7 +106,9 @@ private fun LandscapeLayout(
     onNavigateToEdit: (String) -> Unit,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true,
-    displayColorInverted: Boolean = false
+    displayColorInverted: Boolean = false,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -117,33 +128,41 @@ private fun LandscapeLayout(
     Row(
         modifier = screenModifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .weight(2f)
-                .padding(bottom = 16.dp)
-        ) {
-            DisplaySurface(
-                text = state.effectiveDisplayText,
-                isSubtle = state.isShowingInitialHint,
-                scrollState = rememberScrollState(),
-                onClear = onClearClick,
-                onClick = if (state.canEnterFullScreen) {
-                    { state.onFullScreenChange(true) }
-                } else null,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                fontSizeMultiplier = fontSizeMultiplier,
-                displayColorInverted = displayColorInverted)
-        }
+        with(sharedTransitionScope) {
+            Box(
+                modifier = Modifier
+                    .weight(2f)
+                    .padding(bottom = 16.dp)
+            ) {
+                DisplaySurface(
+                    text = state.effectiveDisplayText,
+                    isSubtle = state.isShowingInitialHint,
+                    scrollState = rememberScrollState(),
+                    onClear = onClearClick,
+                    onClick = if (state.canEnterFullScreen) {
+                        { state.onFullScreenChange(true) }
+                    } else null,
+                    modifier = Modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(
+                                DisplaySurfaceSharedBoundsKey
+                            ), animatedVisibilityScope = animatedVisibilityScope
+                        )
+                        .clip(RoundedCornerShape(24.dp)),
+                    fontSizeMultiplier = fontSizeMultiplier,
+                    displayColorInverted = displayColorInverted)
+            }
 
-        Box(modifier = Modifier.weight(1f)) {
-            PhraseAreaContent(
-                state = state,
-                onPhraseClick = onPhraseClick,
-                onDeletePhrase = onDeletePhrase,
-                onNavigateToEdit = onNavigateToEdit,
-                modifier = Modifier.fillMaxSize(),
-                hapticFeedback = hapticFeedback
-            )
+            Box(modifier = Modifier.weight(1f)) {
+                PhraseAreaContent(
+                    state = state,
+                    onPhraseClick = onPhraseClick,
+                    onDeletePhrase = onDeletePhrase,
+                    onNavigateToEdit = onNavigateToEdit,
+                    modifier = Modifier.fillMaxSize(),
+                    hapticFeedback = hapticFeedback
+                )
+            }
         }
     }
 }
@@ -151,7 +170,7 @@ private fun LandscapeLayout(
 /**
  * 竖屏布局
  */
-@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun PortraitLayout(
     modifier: Modifier,
@@ -163,7 +182,9 @@ private fun PortraitLayout(
     onNavigateToEdit: (String) -> Unit,
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true,
-    displayColorInverted: Boolean = false
+    displayColorInverted: Boolean = false,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -197,43 +218,51 @@ private fun PortraitLayout(
         )
 
     Column(modifier = screenModifier) {
-        Box(modifier = Modifier.weight(state.displayWeight)) {
-            DisplaySurface(
-                text = state.effectiveDisplayText,
-                isSubtle = state.isShowingInitialHint,
-                scrollState = rememberScrollState(),
-                onClear = {
-                    onClearClick()
-                    coroutineScope.launch {
-                        animate(
-                            initialValue = state.collapseOffset,
-                            targetValue = state.maxCollapseDistancePx,
-                            animationSpec = spring(stiffness = Spring.StiffnessMedium)
-                        ) { value, _ ->
-                            state.collapseOffset = value
+        with(sharedTransitionScope) {
+            Box(modifier = Modifier.weight(state.displayWeight)) {
+                DisplaySurface(
+                    text = state.effectiveDisplayText,
+                    isSubtle = state.isShowingInitialHint,
+                    scrollState = rememberScrollState(),
+                    onClear = {
+                        onClearClick()
+                        coroutineScope.launch {
+                            animate(
+                                initialValue = state.collapseOffset,
+                                targetValue = state.maxCollapseDistancePx,
+                                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                            ) { value, _ ->
+                                state.collapseOffset = value
+                            }
                         }
-                    }
-                },
-                onClick = if (state.canEnterFullScreen) {
-                    { state.onFullScreenChange(true) }
-                } else null,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                fontSizeMultiplier = fontSizeMultiplier,
-                displayColorInverted = displayColorInverted)
+                    },
+                    onClick = if (state.canEnterFullScreen) {
+                        { state.onFullScreenChange(true) }
+                    } else null,
+                    modifier = Modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(
+                                DisplaySurfaceSharedBoundsKey
+                            ), animatedVisibilityScope = animatedVisibilityScope
+                        )
+                        .clip(RoundedCornerShape(24.dp)),
+                    fontSizeMultiplier = fontSizeMultiplier,
+                    displayColorInverted = displayColorInverted)
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            PhraseAreaContent(
+                state = state,
+                onPhraseClick = onPhraseClick,
+                onDeletePhrase = onDeletePhrase,
+                onNavigateToEdit = onNavigateToEdit,
+                modifier = Modifier
+                    .weight(state.phraseAreaWeight)
+                    .fillMaxWidth(),
+                hapticFeedback = hapticFeedback
+            )
         }
-
-        Spacer(Modifier.height(16.dp))
-
-        PhraseAreaContent(
-            state = state,
-            onPhraseClick = onPhraseClick,
-            onDeletePhrase = onDeletePhrase,
-            onNavigateToEdit = onNavigateToEdit,
-            modifier = Modifier
-                .weight(state.phraseAreaWeight)
-                .fillMaxWidth(),
-            hapticFeedback = hapticFeedback
-        )
     }
 }
 

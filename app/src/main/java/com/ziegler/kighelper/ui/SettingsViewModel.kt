@@ -180,18 +180,10 @@ class SettingsViewModel @Inject constructor(
                     }
                 }
                 uri.lastPathSegment
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 uri.lastPathSegment
             }
         }
-    }
-
-    fun clearDownloadError() {
-        _downloadState.update { it.copy(error = null) }
-    }
-
-    fun clearSnackbarMessage() {
-        _downloadState.update { it.copy(snackbarMessage = null) }
     }
 
     fun selectCustomFont(fontName: String?) {
@@ -248,5 +240,9 @@ class SettingsViewModel @Inject constructor(
 
     fun updateDisplayHintText(text: String) {
         settingsRepository.updateDisplayHintText(text)
+    }
+
+    fun updatePredictiveBackEnabled(enabled: Boolean) {
+        settingsRepository.updatePredictiveBackEnabled(enabled)
     }
 }

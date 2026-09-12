@@ -252,8 +252,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2,
                         maxLines = 3,
-                        placeholder = { Text("点击下面按钮文字在此显示") }
-                    )
+                        placeholder = { Text("点击下面按钮文字在此显示") })
                     Text(
                         "未显示短语时的提示词，留空则不显示",
                         style = MaterialTheme.typography.bodySmall,
@@ -293,6 +292,13 @@ fun SettingsScreen(
                         subtitle = "点击短语时震动",
                         checked = settings.hapticFeedback,
                         onCheckedChange = viewModel::updateHapticFeedback
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingSwitch(
+                        title = "预见式返回动画",
+                        subtitle = "Android 14+ 手势返回时页面跟随手势动画",
+                        checked = settings.predictiveBackEnabled,
+                        onCheckedChange = viewModel::updatePredictiveBackEnabled
                     )
                 }
             }
