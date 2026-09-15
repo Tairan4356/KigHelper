@@ -21,7 +21,6 @@ android {
         versionName = "1.3.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        resConfigs("zh", "ja", "en")
     }
 
     flavorDimensions += "version"
@@ -46,8 +45,7 @@ android {
                 abiFilters += "arm64-v8a"
             }
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
             // signingConfig = signingConfigs.getByName("release")
         }
@@ -62,6 +60,9 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    androidResources {
+        localeFilters += listOf("zh", "ja", "en")
     }
     packaging {
         jniLibs {

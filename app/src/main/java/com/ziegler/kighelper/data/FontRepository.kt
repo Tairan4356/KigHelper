@@ -82,7 +82,7 @@ class FontRepository @Inject constructor(
                     return null
                 }
 
-                val json = response.body?.string() ?: return null
+                val json = response.body.string()
                 gson.fromJson(json, FontCatalog::class.java)
             }
         } catch (e: Exception) {
@@ -107,7 +107,6 @@ class FontRepository @Inject constructor(
                     }
 
                     val body = response.body
-                        ?: return@withContext Result.failure(IOException("Empty response body"))
                     val inputStream = body.byteStream()
                     val result = FontManager.saveFontFile(
                         context, weight.fileName, inputStream
