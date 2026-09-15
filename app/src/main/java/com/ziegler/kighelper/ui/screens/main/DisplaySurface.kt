@@ -1,6 +1,7 @@
 // 当前选中或输入短语文本的大字展示区。
 package com.ziegler.kighelper.ui.screens.main
 
+import android.widget.VideoView
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,10 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -35,6 +39,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
+import java.io.File
 
 /**
  * 展示区布局策略：普通横竖屏分别控制换行倾向，全屏模式允许更充分地使用空间。
@@ -47,9 +54,15 @@ internal enum class DisplaySurfaceLayoutMode {
 internal const val DisplaySurfaceSharedBoundsKey = "main-display-surface"
 
 /**
- * 以响应式字号显示当前 AAC 文本，并提供清除按钮。
+ * 以响应式字号显示当前 AAC 文本，并支持图片/视频媒体内容，提供清除按钮。
+ *
+ * 内容展示优先级：视频（仅 [playVideo] 时真正播放）> 图片 > 文本。
+ * 媒体存在时隐藏文本，符合"仅显示媒体"的展示策略。
  *
  * @param text 当前展示文本
+ * @param imagePath 可选图片文件路径（支持 GIF）
+ * @param videoPath 可选视频文件路径
+ * @param playVideo 视频是否在本实例内播放；false 时仅显示占位符（避免内联/全屏重复播放）
  * @param isSubtle 当前文本是否提示性（即默认提示语或用户输入但未提交的文本），提示性文本会降低不透明度
  * @param scrollState 展示区滚动状态，由外部持有以在文本更新时保持滚动位置
  * @param onClear 点击清除按钮的回调
@@ -67,7 +80,10 @@ internal fun DisplaySurface(
     layoutMode: DisplaySurfaceLayoutMode = DisplaySurfaceLayoutMode.Portrait,
     onClick: (() -> Unit)? = null,
     fontSizeMultiplier: Float = 1.0f,
-    displayColorInverted: Boolean = false
+    displayColorInverted: Boolean = false,
+    imagePath: String? = null,
+    videoPath: String? = null,
+    playVideo: Boolean = false
 ) {
     val surfaceColor = if (displayColorInverted) {
         MaterialTheme.colorScheme.surface
@@ -92,45 +108,76 @@ internal fun DisplaySurface(
         BoxWithConstraints(
             contentAlignment = Alignment.Center, modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(10.dp)
         ) {
-            val displayTextStyle = MaterialTheme.typography.displayLarge
             val contentPadding = layoutMode.contentPadding
+            val mediaModifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding)
 
-            AnimatedContent(
-                targetState = text, transitionSpec = {
-                    (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
-                }, label = "textAnimation"
-            ) { targetText ->
-                val baseFontSize = rememberDisplayFontSize(
-                    text = targetText,
-                    containerWidth = maxWidth - contentPadding * 2,
-                    containerHeight = maxHeight - contentPadding * 2,
-                    baseStyle = displayTextStyle,
-                    layoutMode = layoutMode
-                )
-                val scaledFontSize = baseFontSize * fontSizeMultiplier
-                val lineHeight = scaledFontSize * DisplayLineHeightMultiplier
+            when {
+                videoPath != null && playVideo -> {
+                    MediaVideoSurface(path = videoPath, modifier = mediaModifier)
+                }
 
-                val currentTextIsHint = targetText == text && isSubtle
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(contentPadding)
-                        .verticalScroll(scrollState), contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = targetText, style = displayTextStyle.copy(
-                            fontSize = scaledFontSize, lineHeight = lineHeight
-                        ), textAlign = TextAlign.Center, color = textColor.copy(
-                            alpha = if (currentTextIsHint) 0.55f else 1f
-                        )
+                videoPath != null -> {
+                    Icon(
+                        imageVector = Icons.Default.PlayCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(96.dp),
+                        tint = textColor.copy(alpha = 0.7f)
                     )
+                }
+
+                imagePath != null -> {
+                    AsyncImage(
+                        model = File(imagePath),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = mediaModifier
+                    )
+                }
+
+                else -> {
+                    val displayTextStyle = MaterialTheme.typography.displayLarge
+
+                    AnimatedContent(
+                        targetState = text, transitionSpec = {
+                            (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
+                        }, label = "textAnimation"
+                    ) { targetText ->
+                        val baseFontSize = rememberDisplayFontSize(
+                            text = targetText,
+                            containerWidth = maxWidth - contentPadding * 2,
+                            containerHeight = maxHeight - contentPadding * 2,
+                            baseStyle = displayTextStyle,
+                            layoutMode = layoutMode
+                        )
+                        val scaledFontSize = baseFontSize * fontSizeMultiplier
+                        val lineHeight = scaledFontSize * DisplayLineHeightMultiplier
+
+                        val currentTextIsHint = targetText == text && isSubtle
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(contentPadding)
+                                .verticalScroll(scrollState), contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = targetText, style = displayTextStyle.copy(
+                                    fontSize = scaledFontSize, lineHeight = lineHeight
+                                ), textAlign = TextAlign.Center, color = textColor.copy(
+                                    alpha = if (currentTextIsHint) 0.55f else 1f
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
-            if (text.isNotEmpty() && !isSubtle) {
+            val hasContent = text.isNotEmpty() || imagePath != null || videoPath != null
+            if (hasContent && !isSubtle) {
                 IconButton(
                     onClick = onClear, modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
@@ -143,6 +190,26 @@ internal fun DisplaySurface(
             }
         }
     }
+}
+
+/**
+ * 使用系统 VideoView 播放视频（含声音），并在组合销毁时停止。
+ * 仅为特定实例创建播放器，避免同一视频在内联/全屏间重复播放。
+ */
+@Composable
+private fun MediaVideoSurface(path: String, modifier: Modifier = Modifier) {
+    AndroidView(modifier = modifier, factory = { ctx ->
+        VideoView(ctx).apply {
+            tag = "__kighelper_path_unset__"
+        }
+    }, update = { view ->
+        if (view.tag != path) {
+            view.stopPlayback()
+            view.setVideoPath(path)
+            view.setOnPreparedListener { it.start() }
+            view.tag = path
+        }
+    }, onRelease = { it.stopPlayback() })
 }
 
 /**
@@ -256,9 +323,9 @@ private data class DisplayTextLayoutRules(
 
 private val DisplaySurfaceLayoutMode.contentPadding: Dp
     get() = when (this) {
-        DisplaySurfaceLayoutMode.Portrait -> 20.dp
-        DisplaySurfaceLayoutMode.Landscape -> 16.dp
-        DisplaySurfaceLayoutMode.Fullscreen -> 24.dp
+        DisplaySurfaceLayoutMode.Portrait -> 12.dp
+        DisplaySurfaceLayoutMode.Landscape -> 10.dp
+        DisplaySurfaceLayoutMode.Fullscreen -> 12.dp
     }
 
 private val DisplaySurfaceLayoutMode.minFontSize: TextUnit

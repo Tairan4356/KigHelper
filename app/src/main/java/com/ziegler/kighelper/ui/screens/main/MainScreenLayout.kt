@@ -150,7 +150,9 @@ private fun LandscapeLayout(
                         )
                         .clip(RoundedCornerShape(24.dp)),
                     fontSizeMultiplier = fontSizeMultiplier,
-                    displayColorInverted = displayColorInverted)
+                    displayColorInverted = displayColorInverted,
+                    imagePath = state.effectiveImagePath,
+                    videoPath = state.effectiveVideoPath)
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -193,8 +195,9 @@ private fun PortraitLayout(
     val outerBottomPadding = contentPadding.calculateBottomPadding()
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(state.hasPhrases, state.displayText) {
-        val targetOffset = if (!state.hasPhrases || state.displayText.isEmpty()) {
+    LaunchedEffect(state.hasPhrases, state.displayText, state.effectiveHasMedia) {
+        val hasDisplayContent = state.displayText.isNotEmpty() || state.effectiveHasMedia
+        val targetOffset = if (!state.hasPhrases || !hasDisplayContent) {
             state.maxCollapseDistancePx
         } else {
             0f
@@ -247,7 +250,9 @@ private fun PortraitLayout(
                         )
                         .clip(RoundedCornerShape(24.dp)),
                     fontSizeMultiplier = fontSizeMultiplier,
-                    displayColorInverted = displayColorInverted)
+                    displayColorInverted = displayColorInverted,
+                    imagePath = state.effectiveImagePath,
+                    videoPath = state.effectiveVideoPath)
             }
 
             Spacer(Modifier.height(16.dp))

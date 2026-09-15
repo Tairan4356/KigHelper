@@ -61,6 +61,8 @@ fun MainScreen(
     hapticFeedback: Boolean = true,
     displayColorInverted: Boolean = false,
     hintText: String = "点击下面按钮文字在此显示",
+    imagePath: String? = null,
+    videoPath: String? = null,
     sharedTransitionScope: SharedTransitionScope
 ) {
     val view = LocalView.current
@@ -75,11 +77,13 @@ fun MainScreen(
         hintText = hintText,
         isPhrasesLoading = isPhrasesLoading,
         isFullScreen = isFullScreen,
-        onFullScreenChange = onFullScreenChange
+        onFullScreenChange = onFullScreenChange,
+        imagePath = imagePath,
+        videoPath = videoPath
     )
 
-    LaunchedEffect(displayText, isShowingInitialHint, hintText) {
-        state.updateDisplayText(displayText, isShowingInitialHint)
+    LaunchedEffect(displayText, isShowingInitialHint, hintText, imagePath, videoPath) {
+        state.updateDisplay(displayText, isShowingInitialHint, imagePath, videoPath)
     }
 
     // 将 Android 系统栏状态与应用内全屏展示状态保持同步。
@@ -166,6 +170,9 @@ fun MainScreen(
                 },
                 onClick = { onFullScreenChange(false) },
                 displayColorInverted = displayColorInverted,
+                imagePath = state.effectiveImagePath,
+                videoPath = state.effectiveVideoPath,
+                playVideo = true,
                 modifier = Modifier.sharedBounds(
                     sharedContentState = rememberSharedContentState(DisplaySurfaceSharedBoundsKey),
                     animatedVisibilityScope = this

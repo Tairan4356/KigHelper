@@ -9,6 +9,19 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+/** 归档中媒体分类与内部存储目录名 */
+object PhraseMedia {
+    const val AUDIO = "audio"
+    const val IMAGE = "image"
+    const val VIDEO = "video"
+    val CATEGORIES = listOf(AUDIO, IMAGE, VIDEO)
+}
+
+/** 归档中的媒体文件条目，category 对应 PhraseMedia 分类 */
+data class ArchiveMediaFile(
+    val category: String, val fileName: String, val file: File
+)
+
 object PhraseShare {
     private const val SCHEMA_VERSION = 1
     private const val BUFFER_SIZE = 8192
@@ -45,10 +58,14 @@ object PhraseShare {
         }.getOrNull()
     }
 
+    /**
+     * 导出归档：data.json + 各分类媒体文件（zip 目录为 分类/文件名）。
+     * @param mediaFiles 需打包的媒体文件列表，分类见 [PhraseMedia]
+     */
     fun exportArchive(
         groups: List<PhraseGroup>,
         phrases: List<Phrase>,
-        audioFiles: List<Pair<String, File>>,
+        mediaFiles: List<ArchiveMediaFile>,
         outputStream: OutputStream,
         gson: Gson = Gson()
     ) {
@@ -58,10 +75,10 @@ object PhraseShare {
             zip.write(json.toByteArray(Charsets.UTF_8))
             zip.closeEntry()
 
-            for ((fileName, file) in audioFiles) {
-                if (!file.exists()) continue
-                zip.putNextEntry(ZipEntry("audio/$fileName"))
-                file.inputStream().use { input ->
+            for (media in mediaFiles) {
+                if (!media.file.exists()) continue
+                zip.putNextEntry(ZipEntry("${media.category}/${media.fileName}"))
+                media.file.inputStream().use { input ->
                     input.copyTo(zip, BUFFER_SIZE)
                 }
                 zip.closeEntry()
@@ -69,8 +86,12 @@ object PhraseShare {
         }
     }
 
+    /**
+     * 导入归档：解析 data.json 并按分类解压媒体文件到 [mediaDirs] 对应目录。
+     * @param mediaDirs 分类 -> 内部存储目录，如 PhraseMedia.AUDIO to filesDir/audio
+     */
     fun importArchive(
-        archiveBytes: InputStream, audioOutputDir: File?, gson: Gson = Gson()
+        archiveBytes: InputStream, mediaDirs: Map<String, File>, gson: Gson = Gson()
     ): Pair<PhraseData, List<PhraseGroup>>? {
         return runCatching {
             var phraseData: PhraseData? = null
@@ -86,12 +107,17 @@ object PhraseShare {
                             )
                         }
 
-                        entry.name.startsWith("audio/") && audioOutputDir != null -> {
-                            val fileName = entry.name.removePrefix("audio/")
-                            val outFile = File(audioOutputDir, fileName)
-                            outFile.parentFile?.mkdirs()
-                            outFile.outputStream().use { out ->
-                                zip.copyTo(out, BUFFER_SIZE)
+                        else -> entry.name.substringBefore('/').let { category ->
+                            val dir = mediaDirs[category]
+                            if (dir != null) {
+                                val fileName = entry.name.removePrefix("$category/")
+                                if (fileName.isNotBlank()) {
+                                    val outFile = File(dir, fileName)
+                                    outFile.parentFile?.mkdirs()
+                                    outFile.outputStream().use { out ->
+                                        zip.copyTo(out, BUFFER_SIZE)
+                                    }
+                                }
                             }
                         }
                     }
@@ -104,10 +130,27 @@ object PhraseShare {
             if (parsed.schemaVersion > SCHEMA_VERSION || parsed.app != "KigHelper") return null
 
             val withFreshPhraseIds = parsed.copy(
-                phrases = parsed.phrases.map { it.copy(id = UUID.randomUUID().toString()) }
-            )
+                phrases = parsed.phrases.map { it.copy(id = UUID.randomUUID().toString()) })
             Pair(withFreshPhraseIds, parsed.groups)
         }.getOrNull()
+    }
+
+    /**
+     * 将短语内的媒体路径按文件名映射到本地目录中的实际文件。
+     */
+    fun remapMediaPaths(phrase: Phrase, mediaDirs: Map<String, File>): Phrase {
+        fun resolve(path: String?, category: String): String? {
+            if (path.isNullOrBlank()) return null
+            val dir = mediaDirs[category] ?: return null
+            val file = File(dir, File(path).name)
+            return file.absolutePath.takeIf { File(it).exists() }
+        }
+
+        return phrase.copy(
+            audioPath = resolve(phrase.audioPath, PhraseMedia.AUDIO),
+            imagePath = resolve(phrase.imagePath, PhraseMedia.IMAGE),
+            videoPath = resolve(phrase.videoPath, PhraseMedia.VIDEO)
+        )
     }
 
     private fun findMappedGroupId(

@@ -65,6 +65,7 @@ ksp = { group = "com.google.devtools.ksp", name = "com.google.devtools.ksp.gradl
 colorpickerview = { group = "com.github.skydoves", name = "colorpickerview", version.ref = "colorpickerview" }
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil" }
 compose-cropper = { group = "com.github.SmartToolFactory", name = "Compose-Cropper", version.ref = "composeCropper" }
 glance = { group = "androidx.glance", name = "glance", version.ref = "glance" }
 glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }

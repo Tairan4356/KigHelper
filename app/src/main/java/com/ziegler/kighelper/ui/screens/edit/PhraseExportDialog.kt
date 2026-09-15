@@ -30,100 +30,86 @@ import com.ziegler.kighelper.data.PhraseGroup
 fun PhraseExportDialog(
     groups: List<PhraseGroup>,
     onDismiss: () -> Unit,
-    onConfirm: (selectedGroupIds: Set<String>, includeAudio: Boolean, fileName: String) -> Unit
+    onConfirm: (selectedGroupIds: Set<String>, includeMedia: Boolean, fileName: String) -> Unit
 ) {
-    var includeAudio by remember { mutableStateOf(false) }
+    var includeMedia by remember { mutableStateOf(false) }
     var fileName by remember { mutableStateOf("phrases") }
     val selectedGroupIds = remember { mutableStateOf(groups.map { it.id }.toMutableSet()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("导出短语") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("导出短语") }, text = {
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState())
+        ) {
+            OutlinedTextField(
+                value = fileName,
+                onValueChange = { fileName = it },
+                label = { Text("文件名") },
+                singleLine = true,
+                suffix = { Text(".kigphrase") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("包含媒体文件", style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedTextField(
-                    value = fileName,
-                    onValueChange = { fileName = it },
-                    label = { Text("文件名") },
-                    singleLine = true,
-                    suffix = { Text(".kigphrase") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("包含音频文件", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Checkbox(
-                        checked = includeAudio,
-                        onCheckedChange = { includeAudio = it }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "导出短语关联的音频文件",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("选择分组", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(4.dp))
+                Checkbox(
+                    checked = includeMedia, onCheckedChange = { includeMedia = it })
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "取消勾选以排除对应分组",
+                    text = "导出短语关联的音频、图片和视频文件",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+            }
 
-                groups.forEach { group ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedGroupIds.value = selectedGroupIds.value.toMutableSet().also {
-                                    if (group.id in it) it.remove(group.id) else it.add(group.id)
-                                }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("选择分组", style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "取消勾选以排除对应分组",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            groups.forEach { group ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedGroupIds.value = selectedGroupIds.value.toMutableSet().also {
+                                if (group.id in it) it.remove(group.id) else it.add(group.id)
                             }
-                            .padding(vertical = 2.dp)
-                    ) {
-                        Checkbox(
-                            checked = group.id in selectedGroupIds.value,
-                            onCheckedChange = { checked ->
-                                selectedGroupIds.value = selectedGroupIds.value.toMutableSet().also {
-                                    if (checked) it.add(group.id) else it.remove(group.id)
-                                }
+                        }
+                        .padding(vertical = 2.dp)) {
+                    Checkbox(
+                        checked = group.id in selectedGroupIds.value,
+                        onCheckedChange = { checked ->
+                            selectedGroupIds.value = selectedGroupIds.value.toMutableSet().also {
+                                if (checked) it.add(group.id) else it.remove(group.id)
                             }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(group.name)
-                    }
+                        })
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(group.name)
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        selectedGroupIds.value.toSet(),
-                        includeAudio,
-                        fileName.ifBlank { "phrases" }
-                    )
-                }
-            ) {
-                Text("导出")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
             }
         }
-    )
+    }, confirmButton = {
+        TextButton(
+            onClick = {
+                onConfirm(
+                    selectedGroupIds.value.toSet(), includeMedia, fileName.ifBlank { "phrases" })
+            }) {
+            Text("导出")
+        }
+    }, dismissButton = {
+        TextButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
 }

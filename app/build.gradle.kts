@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.colorpickerview)
     implementation(libs.materialKolor)
     implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
     implementation(libs.compose.cropper)
     implementation(libs.glance)
     implementation(libs.glance.appwidget)

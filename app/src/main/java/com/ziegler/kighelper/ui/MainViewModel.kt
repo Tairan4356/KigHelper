@@ -31,9 +31,13 @@ class MainViewModel @Inject constructor(
         speech: String,
         groupId: String = "default",
         audioPath: String? = null,
-        cardColor: Long? = null
+        cardColor: Long? = null,
+        imagePath: String? = null,
+        videoPath: String? = null
     ) {
-        phraseViewModel.addPhrase(label, speech, groupId, audioPath, cardColor)
+        phraseViewModel.addPhrase(
+            label, speech, groupId, audioPath, cardColor, imagePath, videoPath
+        )
     }
 
     fun deletePhrase(phrase: Phrase) {
@@ -46,10 +50,19 @@ class MainViewModel @Inject constructor(
         newSpeech: String,
         newGroupId: String? = null,
         newAudioPath: String? = null,
-        newCardColor: Long? = null
+        newCardColor: Long? = null,
+        newImagePath: String? = null,
+        newVideoPath: String? = null
     ) {
         phraseViewModel.updatePhrase(
-            id, newLabel, newSpeech, newGroupId, newAudioPath, newCardColor
+            id,
+            newLabel,
+            newSpeech,
+            newGroupId,
+            newAudioPath,
+            newCardColor,
+            newImagePath,
+            newVideoPath
         )
     }
 
@@ -100,19 +113,21 @@ class MainViewModel @Inject constructor(
 
     suspend fun exportArchive(
         selectedGroupIds: Set<String>,
-        includeAudio: Boolean,
-        audioDir: File?,
+        includeMedia: Boolean,
+        mediaDirs: Map<String, File>,
         outputStream: java.io.OutputStream
     ) {
         phraseViewModel.exportArchive(
-            groupList.value, selectedGroupIds, includeAudio, audioDir, outputStream
+            groupList.value, selectedGroupIds, includeMedia, mediaDirs, outputStream
         )
     }
 
-    suspend fun importArchive(archiveBytes: java.io.InputStream, audioDir: File?): Boolean {
+    suspend fun importArchive(
+        archiveBytes: java.io.InputStream, mediaDirs: Map<String, File>
+    ): Boolean {
         val bytes = archiveBytes.readBytes()
         val phrasesImported =
-            phraseViewModel.importArchive(bytes.inputStream(), groupList.value, audioDir)
+            phraseViewModel.importArchive(bytes.inputStream(), groupList.value, mediaDirs)
         val pendingGroups = phraseViewModel.consumePendingNewGroups()
         for (group in pendingGroups) {
             groupViewModel.addGroupDirectly(group)
@@ -121,10 +136,10 @@ class MainViewModel @Inject constructor(
     }
 
     suspend fun importArchiveOverwrite(
-        archiveBytes: java.io.InputStream, audioDir: File?
+        archiveBytes: java.io.InputStream, mediaDirs: Map<String, File>
     ): Boolean {
         val bytes = archiveBytes.readBytes()
-        val phrasesImported = phraseViewModel.importArchiveOverwrite(bytes.inputStream(), audioDir)
+        val phrasesImported = phraseViewModel.importArchiveOverwrite(bytes.inputStream(), mediaDirs)
         val pendingGroups = phraseViewModel.consumePendingNewGroups()
         for (group in pendingGroups) {
             groupViewModel.addGroupDirectly(group)

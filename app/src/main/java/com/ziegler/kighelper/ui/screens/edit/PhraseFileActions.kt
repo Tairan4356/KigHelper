@@ -7,25 +7,25 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.net.toUri
+import com.ziegler.kighelper.data.PhraseMedia
 import com.ziegler.kighelper.ui.MainViewModel
 import java.io.File
-import androidx.core.net.toUri
 
 data class ExportResult(
-    val fileName: String,
-    val relativePath: String,
-    val uri: Uri
+    val fileName: String, val relativePath: String, val uri: Uri
 )
 
 internal suspend fun exportPhraseArchive(
     context: Context,
     viewModel: MainViewModel,
     selectedGroupIds: Set<String>,
-    includeAudio: Boolean,
+    includeMedia: Boolean,
     fileName: String
 ): ExportResult? {
-    val audioDir = File(context.filesDir, "audio")
-    val safeName = fileName.replace(Regex("[^A-Za-z0-9_\\-\\u4e00-\\u9fa5]"), "_").ifBlank { "phrases" }
+    val mediaDirs = phraseMediaDirs(context)
+    val safeName =
+        fileName.replace(Regex("[^A-Za-z0-9_\\-\\u4e00-\\u9fa5]"), "_").ifBlank { "phrases" }
     val displayName = "$safeName.kigphrase"
     val relativePath = "Download/KigHelper"
 
@@ -39,20 +39,29 @@ internal suspend fun exportPhraseArchive(
         val uri = context.contentResolver.insert(collection, values) ?: return null
 
         context.contentResolver.openOutputStream(uri)?.use { output ->
-            viewModel.exportArchive(selectedGroupIds, includeAudio, audioDir, output)
+            viewModel.exportArchive(selectedGroupIds, includeMedia, mediaDirs, output)
         }
         ExportResult(displayName, relativePath, uri)
     } else {
-        @Suppress("DEPRECATION")
-        val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "KigHelper")
+        @Suppress("DEPRECATION") val dir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "KigHelper"
+        )
         dir.mkdirs()
         val file = File(dir, displayName)
         file.outputStream().use { output ->
-            viewModel.exportArchive(selectedGroupIds, includeAudio, audioDir, output)
+            viewModel.exportArchive(selectedGroupIds, includeMedia, mediaDirs, output)
         }
         ExportResult(displayName, relativePath, Uri.fromFile(file))
     }
 }
+
+/** 短语媒体各分类对应的内部存储目录 */
+internal fun phraseMediaDirs(context: Context): Map<String, File> = mapOf(
+    PhraseMedia.AUDIO to File(context.filesDir, "audio"),
+    PhraseMedia.IMAGE to File(context.filesDir, "images"),
+    PhraseMedia.VIDEO to File(context.filesDir, "videos")
+)
 
 internal fun shareExportedFile(context: Context, result: ExportResult) {
     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -71,8 +80,10 @@ internal fun openExportDirectory(context: Context) {
                 "content://com.android.externalstorage.documents/document/primary:Download%2FKigHelper".toUri()
             setDataAndType(uri, DocumentsContract.DIRECTORY_MIME_TYPE)
         } else {
-            @Suppress("DEPRECATION")
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "KigHelper")
+            @Suppress("DEPRECATION") val dir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "KigHelper"
+            )
             setDataAndType(Uri.fromFile(dir), DocumentsContract.DIRECTORY_MIME_TYPE)
         }
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -81,8 +92,10 @@ internal fun openExportDirectory(context: Context) {
         context.startActivity(intent)
     } catch (_: Exception) {
         val fallback = Intent(Intent.ACTION_VIEW).apply {
-            @Suppress("DEPRECATION")
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "KigHelper")
+            @Suppress("DEPRECATION") val dir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "KigHelper"
+            )
             setDataAndType(Uri.fromFile(dir), "*/*")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -98,18 +111,15 @@ private object DocumentsContract {
 }
 
 internal suspend fun importPhraseArchive(
-    context: Context,
-    uri: Uri,
-    viewModel: MainViewModel,
-    overwrite: Boolean
+    context: Context, uri: Uri, viewModel: MainViewModel, overwrite: Boolean
 ): Boolean {
-    val audioDir = File(context.filesDir, "audio")
+    val mediaDirs = phraseMediaDirs(context)
     val inputStream = context.contentResolver.openInputStream(uri) ?: return false
     return inputStream.use { input ->
         if (overwrite) {
-            viewModel.importArchiveOverwrite(input, audioDir)
+            viewModel.importArchiveOverwrite(input, mediaDirs)
         } else {
-            viewModel.importArchive(input, audioDir)
+            viewModel.importArchive(input, mediaDirs)
         }
     }
 }

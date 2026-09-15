@@ -8,18 +8,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 显示状态 ViewModel，负责管理展示文本和全屏状态
+ * 显示状态 ViewModel，负责管理展示内容和全屏状态
  */
 class DisplayViewModel : ViewModel() {
     private val _displayState = MutableStateFlow(DisplayState())
     val displayState: StateFlow<DisplayState> = _displayState.asStateFlow()
 
-    private val _isFullScreen = MutableStateFlow(false)
-    val isFullScreen: StateFlow<Boolean> = _isFullScreen.asStateFlow()
-
     fun showPhrase(phrase: Phrase) {
         _displayState.value = DisplayState(
-            text = phrase.speech, isInitialHint = false
+            text = phrase.speech,
+            isInitialHint = false,
+            imagePath = phrase.imagePath,
+            videoPath = phrase.videoPath
         )
     }
 
@@ -27,9 +27,5 @@ class DisplayViewModel : ViewModel() {
         _displayState.value = DisplayState(
             text = "", isInitialHint = true
         )
-    }
-
-    fun setFullScreen(enabled: Boolean) {
-        _isFullScreen.value = enabled
     }
 }

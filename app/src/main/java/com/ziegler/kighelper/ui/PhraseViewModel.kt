@@ -2,8 +2,10 @@ package com.ziegler.kighelper.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ziegler.kighelper.data.ArchiveMediaFile
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
+import com.ziegler.kighelper.data.PhraseMedia
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.data.PhraseShare
 import kotlinx.coroutines.Dispatchers
@@ -48,18 +50,25 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         speech: String,
         groupId: String = "default",
         audioPath: String? = null,
-        cardColor: Long? = null
+        cardColor: Long? = null,
+        imagePath: String? = null,
+        videoPath: String? = null
     ) {
         val normalizedLabel = label.trim()
         val normalizedSpeech = speech.trim()
-        if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
+        if (normalizedLabel.isEmpty() || !hasContent(
+                normalizedSpeech, audioPath, imagePath, videoPath
+            )
+        ) return
 
         val newPhrase = Phrase(
             label = normalizedLabel,
             speech = normalizedSpeech,
             groupId = groupId,
             audioPath = audioPath,
-            cardColor = cardColor
+            cardColor = cardColor,
+            imagePath = imagePath,
+            videoPath = videoPath
         )
         _phraseList.value += newPhrase
         persistCurrentPhrases()
@@ -76,11 +85,16 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         newSpeech: String,
         newGroupId: String? = null,
         newAudioPath: String? = null,
-        newCardColor: Long? = null
+        newCardColor: Long? = null,
+        newImagePath: String? = null,
+        newVideoPath: String? = null
     ) {
         val normalizedLabel = newLabel.trim()
         val normalizedSpeech = newSpeech.trim()
-        if (normalizedLabel.isEmpty() || normalizedSpeech.isEmpty()) return
+        if (normalizedLabel.isEmpty() || !hasContent(
+                normalizedSpeech, newAudioPath, newImagePath, newVideoPath
+            )
+        ) return
 
         _phraseList.value = _phraseList.value.map { phrase ->
             if (phrase.id == id) {
@@ -89,13 +103,21 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
                     speech = normalizedSpeech,
                     groupId = newGroupId ?: phrase.groupId,
                     audioPath = newAudioPath,
-                    cardColor = newCardColor
+                    cardColor = newCardColor,
+                    imagePath = newImagePath,
+                    videoPath = newVideoPath
                 )
             } else {
                 phrase
             }
         }
         persistCurrentPhrases()
+    }
+
+    private fun hasContent(
+        speech: String, audioPath: String?, imagePath: String?, videoPath: String?
+    ): Boolean {
+        return speech.isNotEmpty() || !audioPath.isNullOrBlank() || !imagePath.isNullOrBlank() || !videoPath.isNullOrBlank()
     }
 
     fun movePhraseToGroup(phraseId: String, targetGroupId: String) {
@@ -135,8 +157,8 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
     suspend fun exportArchive(
         groups: List<PhraseGroup>,
         selectedGroupIds: Set<String>,
-        includeAudio: Boolean,
-        audioDir: File?,
+        includeMedia: Boolean,
+        mediaDirs: Map<String, File>,
         outputStream: java.io.OutputStream
     ) = withContext(Dispatchers.IO) {
         val filteredPhrases = if (selectedGroupIds.isEmpty()) {
@@ -144,22 +166,39 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         } else {
             _phraseList.value.filter { it.groupId in selectedGroupIds }
         }
-        val exportPhrases = if (includeAudio) {
+        val exportPhrases = if (includeMedia) {
             filteredPhrases
         } else {
-            filteredPhrases.map { it.copy(audioPath = null) }
+            filteredPhrases.map {
+                it.copy(audioPath = null, imagePath = null, videoPath = null)
+            }
         }
-        val audioFiles = if (includeAudio && audioDir != null) {
-            filteredPhrases.filter { it.hasAudio && it.audioPath != null }.mapNotNull { phrase ->
-                    val audioFile = File(phrase.audioPath!!)
-                    if (audioFile.exists()) audioFile.name to audioFile else null
+        val mediaFiles = if (includeMedia) {
+            buildList {
+                for (category in PhraseMedia.CATEGORIES) {
+                    if (mediaDirs[category] == null) continue
+                    for (phrase in filteredPhrases) {
+                        val path = phraseMediaPath(phrase, category) ?: continue
+                        val file = File(path)
+                        if (file.exists()) {
+                            add(ArchiveMediaFile(category, file.name, file))
+                        }
+                    }
                 }
+            }
         } else {
             emptyList()
         }
         PhraseShare.exportArchive(
-            groups, exportPhrases, audioFiles, outputStream
+            groups, exportPhrases, mediaFiles, outputStream
         )
+    }
+
+    private fun phraseMediaPath(phrase: Phrase, category: String): String? = when (category) {
+        PhraseMedia.AUDIO -> phrase.audioPath
+        PhraseMedia.IMAGE -> phrase.imagePath
+        PhraseMedia.VIDEO -> phrase.videoPath
+        else -> null
     }
 
     fun importData(
@@ -185,9 +224,11 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
     }
 
     suspend fun importArchive(
-        archiveBytes: java.io.InputStream, existingGroups: List<PhraseGroup>, audioDir: File?
+        archiveBytes: java.io.InputStream,
+        existingGroups: List<PhraseGroup>,
+        mediaDirs: Map<String, File>
     ): Boolean = withContext(Dispatchers.IO) {
-        val (parsed, originalGroups) = PhraseShare.importArchive(archiveBytes, audioDir)
+        val (parsed, originalGroups) = PhraseShare.importArchive(archiveBytes, mediaDirs)
             ?: return@withContext false
 
         val existingGroupByName = existingGroups.associateBy { it.name }
@@ -200,7 +241,11 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
             } else {
                 val newGroupId = UUID.randomUUID().toString()
                 idMapping[origGroup.id] = newGroupId
-                _pendingNewGroups.add(PhraseGroup(id = newGroupId, name = origGroup.name, order = origGroup.order))
+                _pendingNewGroups.add(
+                    PhraseGroup(
+                        id = newGroupId, name = origGroup.name, order = origGroup.order
+                    )
+                )
             }
         }
 
@@ -210,12 +255,9 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
         for (phrase in parsed.phrases) {
             val labelKey = "${phrase.label}:${idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID}"
             if (labelKey in currentPhraseLabels) continue
-            val localAudioPath = if (phrase.hasAudio && phrase.audioPath != null) {
-                val fileName = File(phrase.audioPath).name
-                File(audioDir, fileName).absolutePath.takeIf { File(it).exists() }
-            } else null
             val targetGroupId = idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID
-            currentPhrases.add(phrase.copy(groupId = targetGroupId, audioPath = localAudioPath))
+            val localPhrase = PhraseShare.remapMediaPaths(phrase, mediaDirs)
+            currentPhrases.add(localPhrase.copy(groupId = targetGroupId))
             currentPhraseLabels.add(labelKey)
         }
 
@@ -225,28 +267,28 @@ class PhraseViewModel(private val repository: PhraseRepository) : ViewModel() {
     }
 
     suspend fun importArchiveOverwrite(
-        archiveBytes: java.io.InputStream, audioDir: File?
+        archiveBytes: java.io.InputStream, mediaDirs: Map<String, File>
     ): Boolean = withContext(Dispatchers.IO) {
-        audioDir?.listFiles()?.forEach { it.delete() }
+        mediaDirs.values.forEach { dir -> dir.listFiles()?.forEach { it.delete() } }
 
-        val (parsed, originalGroups) = PhraseShare.importArchive(archiveBytes, audioDir)
+        val (parsed, originalGroups) = PhraseShare.importArchive(archiveBytes, mediaDirs)
             ?: return@withContext false
 
         val idMapping = mutableMapOf<String, String>()
         for (origGroup in originalGroups) {
             val newGroupId = UUID.randomUUID().toString()
             idMapping[origGroup.id] = newGroupId
-            _pendingNewGroups.add(PhraseGroup(id = newGroupId, name = origGroup.name, order = origGroup.order))
+            _pendingNewGroups.add(
+                PhraseGroup(
+                    id = newGroupId, name = origGroup.name, order = origGroup.order
+                )
+            )
         }
 
         val phrasesWithLocalPaths = parsed.phrases.map { phrase ->
-            val localAudioPath = if (phrase.hasAudio && phrase.audioPath != null) {
-                val fileName = File(phrase.audioPath).name
-                File(audioDir, fileName).absolutePath.takeIf { File(it).exists() }
-            } else null
-            phrase.copy(
-                groupId = idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID,
-                audioPath = localAudioPath
+            PhraseShare.remapMediaPaths(
+                phrase.copy(groupId = idMapping[phrase.groupId] ?: PhraseGroup.DEFAULT_ID),
+                mediaDirs
             )
         }
 

@@ -4,20 +4,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.annotation.RequiresApi
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ziegler.kighelper.data.OnboardingState
@@ -74,7 +69,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,8 +130,14 @@ class MainActivity : ComponentActivity() {
                         audioPlayerManager.stop()
                     },
                     onPhraseSpoken = { phrase ->
+                        val mediaPath =
+                            if (phrase.hasVideo) phrase.videoPath
+                            else if (phrase.hasAudio) phrase.audioPath
+                            else null
                         notificationHelper.showSilentLockScreenNotification(
-                            phraseLabel = phrase.label, phraseSpeech = phrase.speech
+                            phraseLabel = phrase.label,
+                            phraseSpeech = phrase.speech,
+                            phraseMediaPath = mediaPath
                         )
                     },
                     onPlayAudio = { audioPath ->

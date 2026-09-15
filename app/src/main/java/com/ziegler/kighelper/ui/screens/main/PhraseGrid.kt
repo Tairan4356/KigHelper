@@ -2,18 +2,20 @@
 package com.ziegler.kighelper.ui.screens.main
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -21,9 +23,12 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -159,6 +165,12 @@ private fun PhraseButton(
     var buttonSize by remember(phrase.id) { mutableStateOf(IntSize.Zero) }
     val menuMinWidth = with(density) { buttonSize.width.toDp() }
     val menuGapPx = with(density) { PhraseContextMenuGap.roundToPx() }
+    // 播报内容标识：视频 > 图片，仅当短语包含媒体时显示
+    val badgeIcon = when {
+        phrase.hasVideo -> Icons.Default.Videocam
+        phrase.hasImage -> Icons.Default.Image
+        else -> null
+    }
 
     Box(
         modifier = Modifier
@@ -180,12 +192,10 @@ private fun PhraseButton(
             color = phrase.cardColor?.let { Color(it.toInt()) }
                 ?: MaterialTheme.colorScheme.secondaryContainer,
             contentColor = phrase.cardColor?.let {
-                val luminance = (0.299 * ((it shr 16) and 0xFF) +
-                        0.587 * ((it shr 8) and 0xFF) +
-                        0.114 * (it and 0xFF)) / 255
+                val luminance =
+                    (0.299 * ((it shr 16) and 0xFF) + 0.587 * ((it shr 8) and 0xFF) + 0.114 * (it and 0xFF)) / 255
                 if (luminance > 0.5) Color.Black else Color.White
-            } ?: MaterialTheme.colorScheme.onSecondaryContainer
-        ) {
+            } ?: MaterialTheme.colorScheme.onSecondaryContainer) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -197,6 +207,25 @@ private fun PhraseButton(
                     fontSize = cardFontSize,
                     textAlign = TextAlign.Center,
                     maxLines = 2
+                )
+            }
+        }
+
+        if (badgeIcon != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.28f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = badgeIcon,
+                    contentDescription = if (phrase.hasVideo) "视频播报" else "图片播报",
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
                 )
             }
         }

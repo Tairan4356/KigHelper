@@ -257,12 +257,25 @@ fun KigHelperApp(
                             isPhrasesLoading = isPhrasesLoading,
                             isFullScreen = isFullScreen,
                             onFullScreenChange = { isFullScreen = it },
+                            imagePath = displayState.imagePath,
+                            videoPath = displayState.videoPath,
                             onPhraseClick = { phrase ->
                                 viewModel.showPhrase(phrase)
-                                if (phrase.hasAudio && phrase.audioPath != null) {
-                                    onPlayAudio(phrase.audioPath)
-                                } else {
-                                    onSpeak(phrase.speech)
+                                when {
+                                    phrase.hasVideo -> {
+                                        onStop()
+                                        isFullScreen = true
+                                    }
+
+                                    phrase.hasAudio && phrase.audioPath != null -> {
+                                        onPlayAudio(phrase.audioPath)
+                                    }
+
+                                    else -> {
+                                        if (phrase.speech.isNotBlank()) {
+                                            onSpeak(phrase.speech)
+                                        }
+                                    }
                                 }
                                 viewModel.markPhraseAsUsed(phrase)
                                 onPhraseSpoken(phrase)
@@ -369,7 +382,7 @@ fun KigHelperApp(
                             PhraseExportDialog(
                                 groups = groups,
                                 onDismiss = { showExportDialog = false },
-                                onConfirm = { selectedGroupIds, includeAudio, fileName ->
+                                onConfirm = { selectedGroupIds, includeMedia, fileName ->
                                     showExportDialog = false
                                     isExporting = true
                                     coroutineScope.launch {
@@ -378,7 +391,7 @@ fun KigHelperApp(
                                                 context,
                                                 viewModel,
                                                 selectedGroupIds,
-                                                includeAudio,
+                                                includeMedia,
                                                 fileName
                                             )
                                             exportResult = result
@@ -457,14 +470,27 @@ fun KigHelperApp(
                             isEditMode = phraseId != null,
                             groups = groups,
                             initialGroupId = initialGroupId,
-                            onSave = { label, speech, groupId, audioPath, cardColor ->
+                            onSave = { label, speech, groupId, audioPath, cardColor, imagePath, videoPath ->
                                 if (phraseId == null) {
                                     viewModel.addPhrase(
-                                        label, speech, groupId, audioPath, cardColor
+                                        label,
+                                        speech,
+                                        groupId,
+                                        audioPath,
+                                        cardColor,
+                                        imagePath,
+                                        videoPath
                                     )
                                 } else {
                                     viewModel.updatePhrase(
-                                        phraseId, label, speech, groupId, audioPath, cardColor
+                                        phraseId,
+                                        label,
+                                        speech,
+                                        groupId,
+                                        audioPath,
+                                        cardColor,
+                                        imagePath,
+                                        videoPath
                                     )
                                 }
                                 navController.popBackStack()

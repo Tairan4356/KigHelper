@@ -29,6 +29,7 @@ class NotificationHelper @Inject constructor(
     // 存储当前的短语文本，用于更新通知
     private var currentPhraseLabel: String? = null
     private var currentPhraseSpeech: String? = null
+    private var currentPhraseMediaPath: String? = null
 
     // 通知开关
     private var notificationsEnabled = true
@@ -46,12 +47,13 @@ class NotificationHelper @Inject constructor(
     fun clearPhraseAndRefresh() {
         currentPhraseLabel = null
         currentPhraseSpeech = null
-        showSilentLockScreenNotification(null, null)
+        currentPhraseMediaPath = null
+        showSilentLockScreenNotification(null, null, null)
     }
 
     @SuppressLint("FullScreenIntentPolicy", "MissingPermission")
     fun showSilentLockScreenNotification(
-        phraseLabel: String? = null, phraseSpeech: String? = null
+        phraseLabel: String? = null, phraseSpeech: String? = null, phraseMediaPath: String? = null
     ) {
         if (!notificationsEnabled) {
             return
@@ -68,12 +70,16 @@ class NotificationHelper @Inject constructor(
         if (phraseSpeech != null) {
             currentPhraseSpeech = phraseSpeech
         }
+        if (phraseMediaPath != null) {
+            currentPhraseMediaPath = phraseMediaPath
+        }
 
         val notification = buildNotification(
             appContext,
             createLaunchPendingIntent(appContext),
             currentPhraseLabel,
-            currentPhraseSpeech
+            currentPhraseSpeech,
+            currentPhraseMediaPath
         )
 
         // 验证 Live Updates 支持 (仅用于调试 - 需要 API 36+)
@@ -91,7 +97,9 @@ class NotificationHelper @Inject constructor(
 
     fun recreateSilentLockScreenNotification() {
         cancelNotification()
-        showSilentLockScreenNotification(currentPhraseLabel, currentPhraseSpeech)
+        showSilentLockScreenNotification(
+            currentPhraseLabel, currentPhraseSpeech, currentPhraseMediaPath
+        )
     }
 
     fun cancelNotification() {
@@ -126,13 +134,15 @@ class NotificationHelper @Inject constructor(
         context: Context,
         pendingIntent: PendingIntent,
         phraseLabel: String? = null,
-        phraseSpeech: String? = null
+        phraseSpeech: String? = null,
+        phraseMediaPath: String? = null
     ): Notification {
         val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
         val title = phraseLabel ?: "$appName 正在后台运行"
         val chipText = phraseLabel ?: "待机中"
         // 内容文本显示完整短语，如果太长则截断
         val contentText = when {
+            phraseSpeech.isNullOrEmpty() && !phraseMediaPath.isNullOrEmpty() -> "播放媒体中"
             phraseSpeech.isNullOrEmpty() -> "点击返回主界面"
             else -> phraseSpeech
         }
@@ -170,9 +180,9 @@ class NotificationHelper @Inject constructor(
             }
 
         // 添加操作按钮
-        // 按钮1：重播短语（使用 speech 内容而非 label）
-        if (!phraseSpeech.isNullOrEmpty()) {
-            val replayIntent = createReplayPendingIntent(context, phraseSpeech)
+        // 按钮1：重播短语（优先媒体声音，否则使用 speech 内容）
+        if (!phraseSpeech.isNullOrEmpty() || !phraseMediaPath.isNullOrEmpty()) {
+            val replayIntent = createReplayPendingIntent(context, phraseSpeech, phraseMediaPath)
             builder.addAction(
                 R.drawable.ic_bubble, "重播", replayIntent
             )
@@ -184,11 +194,19 @@ class NotificationHelper @Inject constructor(
     /**
      * 创建重播短语的 PendingIntent
      * @param phraseSpeech TTS 要播放的完整内容（不是标签）
+     * @param phraseMediaPath 要播放的媒体文件路径（视频/音频），优先于 speech
      */
-    private fun createReplayPendingIntent(context: Context, phraseSpeech: String): PendingIntent {
+    private fun createReplayPendingIntent(
+        context: Context, phraseSpeech: String?, phraseMediaPath: String?
+    ): PendingIntent {
         val intent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = NotificationActionReceiver.ACTION_REPLAY_PHRASE
-            putExtra(NotificationActionReceiver.EXTRA_PHRASE_TEXT, phraseSpeech)
+            if (!phraseSpeech.isNullOrEmpty()) {
+                putExtra(NotificationActionReceiver.EXTRA_PHRASE_TEXT, phraseSpeech)
+            }
+            if (!phraseMediaPath.isNullOrEmpty()) {
+                putExtra(NotificationActionReceiver.EXTRA_PHRASE_MEDIA_PATH, phraseMediaPath)
+            }
         }
 
         return PendingIntent.getBroadcast(
