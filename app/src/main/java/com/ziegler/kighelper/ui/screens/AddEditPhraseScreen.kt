@@ -1,41 +1,31 @@
 package com.ziegler.kighelper.ui.screens
 
-import android.content.Context
-import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -50,19 +40,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.PhraseGroup
-import com.ziegler.kighelper.ui.components.ColorPickerDialog
-import com.ziegler.kighelper.ui.components.CustomColorSelector
-import com.ziegler.kighelper.ui.components.PresetColorGrid
-import java.io.File
+import com.ziegler.kighelper.ui.screens.addedit.AudioImportSection
+import com.ziegler.kighelper.ui.screens.addedit.ImageImportSection
+import com.ziegler.kighelper.ui.screens.addedit.PhraseColorSection
+import com.ziegler.kighelper.ui.screens.addedit.PhraseMediaImporter
+import com.ziegler.kighelper.ui.screens.addedit.VideoImportSection
 
 private const val TAB_TEXT = "text"
 private const val TAB_IMAGE = "image"
@@ -70,7 +57,8 @@ private const val TAB_VIDEO = "video"
 
 /**
  * 添加/编辑短语表单。
- * 只接收数据和回调，避免页面直接依赖 ViewModel。
+ * 只接收数据和回调，避免页面直接依赖 ViewModel；媒体文件读写集中在 [PhraseMediaImporter]，
+ * 各内容区块抽为独立组件（[ImageImportSection]/[VideoImportSection]/[AudioImportSection]/[PhraseColorSection]）。
  * 播报内容通过 文字/图片/视频 三个 Tab 互斥设置；切换 Tab 仅改变编辑视图，内容在点击保存时按所选 Tab 写入并清理其他类型。
  *
  * @param phrase 待编辑的短语，null 表示新增模式
@@ -79,7 +67,6 @@ private const val TAB_VIDEO = "video"
  * @param initialGroupId 初始选中的分组 ID
  * @param onSave 保存回调，提供标签、播报内容、分组ID、音频/图片/视频路径和自定义颜色
  * @param onBack 返回回调
- * @param onAudioImported 音频导入回调，返回导入后的内部文件路径
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,8 +76,7 @@ fun AddEditPhraseScreen(
     groups: List<PhraseGroup>,
     initialGroupId: String? = null,
     onSave: (label: String, speech: String, groupId: String, audioPath: String?, cardColor: Long?, imagePath: String?, videoPath: String?) -> Unit,
-    onBack: () -> Unit,
-    onAudioImported: ((Uri, String) -> Unit)? = null
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val initialTab = remember(phrase?.id) { phraseContentTab(phrase) }
@@ -110,27 +96,21 @@ fun AddEditPhraseScreen(
     var selectedTab by rememberSaveable(phrase?.id) { mutableStateOf(initialTab) }
 
     // 音频状态（独立于 Tab，仅视频 Tab 隐藏，保存为视频时清除）
-    var audioPath by rememberSaveable(phrase?.id) {
-        mutableStateOf(phrase?.audioPath)
-    }
+    var audioPath by rememberSaveable(phrase?.id) { mutableStateOf(phrase?.audioPath) }
     var audioFileName by rememberSaveable(phrase?.id) {
-        mutableStateOf(audioPath?.let { File(it).name })
+        mutableStateOf(audioPath?.let { PhraseMediaImporter.fileName(it) })
     }
 
     // 图片状态
-    var imagePath by rememberSaveable(phrase?.id) {
-        mutableStateOf(phrase?.imagePath)
-    }
+    var imagePath by rememberSaveable(phrase?.id) { mutableStateOf(phrase?.imagePath) }
     var imageFileName by rememberSaveable(phrase?.id) {
-        mutableStateOf(imagePath?.let { File(it).name })
+        mutableStateOf(imagePath?.let { PhraseMediaImporter.fileName(it) })
     }
 
     // 视频状态
-    var videoPath by rememberSaveable(phrase?.id) {
-        mutableStateOf(phrase?.videoPath)
-    }
+    var videoPath by rememberSaveable(phrase?.id) { mutableStateOf(phrase?.videoPath) }
     var videoFileName by rememberSaveable(phrase?.id) {
-        mutableStateOf(videoPath?.let { File(it).name })
+        mutableStateOf(videoPath?.let { PhraseMediaImporter.fileName(it) })
     }
 
     // 颜色状态
@@ -140,41 +120,40 @@ fun AddEditPhraseScreen(
     var hasCustomColor by rememberSaveable(phrase?.id) {
         mutableStateOf(phrase?.cardColor != null)
     }
-    var showColorPicker by rememberSaveable { mutableStateOf(false) }
 
-    // 媒体选择器
+    // 媒体选择器：复制到内部存储后回填路径
+    val importAndSet =
+        { uri: android.net.Uri, dirName: String, setPath: (Pair<String, String>) -> Unit ->
+            PhraseMediaImporter.importIntoInternalStorage(context, uri, dirName, phrase?.id)
+                ?.let(setPath)
+        }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
-            val imported = importMediaFile(context, it, "images", phrase?.id)
-            if (imported != null) {
-                imagePath = imported.first
-                imageFileName = imported.second
+            importAndSet(it, "images") { imported ->
+                imagePath = imported.first; imageFileName = imported.second
             }
         }
     }
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
-            val imported = importMediaFile(context, it, "videos", phrase?.id)
-            if (imported != null) {
-                videoPath = imported.first
-                videoFileName = imported.second
+            importAndSet(it, "videos") { imported ->
+                videoPath = imported.first; videoFileName = imported.second
             }
         }
     }
 
     val audioPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
-            val imported = importMediaFile(context, it, "audio", phrase?.id)
-            if (imported != null) {
-                audioPath = imported.first
-                audioFileName = imported.second
+            importAndSet(it, "audio") { imported ->
+                audioPath = imported.first; audioFileName = imported.second
             }
         }
     }
@@ -210,17 +189,17 @@ fun AddEditPhraseScreen(
         // 保存时应用 Tab 互斥：删除被替换的媒体文件，只写入当前 Tab 的内容
         when (selectedTab) {
             TAB_TEXT -> {
-                imagePath?.let { File(it).delete() }
-                videoPath?.let { File(it).delete() }
+                PhraseMediaImporter.deleteMediaFile(imagePath)
+                PhraseMediaImporter.deleteMediaFile(videoPath)
             }
 
             TAB_IMAGE -> {
-                videoPath?.let { File(it).delete() }
+                PhraseMediaImporter.deleteMediaFile(videoPath)
             }
 
             TAB_VIDEO -> {
-                imagePath?.let { File(it).delete() }
-                audioPath?.let { File(it).delete() }
+                PhraseMediaImporter.deleteMediaFile(imagePath)
+                PhraseMediaImporter.deleteMediaFile(audioPath)
             }
         }
         val finalColor = if (hasCustomColor && cardColor != 0L) cardColor else null
@@ -287,6 +266,7 @@ fun AddEditPhraseScreen(
                     }
                 }
             }
+
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
@@ -334,7 +314,7 @@ fun AddEditPhraseScreen(
                         imageFileName = imageFileName,
                         onPick = { imagePickerLauncher.launch(arrayOf("image/*", "image/gif")) },
                         onRemove = {
-                            imagePath?.let { File(it).delete() }
+                            PhraseMediaImporter.deleteMediaFile(imagePath)
                             imagePath = null
                             imageFileName = null
                         })
@@ -344,7 +324,7 @@ fun AddEditPhraseScreen(
                         videoFileName = videoFileName,
                         onPick = { videoPickerLauncher.launch(arrayOf("video/*")) },
                         onRemove = {
-                            videoPath?.let { File(it).delete() }
+                            PhraseMediaImporter.deleteMediaFile(videoPath)
                             videoPath = null
                             videoFileName = null
                         })
@@ -353,217 +333,24 @@ fun AddEditPhraseScreen(
 
             // 音频导入区域（独立于内容 Tab，视频 Tab 隐藏；保存为视频时清除音频）
             if (selectedTab != TAB_VIDEO) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "音频文件",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    if (audioFileName != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AudioFile,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = audioFileName ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = {
-                                audioPath?.let { File(it).delete() }
-                                audioPath = null
-                                audioFileName = null
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "移除音频"
-                                )
-                            }
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = {
-                                audioPickerLauncher.launch(arrayOf("audio/*"))
-                            }, modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AudioFile, contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("导入音频文件")
-                        }
-                    }
-
-                    Text(
-                        text = "导入音频后，点击短语将直接播放音频而非使用TTS",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                AudioImportSection(
+                    audioFileName = audioFileName,
+                    onPick = { audioPickerLauncher.launch(arrayOf("audio/*")) },
+                    onRemove = {
+                        PhraseMediaImporter.deleteMediaFile(audioPath)
+                        audioPath = null
+                        audioFileName = null
+                    })
             }
 
             // 卡片颜色区域
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "卡片颜色",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (hasCustomColor) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CustomColorSelector(
-                            customColor = if (cardColor != 0L) cardColor else 0xFF6650A4,
-                            onClick = { showColorPicker = true },
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = {
-                            hasCustomColor = false
-                            cardColor = 0L
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "恢复默认颜色"
-                            )
-                        }
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = {
-                            hasCustomColor = true
-                            if (cardColor == 0L) cardColor = 0xFF6650A4
-                        }, modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("自定义卡片颜色")
-                    }
-                }
-
-                if (hasCustomColor) {
-                    PresetColorGrid(
-                        selectedIndex = -1, onColorSelected = { index ->
-                            val colors = listOf(
-                                0xFF6650A4L,
-                                0xFF2196F3L,
-                                0xFF00BCD4L,
-                                0xFF4CAF50L,
-                                0xFFFFEB3BL,
-                                0xFFFF9800L,
-                                0xFFF44336L,
-                                0xFFE91E63L
-                            )
-                            if (index in colors.indices) {
-                                cardColor = colors[index]
-                            }
-                        }, showNames = false
-                    )
-                }
-            }
+            PhraseColorSection(
+                hasCustomColor = hasCustomColor, cardColor = cardColor, onChange = { has, color ->
+                    hasCustomColor = has
+                    cardColor = color
+                })
 
             Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-
-    if (showColorPicker) {
-        ColorPickerDialog(
-            initialColor = if (cardColor != 0L) cardColor else 0xFF6650A4,
-            onColorSelected = { color ->
-                cardColor = color
-                showColorPicker = false
-            },
-            onDismiss = { showColorPicker = false })
-    }
-}
-
-@Composable
-private fun ImageImportSection(
-    imagePath: String?, imageFileName: String?, onPick: () -> Unit, onRemove: () -> Unit
-) {
-    if (imagePath != null) {
-        AsyncImage(
-            model = File(imagePath),
-            contentDescription = imageFileName,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp)
-                .clip(RoundedCornerShape(12.dp))
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = imageFileName ?: "",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
-            )
-            OutlinedButton(onClick = onRemove) {
-                Text("移除图片")
-            }
-        }
-        Text(
-            text = "上传图片（支持 GIF）后将显示在展示区，播报内容可为空",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    } else {
-        OutlinedButton(
-            onClick = onPick, modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(imageVector = Icons.Default.Image, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("导入图片 (支持 GIF)")
-        }
-    }
-}
-
-@Composable
-private fun VideoImportSection(
-    videoPath: String?, videoFileName: String?, onPick: () -> Unit, onRemove: () -> Unit
-) {
-    if (videoPath != null) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = Icons.Default.Videocam,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = videoFileName ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onRemove) {
-                Icon(imageVector = Icons.Default.Close, contentDescription = "移除视频")
-            }
-        }
-        Text(
-            text = "设置视频后将全屏播放并使用视频声音，播报内容可为空",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    } else {
-        OutlinedButton(
-            onClick = onPick, modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(imageVector = Icons.Default.Videocam, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("导入视频文件")
         }
     }
 }
@@ -578,35 +365,4 @@ private fun tabIndex(tab: String): Int = when (tab) {
     TAB_IMAGE -> 1
     TAB_VIDEO -> 2
     else -> 0
-}
-
-/**
- * 将选择的媒体文件复制到内部目录，返回 (绝对路径, 文件名)；失败返回 null。
- */
-private fun importMediaFile(
-    context: Context, uri: Uri, dirName: String, phraseId: String?
-): Pair<String, String>? {
-    val cursor = context.contentResolver.query(uri, null, null, null, null)
-    val nameIndex = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-    val fileName = if (cursor != null && nameIndex != null && cursor.moveToFirst()) {
-        cursor.getString(nameIndex) ?: "${dirName}_${System.currentTimeMillis()}.bin"
-    } else {
-        "${dirName}_${System.currentTimeMillis()}.bin"
-    }
-    cursor?.close()
-
-    val dir = File(context.filesDir, dirName)
-    dir.mkdirs()
-    val destFile = File(dir, "${phraseId ?: System.currentTimeMillis()}_$fileName")
-
-    return try {
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            destFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        destFile.absolutePath to destFile.name
-    } catch (_: Exception) {
-        null
-    }
 }
