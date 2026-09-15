@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -81,6 +82,7 @@ internal fun DisplaySurface(
     onClick: (() -> Unit)? = null,
     fontSizeMultiplier: Float = 1.0f,
     displayColorInverted: Boolean = false,
+    customColor: Long? = null,
     imagePath: String? = null,
     videoPath: String? = null,
     playVideo: Boolean = false
@@ -88,12 +90,15 @@ internal fun DisplaySurface(
     val surfaceColor = if (displayColorInverted) {
         MaterialTheme.colorScheme.surface
     } else {
-        MaterialTheme.colorScheme.primary
+        customColor?.let { Color(it.toInt()) }
+            ?: MaterialTheme.colorScheme.primary
     }
     val textColor = if (displayColorInverted) {
-        MaterialTheme.colorScheme.primary
+        customColor?.let { Color(it.toInt()) }
+            ?: MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.onPrimary
+        customColor?.let { contrastColor(Color(it.toInt())) }
+            ?: MaterialTheme.colorScheme.onPrimary
     }
 
     Surface(
@@ -210,6 +215,14 @@ private fun MediaVideoSurface(path: String, modifier: Modifier = Modifier) {
             view.tag = path
         }
     }, onRelease = { it.stopPlayback() })
+}
+
+/**
+ * 计算自定义卡片颜色的对比文字色：亮色背景用黑字，暗色背景用白字。
+ */
+private fun contrastColor(color: Color): Color {
+    val luminance = 0.299f * color.red + 0.587f * color.green + 0.114f * color.blue
+    return if (luminance > 0.5f) Color.Black else Color.White
 }
 
 /**

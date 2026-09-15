@@ -259,6 +259,7 @@ fun KigHelperApp(
                             onFullScreenChange = { isFullScreen = it },
                             imagePath = displayState.imagePath,
                             videoPath = displayState.videoPath,
+                            customColor = displayState.customColor,
                             onPhraseClick = { phrase ->
                                 viewModel.showPhrase(phrase)
                                 when {

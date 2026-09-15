@@ -63,6 +63,7 @@ fun MainScreen(
     hintText: String = "点击下面按钮文字在此显示",
     imagePath: String? = null,
     videoPath: String? = null,
+    customColor: Long? = null,
     sharedTransitionScope: SharedTransitionScope
 ) {
     val view = LocalView.current
@@ -79,11 +80,12 @@ fun MainScreen(
         isFullScreen = isFullScreen,
         onFullScreenChange = onFullScreenChange,
         imagePath = imagePath,
-        videoPath = videoPath
+        videoPath = videoPath,
+        customColor = customColor
     )
 
-    LaunchedEffect(displayText, isShowingInitialHint, hintText, imagePath, videoPath) {
-        state.updateDisplay(displayText, isShowingInitialHint, imagePath, videoPath)
+    LaunchedEffect(displayText, isShowingInitialHint, hintText, imagePath, videoPath, customColor) {
+        state.updateDisplay(displayText, isShowingInitialHint, imagePath, videoPath, customColor)
     }
 
     // 将 Android 系统栏状态与应用内全屏展示状态保持同步。
@@ -148,6 +150,7 @@ fun MainScreen(
                 fontSizeMultiplier = fontSize,
                 hapticFeedback = hapticFeedback,
                 displayColorInverted = displayColorInverted,
+                customColor = state.effectiveCustomColor,
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = this
             )
@@ -170,6 +173,7 @@ fun MainScreen(
                 },
                 onClick = { onFullScreenChange(false) },
                 displayColorInverted = displayColorInverted,
+                customColor = state.effectiveCustomColor,
                 imagePath = state.effectiveImagePath,
                 videoPath = state.effectiveVideoPath,
                 playVideo = true,

@@ -55,6 +55,7 @@ fun MainScreenLayout(
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true,
     displayColorInverted: Boolean = false,
+    customColor: Long? = null,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ) {
@@ -70,6 +71,7 @@ fun MainScreenLayout(
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback,
             displayColorInverted = displayColorInverted,
+            customColor = customColor,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope
         )
@@ -85,6 +87,7 @@ fun MainScreenLayout(
             fontSizeMultiplier = fontSizeMultiplier,
             hapticFeedback = hapticFeedback,
             displayColorInverted = displayColorInverted,
+            customColor = customColor,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope
         )
@@ -107,6 +110,7 @@ private fun LandscapeLayout(
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true,
     displayColorInverted: Boolean = false,
+    customColor: Long? = null,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ) {
@@ -151,6 +155,7 @@ private fun LandscapeLayout(
                         .clip(RoundedCornerShape(24.dp)),
                     fontSizeMultiplier = fontSizeMultiplier,
                     displayColorInverted = displayColorInverted,
+                    customColor = customColor,
                     imagePath = state.effectiveImagePath,
                     videoPath = state.effectiveVideoPath)
             }
@@ -185,6 +190,7 @@ private fun PortraitLayout(
     fontSizeMultiplier: Float = 1.0f,
     hapticFeedback: Boolean = true,
     displayColorInverted: Boolean = false,
+    customColor: Long? = null,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ) {
@@ -251,6 +257,7 @@ private fun PortraitLayout(
                         .clip(RoundedCornerShape(24.dp)),
                     fontSizeMultiplier = fontSizeMultiplier,
                     displayColorInverted = displayColorInverted,
+                    customColor = customColor,
                     imagePath = state.effectiveImagePath,
                     videoPath = state.effectiveVideoPath)
             }

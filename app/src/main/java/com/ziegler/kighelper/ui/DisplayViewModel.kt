@@ -19,7 +19,8 @@ class DisplayViewModel : ViewModel() {
             text = phrase.speech,
             isInitialHint = false,
             imagePath = phrase.imagePath,
-            videoPath = phrase.videoPath
+            videoPath = phrase.videoPath,
+            customColor = phrase.cardColor
         )
     }
 

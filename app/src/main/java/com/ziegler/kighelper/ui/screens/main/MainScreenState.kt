@@ -34,7 +34,8 @@ class MainScreenState(
     val smallestScreenWidth: Int,
     val maxCollapseDistancePx: Float,
     imagePath: String?,
-    videoPath: String?
+    videoPath: String?,
+    customColor: Long?
 ) {
     var displayText by mutableStateOf(displayText)
         internal set
@@ -63,11 +64,23 @@ class MainScreenState(
     )
         internal set
 
+    var customColor by mutableStateOf(customColor)
+        internal set
+
+    var effectiveCustomColor by mutableStateOf(
+        computeEffectiveCustomColor(customColor, isShowingInitialHint)
+    )
+        internal set
+
     val effectiveHasMedia: Boolean
         get() = !effectiveImagePath.isNullOrBlank() || !effectiveVideoPath.isNullOrBlank()
 
     fun updateDisplay(
-        text: String, isHint: Boolean, mediaImagePath: String?, mediaVideoPath: String?
+        text: String,
+        isHint: Boolean,
+        mediaImagePath: String?,
+        mediaVideoPath: String?,
+        mediaCustomColor: Long?
     ) {
         displayText = text
         isShowingInitialHint = isHint
@@ -76,6 +89,8 @@ class MainScreenState(
         videoPath = mediaVideoPath
         effectiveImagePath = computeEffectiveMediaPath(mediaImagePath, isHint)
         effectiveVideoPath = computeEffectiveMediaPath(mediaVideoPath, isHint)
+        customColor = mediaCustomColor
+        effectiveCustomColor = computeEffectiveCustomColor(mediaCustomColor, isHint)
     }
 
     private fun computeEffectiveDisplayText(text: String, isHint: Boolean): String {
@@ -88,6 +103,10 @@ class MainScreenState(
 
     private fun computeEffectiveMediaPath(path: String?, isHint: Boolean): String? {
         return if (isHint || path.isNullOrBlank()) null else path
+    }
+
+    private fun computeEffectiveCustomColor(color: Long?, isHint: Boolean): Long? {
+        return if (isHint || color == null) null else color
     }
 
     // 短语网格状态
@@ -309,7 +328,8 @@ fun rememberMainScreenState(
     isFullScreen: Boolean,
     onFullScreenChange: (Boolean) -> Unit,
     imagePath: String?,
-    videoPath: String?
+    videoPath: String?,
+    customColor: Long?
 ): MainScreenState {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -343,7 +363,8 @@ fun rememberMainScreenState(
             smallestScreenWidth = smallestScreenWidth,
             maxCollapseDistancePx = maxCollapseDistancePx,
             imagePath = imagePath,
-            videoPath = videoPath
+            videoPath = videoPath,
+            customColor = customColor
         )
     }
 }
