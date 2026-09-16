@@ -31,17 +31,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -66,7 +68,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -78,8 +79,8 @@ import com.ziegler.kighelper.ui.components.ColorPickerDialog
 import com.ziegler.kighelper.ui.components.CropRequest
 import com.ziegler.kighelper.ui.components.CropShape
 import com.ziegler.kighelper.ui.components.ImageCropperDialog
-import com.ziegler.kighelper.ui.components.SectionTitle
 import com.ziegler.kighelper.ui.components.SocialCard
+import com.ziegler.kighelper.ui.screens.settings.SettingSection
 import com.ziegler.kighelper.ui.screens.socialedit.ContactEditor
 import com.ziegler.kighelper.ui.screens.socialedit.SocialCardEditDefaults
 import com.ziegler.kighelper.ui.screens.socialedit.TemplateThumb
@@ -267,7 +268,7 @@ fun SocialCardEditScreen(
 
     fun pinWidgetToHomeScreen(receiver: Class<out AppWidgetProvider>, requestCode: Int) {
         val provider = ComponentName(context, receiver)
-        if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
+        if (!appWidgetManager.isRequestPinAppWidgetSupported) {
             Toast.makeText(context, "当前设备不支持桌面小组件", Toast.LENGTH_SHORT).show()
             return
         }
@@ -333,274 +334,281 @@ fun SocialCardEditScreen(
             Spacer(Modifier.height(16.dp))
 
             // ===== 基本信息 =====
-            SectionTitle("基本信息")
-            OutlinedTextField(
-                value = nickname,
-                onValueChange = { nickname = it },
-                label = { Text("昵称") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = signature,
-                onValueChange = { signature = it },
-                label = { Text("个性签名") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
+            SettingSection(title = "基本信息", icon = Icons.Filled.AccountCircle) {
+                OutlinedTextField(
+                    value = nickname,
+                    onValueChange = { nickname = it },
+                    label = { Text("昵称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = signature,
+                    onValueChange = { signature = it },
+                    label = { Text("个性签名") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(16.dp))
 
-            // 头像
-            Row(
-                modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .clickable { pickAvatar.launch(arrayOf("image/*")) },
-                    contentAlignment = Alignment.Center
+                // 头像
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val avatarModel: Any? = avatarPath?.let { File(it) } ?: avatarUri
-                    if (avatarModel != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context).data(avatarModel).build(),
-                            contentDescription = "头像",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Filled.Add,
-                                contentDescription = "添加头像",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .clickable { pickAvatar.launch(arrayOf("image/*")) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val avatarModel: Any? = avatarPath?.let { File(it) } ?: avatarUri
+                        if (avatarModel != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(avatarModel).build(),
+                                contentDescription = "头像",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
                             )
-                        }
-                    }
-                }
-                Spacer(Modifier.size(12.dp))
-                Column {
-                    Text("头像", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "点击图片更换",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (avatarPath != null || avatarUri != null) {
-                        TextButton(onClick = {
-                            avatarPath = null
-                            avatarUri = null
-                        }) { Text("移除头像") }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // ===== 模板 =====
-            SectionTitle("卡片模板")
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    // 自适应选项：使用 MaterialTheme 的 primary 颜色（默认选项）
-                    TemplateThumb(
-                        name = "自适应",
-                        background = MaterialTheme.colorScheme.primary,
-                        selected = templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX,
-                        onClick = {
-                            templateIndex = SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX
-                            customBackgroundPath = null
-                            backgroundUri = null
-                        })
-                }
-                items(CardTemplates.presets.size) { index ->
-                    val template = CardTemplates.presets[index]
-                    TemplateThumb(
-                        name = template.name,
-                        background = template.background,
-                        selected = templateIndex == index,
-                        onClick = {
-                            templateIndex = index
-                            customBackgroundPath = null
-                            backgroundUri = null
-                        })
-                }
-                item {
-                    // 自定义颜色选项
-                    TemplateThumb(
-                        name = "自定义颜色",
-                        background = Color(customColor),
-                        selected = templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX,
-                        onClick = {
-                            templateIndex = SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX
-                            customBackgroundPath = null
-                            backgroundUri = null
-                            showColorPicker = true
-                        })
-                }
-                item {
-                    val hasCustomBg = customBackgroundPath != null || backgroundUri != null
-                    TemplateThumb(
-                        name = "自定义",
-                        background = null,
-                        customImageModel = customBackgroundPath?.let { File(it) } ?: backgroundUri,
-                        selected = templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX,
-                        onClick = {
-                            templateIndex = SocialCardProfile.CUSTOM_TEMPLATE_INDEX
-                            if (!hasCustomBg) pickBackground.launch(arrayOf("image/*"))
-                        })
-                }
-            }
-            if (templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX) {
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { pickBackground.launch(arrayOf("image/*")) }) {
-                    Text("选择背景图")
-                }
-            }
-            if (templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX) {
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { showColorPicker = true }) {
-                    Text("选择颜色")
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // ===== 社交平台（列表方式） =====
-            SectionTitle("社交平台")
-            contacts.forEach { contact ->
-                ContactEditor(
-                    contact = contact,
-                    qrPreviewModel = qrCodeUris[contact.id] ?: contact.qrCodePath?.let { File(it) },
-                    iconPreviewModel = iconUris[contact.id]
-                        ?: contact.customIconPath?.let { File(it) },
-                    onRename = { newName ->
-                        val idx = contacts.indexOfFirst { it.id == contact.id }
-                        if (idx >= 0) contacts[idx] = contacts[idx].copy(displayName = newName)
-                    },
-                    onIconKeyChange = { newKey ->
-                        val idx = contacts.indexOfFirst { it.id == contact.id }
-                        if (idx >= 0) {
-                            contacts[idx] = contacts[idx].copy(iconKey = newKey)
-                            iconUris.remove(contact.id)
-                            removedIconIds.remove(contact.id)
-                            if (contacts[idx].customIconPath != null) {
-                                contacts[idx] = contacts[idx].copy(customIconPath = null)
-                                removedIconIds.add(contact.id)
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = "添加头像",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
-                    },
-                    onUploadIcon = {
-                        pendingIconContactId = contact.id
-                        pickIconLauncher.launch(arrayOf("image/*"))
-                    },
-                    onRemoveCustomIcon = {
-                        iconUris.remove(contact.id)
-                        val idx = contacts.indexOfFirst { it.id == contact.id }
-                        if (idx >= 0) {
-                            contacts[idx] = contacts[idx].copy(customIconPath = null)
-                        }
-                        removedIconIds.add(contact.id)
-                    },
-                    onHandleChange = { newHandle ->
-                        val idx = contacts.indexOfFirst { it.id == contact.id }
-                        if (idx >= 0) contacts[idx] = contacts[idx].copy(handle = newHandle)
-                    },
-                    onPickQr = {
-                        pendingQrContactId = contact.id
-                        pickQrLauncher.launch(arrayOf("image/*"))
-                    },
-                    onRemoveQr = {
-                        qrCodeUris.remove(contact.id)
-                        val idx = contacts.indexOfFirst { it.id == contact.id }
-                        if (idx >= 0) contacts[idx] = contacts[idx].copy(qrCodePath = null)
-                    },
-                    onDelete = {
-                        qrCodeUris.remove(contact.id)
-                        iconUris.remove(contact.id)
-                        removedIconIds.remove(contact.id)
-                        contacts.removeAll { it.id == contact.id }
-                    })
-                Spacer(Modifier.height(12.dp))
-            }
-
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = {
-                    contacts.add(
-                        SocialContact(
-                            id = UUID.randomUUID().toString(), displayName = ""
-                        )
-                    )
-                }, modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(8.dp))
-                Text("添加平台")
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Widgets,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text(
-                            text = "添加到主屏幕",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "将扩列卡片添加到主屏幕展示",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(Modifier.size(12.dp))
+                    Column {
+                        Text("头像", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "点击图片更换",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (avatarPath != null || avatarUri != null) {
+                            TextButton(onClick = {
+                                avatarPath = null
+                                avatarUri = null
+                            }) { Text("移除头像") }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ===== 模板 =====
+            SettingSection(title = "卡片模板", icon = Icons.Filled.Palette) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        // 自适应选项：使用 MaterialTheme 的 primary 颜色（默认选项）
+                        TemplateThumb(
+                            name = "自适应",
+                            background = MaterialTheme.colorScheme.primary,
+                            selected = templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX,
+                            onClick = {
+                                templateIndex = SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX
+                                customBackgroundPath = null
+                                backgroundUri = null
+                            })
+                    }
+                    items(CardTemplates.presets.size) { index ->
+                        val template = CardTemplates.presets[index]
+                        TemplateThumb(
+                            name = template.name,
+                            background = template.background,
+                            selected = templateIndex == index,
+                            onClick = {
+                                templateIndex = index
+                                customBackgroundPath = null
+                                backgroundUri = null
+                            })
+                    }
+                    item {
+                        // 自定义颜色选项
+                        TemplateThumb(
+                            name = "自定义颜色",
+                            background = Color(customColor),
+                            selected = templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX,
+                            onClick = {
+                                templateIndex = SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX
+                                customBackgroundPath = null
+                                backgroundUri = null
+                                showColorPicker = true
+                            })
+                    }
+                    item {
+                        val hasCustomBg = customBackgroundPath != null || backgroundUri != null
+                        TemplateThumb(
+                            name = "自定义",
+                            background = null,
+                            customImageModel = customBackgroundPath?.let { File(it) }
+                                ?: backgroundUri,
+                            selected = templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX,
+                            onClick = {
+                                templateIndex = SocialCardProfile.CUSTOM_TEMPLATE_INDEX
+                                if (!hasCustomBg) pickBackground.launch(arrayOf("image/*"))
+                            })
+                    }
+                }
+                if (templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX) {
+                    Spacer(Modifier.height(8.dp))
+                    FilledTonalButton(onClick = { pickBackground.launch(arrayOf("image/*")) }) {
+                        Icon(
+                            Icons.Filled.Image,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text("选择背景图")
+                    }
+                }
+                if (templateIndex == SocialCardProfile.CUSTOM_COLOR_TEMPLATE_INDEX) {
+                    Spacer(Modifier.height(8.dp))
+                    FilledTonalButton(onClick = { showColorPicker = true }) {
+                        Icon(
+                            Icons.Filled.Palette,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text("选择颜色")
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ===== 社交平台 =====
+            SettingSection(title = "社交平台", icon = Icons.Filled.Group) {
+                contacts.forEach { contact ->
+                    ContactEditor(
+                        contact = contact,
+                        qrPreviewModel = qrCodeUris[contact.id]
+                            ?: contact.qrCodePath?.let { File(it) },
+                        iconPreviewModel = iconUris[contact.id]
+                            ?: contact.customIconPath?.let { File(it) },
+                        onRename = { newName ->
+                            val idx = contacts.indexOfFirst { it.id == contact.id }
+                            if (idx >= 0) contacts[idx] = contacts[idx].copy(displayName = newName)
+                        },
+                        onIconKeyChange = { newKey ->
+                            val idx = contacts.indexOfFirst { it.id == contact.id }
+                            if (idx >= 0) {
+                                contacts[idx] = contacts[idx].copy(iconKey = newKey)
+                                iconUris.remove(contact.id)
+                                removedIconIds.remove(contact.id)
+                                if (contacts[idx].customIconPath != null) {
+                                    contacts[idx] = contacts[idx].copy(customIconPath = null)
+                                    removedIconIds.add(contact.id)
+                                }
+                            }
+                        },
+                        onUploadIcon = {
+                            pendingIconContactId = contact.id
+                            pickIconLauncher.launch(arrayOf("image/*"))
+                        },
+                        onRemoveCustomIcon = {
+                            iconUris.remove(contact.id)
+                            val idx = contacts.indexOfFirst { it.id == contact.id }
+                            if (idx >= 0) {
+                                contacts[idx] = contacts[idx].copy(customIconPath = null)
+                            }
+                            removedIconIds.add(contact.id)
+                        },
+                        onHandleChange = { newHandle ->
+                            val idx = contacts.indexOfFirst { it.id == contact.id }
+                            if (idx >= 0) contacts[idx] = contacts[idx].copy(handle = newHandle)
+                        },
+                        onPickQr = {
+                            pendingQrContactId = contact.id
+                            pickQrLauncher.launch(arrayOf("image/*"))
+                        },
+                        onRemoveQr = {
+                            qrCodeUris.remove(contact.id)
+                            val idx = contacts.indexOfFirst { it.id == contact.id }
+                            if (idx >= 0) contacts[idx] = contacts[idx].copy(qrCodePath = null)
+                        },
+                        onDelete = {
+                            qrCodeUris.remove(contact.id)
+                            iconUris.remove(contact.id)
+                            removedIconIds.remove(contact.id)
+                            contacts.removeAll { it.id == contact.id }
+                        })
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                FilledTonalButton(
+                    onClick = {
+                        contacts.add(
+                            SocialContact(
+                                id = UUID.randomUUID().toString(), displayName = ""
+                            )
+                        )
+                    }, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Spacer(Modifier.size(8.dp))
+                    Text("添加平台")
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ===== 添加到主屏幕 =====
+            SettingSection(title = "添加到主屏幕", icon = Icons.Filled.Widgets) {
+                Text(
+                    text = "将扩列卡片添加到主屏幕展示",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = {
+                            pinWidgetToHomeScreen(
+                                SocialCardWidgetReceiver::class.java, REQUEST_CODE_PIN_4X2
+                            )
+                        }, modifier = Modifier.weight(1f)
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                pinWidgetToHomeScreen(
-                                    SocialCardWidgetReceiver::class.java, REQUEST_CODE_PIN_4X2
-                                )
-                            }, modifier = Modifier.weight(1f)
-                        ) {
-                            Text("添加小卡片")
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                pinWidgetToHomeScreen(
-                                    SocialCardWidgetReceiverLarge::class.java, REQUEST_CODE_PIN_4X4
-                                )
-                            }, modifier = Modifier.weight(1f)
-                        ) {
-                            Text("添加大卡片")
-                        }
+                        Icon(
+                            Icons.Filled.Widgets,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text("添加小卡片")
+                    }
+                    FilledTonalButton(
+                        onClick = {
+                            pinWidgetToHomeScreen(
+                                SocialCardWidgetReceiverLarge::class.java, REQUEST_CODE_PIN_4X4
+                            )
+                        }, modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Widgets,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text("添加大卡片")
                     }
                 }
             }
