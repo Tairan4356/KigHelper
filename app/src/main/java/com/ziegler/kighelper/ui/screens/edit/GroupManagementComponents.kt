@@ -59,15 +59,17 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  * @param groups 可选的分组列表
  * @param selectedGroupId 当前选中的分组 id，用于设置 FilterChip 的选中状态
  * @param onGroupSelected 分组选择事件回调，参数为被选中的分组 id
+ * @param phraseCountByGroup 各分组的短语数量，用于在 Chip 上显示
  * @param modifier 可选的修饰符，用于调整组件布局
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GroupFilterRow(
+    modifier: Modifier = Modifier,
     groups: List<PhraseGroup>,
     selectedGroupId: String,
     onGroupSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
+    phraseCountByGroup: Map<String, Int> = emptyMap()
 ) {
     FlowRow(
         modifier = modifier.fillMaxWidth(),
@@ -75,10 +77,19 @@ internal fun GroupFilterRow(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         groups.forEach { group ->
+            val count = phraseCountByGroup[group.id] ?: 0
             FilterChip(
                 selected = group.id == selectedGroupId,
                 onClick = { onGroupSelected(group.id) },
-                label = { Text(group.name) })
+                label = {
+                    Text(
+                        text = group.name
+                    )
+                    Text(
+                        text = if (count > 0) " $count" else "",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                })
         }
     }
 }
@@ -217,14 +228,15 @@ internal fun GroupManagementDialog(
                     onNameChange = { newGroupName = it },
                     onAdd = {
                         if (onAddGroup(newGroupName.trim())) newGroupName = ""
-                    }
-                )
+                    })
 
                 Spacer(Modifier.size(12.dp))
 
                 LazyColumn(
                     state = lazyListState,
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(items = localGroups, key = { it.id }) { group ->
@@ -236,7 +248,7 @@ internal fun GroupManagementDialog(
                                 isEditing = editingGroupId == group.id,
                                 editingName = editingName,
                                 allGroups = localGroups,
-                                dragHandleModifier = Modifier.draggableHandle(
+                                modifier = Modifier.draggableHandle(
                                     interactionSource = interactionSource
                                 ),
                                 onStartEdit = {
@@ -252,16 +264,14 @@ internal fun GroupManagementDialog(
                                     editingGroupId = null
                                 },
                                 onCancelRename = { editingGroupId = null },
-                                onDelete = { pendingDelete = group }
-                            )
+                                onDelete = { pendingDelete = group })
                         }
                     }
                 }
 
                 Spacer(Modifier.size(12.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = {
                         onReorderGroups(localGroups)
@@ -273,15 +283,11 @@ internal fun GroupManagementDialog(
     }
 
     pendingDelete?.let { group ->
-        DeleteGroupDialog(
-            group = group,
-            onDismiss = { pendingDelete = null },
-            onConfirm = {
-                onDeleteGroup(group.id)
-                localGroups = localGroups.filter { it.id != group.id }
-                pendingDelete = null
-            }
-        )
+        DeleteGroupDialog(group = group, onDismiss = { pendingDelete = null }, onConfirm = {
+            onDeleteGroup(group.id)
+            localGroups = localGroups.filter { it.id != group.id }
+            pendingDelete = null
+        })
     }
 }
 
@@ -290,10 +296,7 @@ internal fun GroupManagementDialog(
  */
 @Composable
 private fun AddGroupRow(
-    groups: List<PhraseGroup>,
-    name: String,
-    onNameChange: (String) -> Unit,
-    onAdd: () -> Unit
+    groups: List<PhraseGroup>, name: String, onNameChange: (String) -> Unit, onAdd: () -> Unit
 ) {
     val normalized = name.trim()
     val isDuplicate = isGroupNameDuplicate(groups, normalized)
@@ -308,8 +311,7 @@ private fun AddGroupRow(
             modifier = Modifier.fillMaxWidth()
         )
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
         ) {
             TextButton(
                 onClick = onAdd, enabled = normalized.isNotBlank() && !isDuplicate
@@ -332,7 +334,7 @@ private fun GroupManagementRow(
     isEditing: Boolean,
     editingName: String,
     allGroups: List<PhraseGroup>,
-    dragHandleModifier: Modifier,
+    modifier: Modifier,
     onStartEdit: () -> Unit,
     onEditingNameChange: (String) -> Unit,
     onConfirmRename: () -> Unit,
@@ -359,7 +361,9 @@ private fun GroupManagementRow(
                 imageVector = Icons.Default.DragIndicator,
                 contentDescription = "拖拽排序",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp).then(dragHandleModifier)
+                modifier = Modifier
+                    .size(24.dp)
+                    .then(modifier)
             )
             Spacer(Modifier.width(8.dp))
 
@@ -424,8 +428,7 @@ private fun RowScope.GroupManagementRowEditor(
     onCancelRename: () -> Unit
 ) {
     val normalized = editingName.trim()
-    val canConfirm = normalized.isNotEmpty() &&
-            normalized != group.name && !isDuplicate
+    val canConfirm = normalized.isNotEmpty() && normalized != group.name && !isDuplicate
     OutlinedTextField(
         value = editingName,
         onValueChange = onEditingNameChange,

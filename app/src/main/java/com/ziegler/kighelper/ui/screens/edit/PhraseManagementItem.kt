@@ -11,11 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.DriveFileMoveRtl
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -32,6 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.Phrase
@@ -64,81 +66,102 @@ internal fun PhraseManagementItem(
         targetValue = if (isDragging) 10.dp else 1.dp, label = "phraseCardElevation"
     )
     var menuExpanded by remember { mutableStateOf(false) }
+    val phraseColor = phrase.cardColor?.let { Color(it.toInt()) }
+    val cardShape = MaterialTheme.shapes.medium
+    val borderWidth = 6.dp
 
-    Card(
-        onClick = onEdit,
-        modifier = Modifier.fillMaxWidth(),
-        interactionSource = interactionSource,
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = cardElevation,
-            pressedElevation = cardElevation,
-            focusedElevation = cardElevation,
-            hoveredElevation = cardElevation,
-            draggedElevation = cardElevation
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(cardShape)
+            .then(
+                if (phraseColor != null) {
+                Modifier.drawWithContent {
+                    drawContent()
+                    drawRect(
+                        color = phraseColor,
+                        topLeft = Offset.Zero,
+                        size = Size(borderWidth.toPx(), size.height)
+                    )
+                }
+            } else {
+                Modifier
+            })) {
+        Card(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth(),
+            interactionSource = interactionSource,
+            shape = cardShape,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = cardElevation,
+                pressedElevation = cardElevation,
+                focusedElevation = cardElevation,
+                hoveredElevation = cardElevation,
+                draggedElevation = cardElevation
+            )
         ) {
-            IconButton(
-                modifier = modifier.size(40.dp), onClick = {}) {
-                Icon(
-                    imageVector = Icons.Default.DragIndicator,
-                    contentDescription = "拖拽排序",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
+            Row(
+                modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = phrase.label, style = MaterialTheme.typography.titleMedium
-                )
-
-                Text(
-                    text = phrase.speech,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
+                IconButton(
+                    modifier = modifier.size(40.dp), onClick = {}) {
                     Icon(
-                        imageVector = Icons.Default.DriveFileMoveRtl,
-                        contentDescription = "更多",
-                        tint = MaterialTheme.colorScheme.secondary
+                        imageVector = Icons.Default.DragIndicator,
+                        contentDescription = "拖拽排序",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                DropdownMenu(
-                    expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    groups.forEach { group ->
-                        DropdownMenuItem(
-                            text = { Text(group.name) },
-                            enabled = group.id != phrase.groupId,
-                            onClick = {
-                                onMoveToGroup(group.id)
-                                menuExpanded = false
-                            })
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Text(
+                        text = phrase.label, style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Text(
+                        text = phrase.speech,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.DriveFileMoveRtl,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        groups.forEach { group ->
+                            DropdownMenuItem(
+                                text = { Text(group.name) },
+                                enabled = group.id != phrase.groupId,
+                                onClick = {
+                                    onMoveToGroup(group.id)
+                                    menuExpanded = false
+                                })
+                        }
                     }
                 }
-            }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.secondary
-                )
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
         }
     }

@@ -116,6 +116,14 @@ fun EditScreen(
         }
     }
 
+    val phraseCountByGroup = remember(phraseSnapshot, knownGroupIds, sortedGroups) {
+        sortedGroups.associate { group ->
+            group.id to phraseSnapshot.count { phrase ->
+                phrase.effectiveGroupId(knownGroupIds) == group.id
+            }
+        }
+    }
+
     val localPhrases = remember {
         mutableStateListOf<Phrase>().also {
             it.addAll(visiblePhrases)
@@ -173,8 +181,7 @@ fun EditScreen(
         }, actions = {
             IconButton(onClick = { showAddGroupDialog = true }) {
                 Icon(
-                    imageVector = Icons.Default.CreateNewFolder,
-                    contentDescription = "新建分组"
+                    imageVector = Icons.Default.CreateNewFolder, contentDescription = "新建分组"
                 )
             }
 
@@ -199,8 +206,7 @@ fun EditScreen(
                     showGroupManagementDialog = true
                 }, leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = null
+                        imageVector = Icons.Default.Folder, contentDescription = null
                     )
                 })
                 DropdownMenuItem(text = { Text("导入短语") }, onClick = {
@@ -208,8 +214,7 @@ fun EditScreen(
                     onImport()
                 }, leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.FileDownload,
-                        contentDescription = null
+                        imageVector = Icons.Default.FileDownload, contentDescription = null
                     )
                 })
                 DropdownMenuItem(text = { Text("导出短语") }, onClick = {
@@ -217,8 +222,7 @@ fun EditScreen(
                     onExport()
                 }, leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.FileUpload,
-                        contentDescription = null
+                        imageVector = Icons.Default.FileUpload, contentDescription = null
                     )
                 })
             }
@@ -246,16 +250,18 @@ fun EditScreen(
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
             GroupFilterRow(
-                groups = sortedGroups,
-                selectedGroupId = currentGroupId,
-                onGroupSelected = { selectedGroupId = it },
                 modifier = Modifier.padding(
                     start = outerStartPadding + horizontalPadding,
                     top = itemSpacing,
                     end = outerEndPadding + horizontalPadding,
                     bottom = itemSpacing
+                ),
+                groups = sortedGroups,
+                selectedGroupId = currentGroupId,
+                onGroupSelected = { selectedGroupId = it },
+                phraseCountByGroup = phraseCountByGroup,
+
                 )
-            )
 
             val listContentPadding = PaddingValues(
                 start = outerStartPadding + horizontalPadding,
