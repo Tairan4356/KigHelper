@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,10 +23,10 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -114,8 +116,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 SettingSection(title = "字体", icon = Icons.Filled.TextFormat) {
@@ -132,14 +134,20 @@ fun SettingsScreen(
                             }
                         }, installedFonts = installedFonts
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FilledTonalButton(
                         onClick = { showFontManagementDialog = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        Icon(
+                            Icons.Default.TextFormat,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("字体管理")
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     val builtinCount = FontType.entries.size
                     val isBuiltin = settings.fontType < builtinCount
                     if (isBuiltin) {
@@ -179,7 +187,7 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     SettingSlider(
                         title = "文字显示区字体大小",
                         value = settings.fontSize,
@@ -195,7 +203,7 @@ fun SettingsScreen(
                     Text(
                         "颜色模式",
                         style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                     DarkModeOptions(
                         selectedMode = settings.darkMode, onModeSelected = viewModel::updateDarkMode
@@ -204,7 +212,7 @@ fun SettingsScreen(
                     Text(
                         "主题颜色",
                         style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                     var showColorPicker by remember { mutableStateOf(false) }
                     ColorModeSelector(
@@ -212,14 +220,14 @@ fun SettingsScreen(
                         onColorModeChange = viewModel::updateColorMode
                     )
                     if (settings.colorMode == 1) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         PresetColorGrid(
                             selectedIndex = settings.presetColorIndex,
                             onColorSelected = viewModel::updatePresetColorIndex
                         )
                     }
                     if (settings.colorMode == 2) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         CustomColorSelector(
                             customColor = settings.customColor,
                             onClick = { showColorPicker = true })
@@ -244,7 +252,7 @@ fun SettingsScreen(
                     Text(
                         "显示区提示词",
                         style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(bottom = 8.dp, start = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = settings.displayHintText,
@@ -257,7 +265,7 @@ fun SettingsScreen(
                         "未显示短语时的提示词，留空则不显示",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
@@ -304,7 +312,7 @@ fun SettingsScreen(
             }
 
             item {
-                SettingSection(title = "权限", icon = Icons.Filled.Security, showDivider = false) {
+                SettingSection(title = "权限", icon = Icons.Filled.Security) {
                     SettingSwitch(
                         title = "通知显示",
                         subtitle = "应用置于后台时显示通知",
@@ -318,7 +326,7 @@ fun SettingsScreen(
                         checked = settings.lockScreenEnabled,
                         onCheckedChange = viewModel::updateLockScreenEnabled
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -353,6 +361,7 @@ fun SettingsScreen(
                             Text(if (WindowConfig.canDrawOverlays(context)) "已授予" else "去设置")
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "不同机型的系统权限设置存在差异，请根据实际情况手动开启锁屏显示、应用上层或悬浮窗等相关权限。",
                         style = MaterialTheme.typography.bodySmall,

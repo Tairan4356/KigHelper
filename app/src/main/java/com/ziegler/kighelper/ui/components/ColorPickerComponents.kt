@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -29,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.ui.theme.PresetColorNames
 import com.ziegler.kighelper.ui.theme.PresetColors
@@ -41,8 +45,7 @@ fun PresetColorGrid(
     showNames: Boolean = true
 ) {
     Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         for (rowIndex in 0..1) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -77,19 +80,35 @@ fun PresetColorItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.clickable(onClick = onClick)
     ) {
+        val checkTint = if (color.luminance() > 0.5f) Color(0xFF1C1B1F) else Color.White
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(CircleShape)
-                .background(color)
                 .then(
                     if (selected) {
-                        Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                        Modifier.border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
                     } else {
                         Modifier
                     }
-                )
-        )
+                ), contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color),
+                contentAlignment = Alignment.Center
+            ) {
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = checkTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
         if (showName) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -103,13 +122,10 @@ fun PresetColorItem(
 
 @Composable
 fun CustomColorSelector(
-    customColor: Long,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    customColor: Long, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = modifier, verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
@@ -127,98 +143,88 @@ fun CustomColorSelector(
 
 @Composable
 fun ColorPickerDialog(
-    initialColor: Long,
-    onColorSelected: (Long) -> Unit,
-    onDismiss: () -> Unit
+    initialColor: Long, onColorSelected: (Long) -> Unit, onDismiss: () -> Unit
 ) {
     var selectedColor by remember { mutableStateOf(initialColor) }
     val red = ((selectedColor shr 16) and 0xFF).toInt()
     val green = ((selectedColor shr 8) and 0xFF).toInt()
     val blue = (selectedColor and 0xFF).toInt()
-    var hexInput by remember { mutableStateOf(String.format("%06X", initialColor.toInt() and 0xFFFFFF)) }
+    var hexInput by remember {
+        mutableStateOf(
+            String.format(
+                "%06X", initialColor.toInt() and 0xFFFFFF
+            )
+        )
+    }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择颜色") },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("选择颜色") }, text = {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color(selectedColor.toInt()))
+                    .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(Color(selectedColor.toInt()))
-                        .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("#", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    OutlinedTextField(
-                        value = hexInput,
-                        onValueChange = { input ->
-                            val filtered = input.filter { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
-                            if (filtered.length <= 6) {
-                                hexInput = filtered
-                                if (filtered.length == 6) {
-                                    val colorLong = filtered.toLong(16) or 0xFF000000
-                                    selectedColor = colorLong
-                                }
+                Text("#", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.width(4.dp))
+                OutlinedTextField(
+                    value = hexInput,
+                    onValueChange = { input ->
+                        val filtered =
+                            input.filter { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
+                        if (filtered.length <= 6) {
+                            hexInput = filtered
+                            if (filtered.length == 6) {
+                                val colorLong = filtered.toLong(16) or 0xFF000000
+                                selectedColor = colorLong
                             }
-                        },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyLarge
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-                ColorChannelSlider(
-                    label = "R",
-                    value = red,
-                    color = Color.Red,
-                    onValueChange = { newRed ->
-                        selectedColor = 0xFF000000 or (newRed.toLong() shl 16) or (green.toLong() shl 8) or blue.toLong()
-                        hexInput = String.format("%06X", selectedColor.toInt() and 0xFFFFFF)
-                    }
-                )
-                ColorChannelSlider(
-                    label = "G",
-                    value = green,
-                    color = Color.Green,
-                    onValueChange = { newGreen ->
-                        selectedColor = 0xFF000000 or (red.toLong() shl 16) or (newGreen.toLong() shl 8) or blue.toLong()
-                        hexInput = String.format("%06X", selectedColor.toInt() and 0xFFFFFF)
-                    }
-                )
-                ColorChannelSlider(
-                    label = "B",
-                    value = blue,
-                    color = Color.Blue,
-                    onValueChange = { newBlue ->
-                        selectedColor = 0xFF000000 or (red.toLong() shl 16) or (green.toLong() shl 8) or newBlue.toLong()
-                        hexInput = String.format("%06X", selectedColor.toInt() and 0xFFFFFF)
-                    }
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onColorSelected(selectedColor) }) {
-                Text("确定")
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("取消")
-            }
+            ColorChannelSlider(
+                label = "R", value = red, color = Color.Red, onValueChange = { newRed ->
+                    selectedColor =
+                        0xFF000000 or (newRed.toLong() shl 16) or (green.toLong() shl 8) or blue.toLong()
+                    hexInput = String.format("%06X", selectedColor.toInt() and 0xFFFFFF)
+                })
+            ColorChannelSlider(
+                label = "G", value = green, color = Color.Green, onValueChange = { newGreen ->
+                    selectedColor =
+                        0xFF000000 or (red.toLong() shl 16) or (newGreen.toLong() shl 8) or blue.toLong()
+                    hexInput = String.format("%06X", selectedColor.toInt() and 0xFFFFFF)
+                })
+            ColorChannelSlider(
+                label = "B", value = blue, color = Color.Blue, onValueChange = { newBlue ->
+                    selectedColor =
+                        0xFF000000 or (red.toLong() shl 16) or (green.toLong() shl 8) or newBlue.toLong()
+                    hexInput = String.format("%06X", selectedColor.toInt() and 0xFFFFFF)
+                })
         }
-    )
+    }, confirmButton = {
+        Button(onClick = { onColorSelected(selectedColor) }) {
+            Text("确定")
+        }
+    }, dismissButton = {
+        OutlinedButton(onClick = onDismiss) {
+            Text("取消")
+        }
+    })
 }
 
 @Composable
@@ -230,8 +236,7 @@ private fun ColorChannelSlider(
     modifier: Modifier = Modifier
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth()
+        verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()
     ) {
         Text(
             label,
@@ -246,9 +251,7 @@ private fun ColorChannelSlider(
             modifier = Modifier.weight(1f)
         )
         Text(
-            "$value",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.width(32.dp)
+            "$value", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(32.dp)
         )
     }
 }
