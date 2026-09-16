@@ -3,6 +3,17 @@ package com.ziegler.kighelper.ui.screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,7 +56,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -86,6 +101,48 @@ fun InputScreen(
     val text = textFieldValue.text
     val performButtonHaptic = rememberPhysicalButtonHaptics()
 
+    // 焦点状态：用于驱动占位符颜色与文本缩放强调动画
+    var isFocused by remember { mutableStateOf(false) }
+
+    // MD3 Expressive：占位符在焦点变化时平滑过渡透明度与颜色
+    val placeholderColor by animateColorAsState(
+        targetValue = MaterialTheme.colorScheme.outline.copy(
+            alpha = if (isFocused) 0.65f else 0.5f
+        ), animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium
+        ), label = "placeholderColor"
+    )
+    // 输入文本颜色：随焦点状态平滑过渡，聚焦时更醒目
+    val inputTextColor by animateColorAsState(
+        targetValue = MaterialTheme.colorScheme.primary, animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium
+        ), label = "inputTextColor"
+    )
+    // MD3 Expressive：聚焦时文本轻微放大强调
+    val focusScale by animateFloatAsState(
+        targetValue = if (isFocused) 1.02f else 1.0f, animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow
+        ), label = "focusScale"
+    )
+    // 输入/删除文字后，整体从对应偏移端平滑滑动至居中：
+    // 插入 → 从右侧偏移滑向左归位；删除 → 从左侧偏移滑向右归位
+    val slideOffsetX = remember { Animatable(0f) }
+    var previousLength by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(text) {
+        val newLength = text.length
+        val delta = newLength - previousLength
+        previousLength = newLength
+        if (delta != 0) {
+            val startOffset = if (delta > 0) 24.dp else -24.dp
+            slideOffsetX.snapTo(with(density) { startOffset.toPx() })
+            slideOffsetX.animateTo(
+                targetValue = 0f, animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium
+                )
+            )
+        }
+    }
     // 输入法可见时拦截返回键，先收起输入法而不是直接返回上一级
     val isImeVisible = WindowInsets.isImeVisible
     BackHandler(enabled = isImeVisible) {
@@ -109,25 +166,30 @@ fun InputScreen(
     val actionBottomPadding = maxOf(imeBottomPadding, contentPadding.calculateBottomPadding())
 
     val smallestScreenWidth = configuration.smallestScreenWidthDp
-    // 动态计算缩放系数与字号
-    val baseFontSize = when {
+    // 动态计算缩放系数与字号目标值（按文本长度跨越 20 字符阈值切换）
+    val targetFontSizeSp = when {
         smallestScreenWidth < 360 -> {
-            if (text.length > 20) 32.sp else 56.sp
+            if (text.length > 20) 32f else 56f
         }
 
         smallestScreenWidth < 600 -> {
-            if (text.length > 20) 56.sp else 72.sp
+            if (text.length > 20) 56f else 72f
         }
 
         smallestScreenWidth < 720 -> {
-            if (text.length > 20) 72.sp else 84.sp
+            if (text.length > 20) 72f else 84f
         }
 
         else -> {
-            if (text.length > 20) 80.sp else 110.sp
+            if (text.length > 20) 80f else 110f
         }
     }
-    val fontSize = baseFontSize * fontSizeMultiplier
+    // MD3 Expressive：字号的跨档位切换使用低阻尼回弹弹簧动画，产生自然柔和的放大/收缩
+    val fontSize by animateFloatAsState(
+        targetValue = targetFontSizeSp * fontSizeMultiplier, animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium
+        ), label = "inputFontSize"
+    )
     val lineHeight = fontSize * 1.15f
 
     LaunchedEffect(Unit) {
@@ -143,15 +205,16 @@ fun InputScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding()
-                .focusRequester(focusRequester),
+                .focusRequester(focusRequester)
+                .onFocusChanged { isFocused = it.isFocused },
             textStyle = MaterialTheme.typography.displayLarge.copy(
-                fontSize = fontSize,
-                lineHeight = lineHeight,
+                fontSize = fontSize.sp,
+                lineHeight = lineHeight.sp,
                 letterSpacing = 0.sp,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.primary
+                color = Color.Transparent
             ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            cursorBrush = SolidColor(inputTextColor),
             decorationBox = { innerTextField ->
                 Box(
                     modifier = Modifier
@@ -164,24 +227,45 @@ fun InputScreen(
                             bottom = if (isLandscape) 24.dp else 32.dp
                         ), contentAlignment = Alignment.Center
                 ) {
-                    if (text.isEmpty()) {
-                        Text(
-                            text = "请输入文字",
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = fontSize,
-                                lineHeight = lineHeight,
-                                letterSpacing = 0.sp
-                            ),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        innerTextField()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    translationX = slideOffsetX.value
+                                    scaleX = focusScale
+                                    scaleY = focusScale
+                                }, contentAlignment = Alignment.Center
+                        ) {
+                            // 旧文字淡出 + 缩小，新文字淡入 + 从 0.9 放大
+                            AnimatedContent(
+                                targetState = text, transitionSpec = {
+                                    (fadeIn() + scaleIn(initialScale = 0.9f)).togetherWith(
+                                        fadeOut() + scaleOut(
+                                            targetScale = 0.9f
+                                        )
+                                    )
+                                }, label = "inputTextColorAnimation"
+                            ) { targetText ->
+                                Text(
+                                    text = targetText.ifEmpty { "请输入文字" },
+                                    style = MaterialTheme.typography.displayLarge.copy(
+                                        fontSize = fontSize.sp,
+                                        lineHeight = lineHeight.sp,
+                                        letterSpacing = 0.sp
+                                    ),
+                                    textAlign = TextAlign.Center,
+                                    color = if (targetText.isEmpty()) placeholderColor
+                                    else inputTextColor,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            // 编辑层：文字透明以隐藏重复内容，光标仍可见并与输入位置同步
+                            innerTextField()
+                        }
                         if (text.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(if (isLandscape) 64.dp else 80.dp))
                         }
