@@ -6,19 +6,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,15 +40,29 @@ fun VoicePresetSummaryCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = "选择或导入声线预设",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.Bookmark,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "选择或导入声线预设",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             Text(
                 text = "已选择的声线预设：${activeProfile.name}",
                 style = MaterialTheme.typography.bodySmall,
@@ -92,7 +108,7 @@ fun VoicePresetPickerDialog(
                     onDelete = { onDelete(item.id) })
             }
             item {
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = onDuplicate, modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Filled.ContentCopy, contentDescription = null)

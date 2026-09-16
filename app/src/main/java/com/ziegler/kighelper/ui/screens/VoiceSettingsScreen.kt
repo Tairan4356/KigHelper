@@ -4,11 +4,12 @@ package com.ziegler.kighelper.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,14 +17,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShutterSpeed
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,12 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.VoiceEngineType
 import com.ziegler.kighelper.ui.VoiceViewModel
+import com.ziegler.kighelper.ui.screens.settings.SettingSection
 import com.ziegler.kighelper.ui.screens.voice.EngineSelector
 import com.ziegler.kighelper.ui.screens.voice.ModelComplianceDialog
 import com.ziegler.kighelper.ui.screens.voice.ModelInstallAction
@@ -143,8 +148,7 @@ fun VoiceSettingsScreen(
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
             TopAppBar(
                 title = { Text("全局音色设置") }, navigationIcon = {
                 IconButton(onClick = onBack) {
@@ -171,188 +175,189 @@ fun VoiceSettingsScreen(
             }, scrollBehavior = scrollBehavior
             )
         }) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding), contentPadding = PaddingValues(
-                start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp
-            ), verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding)
         ) {
-            item {
-                Text(
-                    "合成引擎",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                EngineSelector(
-                    selected = profile.engineOrDefault, onSelect = { engine ->
-                        viewModel.updateActiveProfile(
-                            engine = engine,
-                            modelId = if (engine == VoiceEngineType.OFFLINE_NEURAL) {
-                                profile.modelId ?: modelStatuses.firstOrNull()?.pack?.id
-                            } else {
-                                null
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = if (profile.engineOrDefault != VoiceEngineType.DISABLED) {
+                        104.dp
+                    } else {
+                        16.dp
+                    }
+                ), verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    SettingSection(title = "合成引擎", icon = Icons.Filled.GraphicEq) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            EngineSelector(
+                                selected = profile.engineOrDefault, onSelect = { engine ->
+                                    viewModel.updateActiveProfile(
+                                        engine = engine,
+                                        modelId = if (engine == VoiceEngineType.OFFLINE_NEURAL) {
+                                            profile.modelId ?: modelStatuses.firstOrNull()?.pack?.id
+                                        } else {
+                                            null
+                                        }
+                                    )
+                                })
+                            if (profile.engineOrDefault == VoiceEngineType.DISABLED) {
+                                Text(
+                                    "语音合成已关闭",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        )
-                    })
-            }
-            if (profile.engineOrDefault == VoiceEngineType.DISABLED) {
-                item {
-                    Text(
-                        "语音合成已关闭",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                            if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
+                                OfflineModelStatusCard(
+                                    activeModelStatus = activeModelStatus,
+                                    installMessage = installMessage,
+                                    onClick = { showModelPicker = true })
+                                if (activeModelStatus?.pack?.supportsSpeakerSelection == true) {
+                                    VoiceSlider(
+                                        title = "说话人",
+                                        valueText = "${
+                                            profile.speakerId.coerceIn(
+                                                0, activeModelStatus.pack.speakerCount - 1
+                                            )
+                                        } / ${activeModelStatus.pack.speakerCount - 1}",
+                                        value = profile.speakerId.coerceIn(
+                                            0, activeModelStatus.pack.speakerCount - 1
+                                        ).toFloat(),
+                                        valueRange = 0f..(activeModelStatus.pack.speakerCount - 1).toFloat(),
+                                        steps = (activeModelStatus.pack.speakerCount - 2).coerceAtLeast(
+                                            0
+                                        ),
+                                        onValueChange = {
+                                            viewModel.updateActiveProfile(speakerId = it.roundToInt())
+                                        })
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-            if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
-                item {
-                    OfflineModelStatusCard(
-                        activeModelStatus = activeModelStatus,
-                        installMessage = installMessage,
-                        onClick = { showModelPicker = true })
+                if (profile.engineOrDefault != VoiceEngineType.DISABLED) {
+                    item {
+                        SettingSection(title = "声线参数", icon = Icons.Filled.Tune) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                VoicePresetSummaryCard(
+                                    activeProfile = profile,
+                                    importMessage = presetMessage,
+                                    onClick = { showPresetPicker = true })
+                                OutlinedTextField(
+                                    value = profile.name,
+                                    onValueChange = { viewModel.updateActiveProfile(name = it) },
+                                    label = { Text("预设名称") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                FilledTonalButton(
+                                    onClick = viewModel::resetActiveProfileParameters,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("重置当前声线参数")
+                                }
+                                if (!isKigvpk) {
+                                    VoiceSlider(
+                                        title = "年龄",
+                                        valueText = when {
+                                            profile.age < 0.35f -> "更年轻"
+                                            profile.age > 0.68f -> "更成熟"
+                                            else -> "自然"
+                                        },
+                                        value = profile.age,
+                                        valueRange = 0f..1f,
+                                        onValueChange = { viewModel.updateActiveProfile(age = it) })
+                                    VoiceSlider(
+                                        title = "语速",
+                                        valueText = "${(profile.speechRate * 100).roundToInt()}%",
+                                        value = profile.speechRate,
+                                        valueRange = 0.75f..1.25f,
+                                        onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
+                                    VoiceSlider(
+                                        title = "音高",
+                                        valueText = "${(profile.pitch * 100).roundToInt()}%",
+                                        value = profile.pitch,
+                                        valueRange = 0.85f..1.15f,
+                                        onValueChange = { viewModel.updateActiveProfile(pitch = it) })
+                                    VoiceSlider(
+                                        title = "温暖度",
+                                        valueText = "${(profile.warmth * 100).roundToInt()}%",
+                                        value = profile.warmth,
+                                        valueRange = 0f..1f,
+                                        onValueChange = { viewModel.updateActiveProfile(warmth = it) })
+                                    VoiceSlider(
+                                        title = "表现力",
+                                        valueText = "${(profile.expressiveness * 100).roundToInt()}%",
+                                        value = profile.expressiveness,
+                                        valueRange = 0f..1f,
+                                        onValueChange = {
+                                            viewModel.updateActiveProfile(expressiveness = it)
+                                        })
+                                }
+                            }
+                        }
+                    }
+                    if (isKigvpk) {
+                        item {
+                            SettingSection(
+                                title = "KIGVPK 参数", icon = Icons.Filled.ShutterSpeed
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    VoiceSlider(
+                                        title = "语调起伏",
+                                        valueText = "${(displayNoiseScale * 100).roundToInt()}%",
+                                        value = displayNoiseScale,
+                                        valueRange = 0.3f..1.5f,
+                                        onValueChange = {
+                                            viewModel.updateActiveProfile(kigvpkNoiseScale = it)
+                                        })
+                                    VoiceSlider(
+                                        title = "语调力度",
+                                        valueText = "${(displayNoiseW * 100).roundToInt()}%",
+                                        value = displayNoiseW,
+                                        valueRange = 0.3f..1.5f,
+                                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseW = it) })
+                                    VoiceSlider(
+                                        title = "模型语速",
+                                        valueText = "${(displayLengthScale * 100).roundToInt()}%",
+                                        value = displayLengthScale,
+                                        valueRange = 0.5f..2.0f,
+                                        onValueChange = {
+                                            viewModel.updateActiveProfile(kigvpkLengthScale = it)
+                                        })
+                                    VoiceSlider(
+                                        title = "句末停顿",
+                                        valueText = "${(displaySentenceSilenceSec * 1000).roundToInt()}ms",
+                                        value = displaySentenceSilenceSec,
+                                        valueRange = 0f..1f,
+                                        onValueChange = {
+                                            viewModel.updateActiveProfile(kigvpkSentenceSilenceSec = it)
+                                        })
+                                }
+                            }
+                        }
+                    }
                 }
             }
             if (profile.engineOrDefault != VoiceEngineType.DISABLED) {
-            if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL && activeModelStatus?.pack?.supportsSpeakerSelection == true) {
-                item {
-                    VoiceSlider(
-                        title = "说话人",
-                        valueText = "${
-                            profile.speakerId.coerceIn(
-                                0, activeModelStatus.pack.speakerCount - 1
-                            )
-                        } / ${activeModelStatus.pack.speakerCount - 1}",
-                        value = profile.speakerId.coerceIn(
-                            0, activeModelStatus.pack.speakerCount - 1
-                        ).toFloat(),
-                        valueRange = 0f..(activeModelStatus.pack.speakerCount - 1).toFloat(),
-                        steps = (activeModelStatus.pack.speakerCount - 2).coerceAtLeast(0),
-                        onValueChange = {
-                            viewModel.updateActiveProfile(speakerId = it.roundToInt())
-                        })
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("声线参数", style = MaterialTheme.typography.labelLarge)
-            }
-            item {
-                VoicePresetSummaryCard(
-                    activeProfile = profile,
-                    importMessage = presetMessage,
-                    onClick = { showPresetPicker = true })
-            }
-            item {
-                OutlinedTextField(
-                    value = profile.name,
-                    onValueChange = { viewModel.updateActiveProfile(name = it) },
-                    label = { Text("预设名称") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedButton(
-                    onClick = viewModel::resetActiveProfileParameters,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.Refresh, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("重置当前声线参数")
-                }
-            }
-            if (isKigvpk) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-                item { Text("KIGVPK 参数", style = MaterialTheme.typography.labelLarge) }
-                item {
-                    VoiceSlider(
-                        title = "语调起伏",
-                        valueText = "${(displayNoiseScale * 100).roundToInt()}%",
-                        value = displayNoiseScale,
-                        valueRange = 0.3f..1.5f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseScale = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "语调力度",
-                        valueText = "${(displayNoiseW * 100).roundToInt()}%",
-                        value = displayNoiseW,
-                        valueRange = 0.3f..1.5f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkNoiseW = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "模型语速",
-                        valueText = "${(displayLengthScale * 100).roundToInt()}%",
-                        value = displayLengthScale,
-                        valueRange = 0.5f..2.0f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkLengthScale = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "句末停顿",
-                        valueText = "${(displaySentenceSilenceSec * 1000).roundToInt()}ms",
-                        value = displaySentenceSilenceSec,
-                        valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(kigvpkSentenceSilenceSec = it) })
-                }
-            } else {
-                item {
-                    VoiceSlider(
-                        title = "年龄",
-                        valueText = when {
-                            profile.age < 0.35f -> "更年轻"
-                            profile.age > 0.68f -> "更成熟"
-                            else -> "自然"
-                        },
-                        value = profile.age,
-                        valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(age = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "语速",
-                        valueText = "${(profile.speechRate * 100).roundToInt()}%",
-                        value = profile.speechRate,
-                        valueRange = 0.75f..1.25f,
-                        onValueChange = { viewModel.updateActiveProfile(speechRate = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "音高",
-                        valueText = "${(profile.pitch * 100).roundToInt()}%",
-                        value = profile.pitch,
-                        valueRange = 0.85f..1.15f,
-                        onValueChange = { viewModel.updateActiveProfile(pitch = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "温暖度",
-                        valueText = "${(profile.warmth * 100).roundToInt()}%",
-                        value = profile.warmth,
-                        valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(warmth = it) })
-                }
-                item {
-                    VoiceSlider(
-                        title = "表现力",
-                        valueText = "${(profile.expressiveness * 100).roundToInt()}%",
-                        value = profile.expressiveness,
-                        valueRange = 0f..1f,
-                        onValueChange = { viewModel.updateActiveProfile(expressiveness = it) })
-                }
-            }
-            item {
                 Button(
-                    onClick = { onPreview(PREVIEW_TEXT) }, modifier = Modifier.fillMaxWidth()
+                    onClick = { onPreview(PREVIEW_TEXT) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 ) {
                     Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("试听当前音色")
                 }
-            }
             }
         }
     }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -13,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.VoiceEngineType
+import com.ziegler.kighelper.ui.screens.settings.SettingConnectedButtonGroup
 import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
 
 /**
@@ -22,18 +22,11 @@ import com.ziegler.kighelper.utils.OfflineVoiceModelFormat
 fun EngineSelector(
     selected: VoiceEngineType, onSelect: (VoiceEngineType) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        VoiceEngineType.entries.forEach { engine ->
-            FilterChip(
-                selected = selected == engine,
-                onClick = { onSelect(engine) },
-                label = { Text(engine.label) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
+    val options = VoiceEngineType.entries
+    SettingConnectedButtonGroup(
+        options = options.map { it.label },
+        selectedIndex = options.indexOf(selected).coerceAtLeast(0),
+        onSelected = { onSelect(options[it]) })
 }
 
 /**
@@ -54,11 +47,11 @@ fun VoiceSlider(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(
                 valueText,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.secondary
             )
         }
         Slider(
@@ -74,28 +67,23 @@ fun VoiceSlider(
 fun ImportFormatSelector(
     selected: OfflineVoiceModelFormat, onSelect: (OfflineVoiceModelFormat) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(
-            OfflineVoiceModelFormat.VITS,
-            OfflineVoiceModelFormat.PIPER,
-            OfflineVoiceModelFormat.KOKORO
-        ).forEach { format ->
-            FilterChip(
-                selected = selected == format,
-                onClick = { onSelect(format) },
-                label = { Text(format.label) },
-                modifier = Modifier.weight(1f)
+    val row1 = listOf(OfflineVoiceModelFormat.VITS, OfflineVoiceModelFormat.PIPER)
+    val row2 = listOf(OfflineVoiceModelFormat.KOKORO, OfflineVoiceModelFormat.KIGVPK)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SettingConnectedButtonGroup(
+            options = row1.map { it.label },
+            selectedIndex = row1.indexOf(selected),
+            onSelected = { onSelect(row1[it]) })
+        SettingConnectedButtonGroup(
+            options = row2.map { it.label },
+            selectedIndex = row2.indexOf(selected),
+            onSelected = { onSelect(row2[it]) })
+        if (selected == OfflineVoiceModelFormat.KIGVPK) {
+            Text(
+                text = "KIGTTS 训练器格式",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
-
-    val kigvpk = OfflineVoiceModelFormat.KIGVPK
-    FilterChip(
-        selected = selected == kigvpk,
-        onClick = { onSelect(kigvpk) },
-        label = { Text(kigvpk.label + "（KIGTTS 训练器格式）") },
-        modifier = Modifier.fillMaxWidth()
-    )
 }
