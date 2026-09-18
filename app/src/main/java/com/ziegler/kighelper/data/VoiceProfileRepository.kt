@@ -14,6 +14,8 @@ interface VoiceProfileRepository {
     suspend fun saveProfiles(profiles: List<VoiceProfile>)
     suspend fun getActiveProfileId(): String
     suspend fun setActiveProfileId(id: String)
+    suspend fun getAutoPregenEnabled(): Boolean
+    suspend fun setAutoPregenEnabled(enabled: Boolean)
 }
 
 class SharedPreferencesVoiceProfileRepository(
@@ -52,6 +54,16 @@ class SharedPreferencesVoiceProfileRepository(
         }
     }
 
+    override suspend fun getAutoPregenEnabled(): Boolean = withContext(Dispatchers.IO) {
+        prefs.getBoolean(AUTO_PREGEN_KEY, false)
+    }
+
+    override suspend fun setAutoPregenEnabled(enabled: Boolean) = withContext(Dispatchers.IO) {
+        prefs.edit(commit = true) {
+            putBoolean(AUTO_PREGEN_KEY, enabled)
+        }
+    }
+
     private fun defaultProfiles() = VoiceProfile.builtInProfiles()
 
     private fun VoiceProfile.normalizedModelId(): VoiceProfile {
@@ -67,5 +79,6 @@ class SharedPreferencesVoiceProfileRepository(
         private const val PREFS_NAME = "voice_profile_prefs"
         private const val PROFILES_KEY = "voice_profiles"
         private const val ACTIVE_PROFILE_ID_KEY = "active_voice_profile_id"
+        private const val AUTO_PREGEN_KEY = "auto_pregen_enabled"
     }
 }

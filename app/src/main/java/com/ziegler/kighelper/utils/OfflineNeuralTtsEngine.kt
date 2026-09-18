@@ -48,7 +48,6 @@ class OfflineNeuralTtsEngine(
     private var kigvpkEngine: KigvpkTtsEngine? = null
     private val failedModelIds = Collections.synchronizedSet(mutableSetOf<String>())
 
-    @RequiresApi(Build.VERSION_CODES.P)
     fun speak(text: String, profile: VoiceProfile): Boolean {
         val readyModel = modelManager.findReadyModel(profile.modelId)
         val isKigvpk = readyModel?.pack?.format == OfflineVoiceModelFormat.KIGVPK
@@ -108,6 +107,38 @@ class OfflineNeuralTtsEngine(
         generationToken.incrementAndGet()
         audioPlayer.stop()
     }
+
+    /**
+     * 只合成到缓存、不播放，供一键生成/自动生成使用；失败返回 null。
+     * 串行执行在引擎单线程调度器上，命中缓存的文本会直接返回已有文件。
+     */
+    suspend fun generateToCache(text: String, profile: VoiceProfile): File? =
+        withContext(engineDispatcher) {
+            val readyModel = modelManager.findReadyModel(profile.modelId) ?: return@withContext null
+            val isKigvpk = readyModel.pack.format == OfflineVoiceModelFormat.KIGVPK
+            if (!isKigvpk) {
+                audioCache.getIfExists(text, profile)?.let { return@withContext it }
+            }
+            if (failedModelIds.contains(readyModel.pack.id)) return@withContext null
+            if (readyModel.runtimeCompatibilityIssue != null) return@withContext null
+            runCatching {
+                validateRuntimePreflight(readyModel)
+            }.onFailure { error ->
+                failedModelIds += readyModel.pack.id
+                Log.w(TAG, "端侧 TTS 模型运行前校验失败，跳过预生成", error)
+                return@withContext null
+            }
+
+            val targetFile = audioCache.resolve(text, profile)
+            runCatching {
+                synthesizeToFile(text, profile, readyModel, targetFile)
+                targetFile.takeIf { it.exists() && it.length() > 0L }
+            }.onFailure { error ->
+                failedModelIds += readyModel.pack.id
+                releaseLoadedTts()
+                Log.w(TAG, "端侧 TTS 预生成失败", error)
+            }.getOrNull()
+        }
 
     fun shutdown() {
         stop()

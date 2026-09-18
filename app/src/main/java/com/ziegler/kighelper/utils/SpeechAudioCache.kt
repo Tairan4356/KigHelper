@@ -10,15 +10,26 @@ class SpeechAudioCache(context: Context) {
         mkdirs()
     }
 
-    fun resolve(text: String, profile: VoiceProfile): File {
-        return File(cacheDir, "${cacheKey(text, profile)}.wav")
+    fun resolve(text: String, profile: VoiceProfile, extraKey: String = ""): File {
+        return File(cacheDir, "${cacheKey(text, profile, extraKey)}.wav")
     }
 
-    fun getIfExists(text: String, profile: VoiceProfile): File? {
-        return resolve(text, profile).takeIf { it.exists() && it.length() > 0L }
+    fun getIfExists(text: String, profile: VoiceProfile, extraKey: String = ""): File? {
+        return resolve(text, profile, extraKey).takeIf { it.exists() && it.length() > 0L }
     }
 
-    private fun cacheKey(text: String, profile: VoiceProfile): String {
+    fun clear() {
+        cacheDir.listFiles()?.forEach { it.delete() }
+        cacheDir.parentFile?.let { parent ->
+            File(parent, SYSTEM_OUTPUT_FILE).delete()
+        }
+    }
+
+    fun cacheSizeBytes(): Long {
+        return cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    }
+
+    private fun cacheKey(text: String, profile: VoiceProfile, extraKey: String): String {
         val rawKey = buildString {
             append(CACHE_VERSION)
             append('|')
@@ -29,6 +40,8 @@ class SpeechAudioCache(context: Context) {
             append(profile.speakerId)
             append('|')
             append(profile.toTtsParams())
+            append('|')
+            append(extraKey)
             append('|')
             append(text.trim())
         }
@@ -43,5 +56,6 @@ class SpeechAudioCache(context: Context) {
     private companion object {
         private const val CACHE_DIR_NAME = "tts_audio"
         private const val CACHE_VERSION = "v2"
+        private const val SYSTEM_OUTPUT_FILE = "tts_system_output.wav"
     }
 }

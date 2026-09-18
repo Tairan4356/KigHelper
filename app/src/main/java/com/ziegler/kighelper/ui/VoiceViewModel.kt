@@ -7,12 +7,19 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ziegler.kighelper.data.DEFAULT_PROFILE_ID
+import com.ziegler.kighelper.data.NetworkTtsConfig
+import com.ziegler.kighelper.data.NetworkTtsRepository
+import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.data.VoiceEngineType
 import com.ziegler.kighelper.data.VoicePresetShare
 import com.ziegler.kighelper.data.VoiceProfile
 import com.ziegler.kighelper.data.VoiceProfileRepository
 import com.ziegler.kighelper.utils.OfflineVoiceModelManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,12 +29,23 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class VoiceViewModel @Inject constructor(
-    private val repository: VoiceProfileRepository
+    private val repository: VoiceProfileRepository,
+    private val phraseRepository: PhraseRepository,
+    private val networkTtsRepository: NetworkTtsRepository
 ) : ViewModel() {
     private val _profiles = mutableStateListOf<VoiceProfile>()
 
     val profiles: List<VoiceProfile>
         get() = _profiles
+
+    private val _phrases = MutableStateFlow<List<Phrase>>(emptyList())
+    val phrases: StateFlow<List<Phrase>> = _phrases.asStateFlow()
+
+    private val _autoPregenEnabled = MutableStateFlow(false)
+    val autoPregenEnabled: StateFlow<Boolean> = _autoPregenEnabled.asStateFlow()
+
+    private val _networkConfig = MutableStateFlow(networkTtsRepository.getConfig())
+    val networkConfig: StateFlow<NetworkTtsConfig> = _networkConfig.asStateFlow()
 
     var activeProfileId by mutableStateOf(DEFAULT_PROFILE_ID)
         private set
@@ -38,6 +56,12 @@ class VoiceViewModel @Inject constructor(
 
     init {
         loadProfiles()
+        viewModelScope.launch {
+            phraseRepository.observePhrases().collect { _phrases.value = it }
+        }
+        viewModelScope.launch {
+            _autoPregenEnabled.value = repository.getAutoPregenEnabled()
+        }
     }
 
     fun setActiveProfile(id: String) {
@@ -167,6 +191,22 @@ class VoiceViewModel @Inject constructor(
         return VoicePresetShare.export(
             profile = activeProfile,
             modelRef = activeProfile.modelId?.let { modelManager.buildSharedModelRef(it) })
+    }
+
+    fun setAutoPregenEnabled(enabled: Boolean) {
+        _autoPregenEnabled.value = enabled
+        viewModelScope.launch {
+            repository.setAutoPregenEnabled(enabled)
+        }
+    }
+
+    fun updateActiveNetworkConfig() {
+        _networkConfig.value = networkTtsRepository.getConfig()
+    }
+
+    fun saveNetworkConfig(config: NetworkTtsConfig) {
+        networkTtsRepository.saveConfig(config)
+        _networkConfig.value = config
     }
 
     private fun loadProfiles() {

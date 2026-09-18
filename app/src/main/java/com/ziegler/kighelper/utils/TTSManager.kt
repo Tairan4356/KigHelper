@@ -6,8 +6,10 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.annotation.RequiresApi
 import com.ziegler.kighelper.data.AppSettings
+import com.ziegler.kighelper.data.NetworkTtsRepository
 import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.data.SettingsRepository
+import com.ziegler.kighelper.data.SharedPreferencesNetworkTtsRepository
 import com.ziegler.kighelper.data.VoiceEngineType
 import com.ziegler.kighelper.data.VoiceProfile
 import kotlinx.coroutines.flow.StateFlow
@@ -21,12 +23,15 @@ import java.util.Locale
 class TTSManager(
     context: Context,
     private val playbackDeviceProvider: PlaybackDeviceProvider,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    networkTtsRepository: NetworkTtsRepository = SharedPreferencesNetworkTtsRepository(context)
 ) : TextToSpeech.OnInitListener {
     private val appContext = context.applicationContext
     private var tts: TextToSpeech = TextToSpeech(appContext, this)
     private val offlineNeuralTtsEngine =
         OfflineNeuralTtsEngine(appContext, playbackDeviceProvider, settingsRepository)
+    private val networkTtsEngine =
+        NetworkTtsEngine(appContext, networkTtsRepository, playbackDeviceProvider, settingsRepository)
     private val systemAudioPlayer = SpeechAudioPlayer()
     private var isReady = false
     private var pendingSystemSpeech: Pair<String, VoiceProfile>? = null
@@ -54,10 +59,18 @@ class TTSManager(
         val content = normalizeText(text, profile).trim()
         if (content.isEmpty()) return
 
-        if (profile.engineOrDefault == VoiceEngineType.OFFLINE_NEURAL) {
-            stopSystemTts()
-            val handledByOfflineEngine = offlineNeuralTtsEngine.speak(content, profile)
-            if (handledByOfflineEngine) return
+        when (profile.engineOrDefault) {
+            VoiceEngineType.OFFLINE_NEURAL -> {
+                stopSystemTts()
+                if (offlineNeuralTtsEngine.speak(content, profile)) return
+            }
+
+            VoiceEngineType.CLOUD_API -> {
+                stopSystemTts()
+                if (networkTtsEngine.speak(content, profile)) return
+            }
+
+            VoiceEngineType.SYSTEM_TTS, VoiceEngineType.DISABLED -> Unit
         }
 
         speakWithSystemTts(content, profile)
@@ -79,8 +92,28 @@ class TTSManager(
             val handledByOfflineEngine = offlineNeuralTtsEngine.speak(content, profile)
             if (handledByOfflineEngine) return
         }
+        if (profile.engineOrDefault == VoiceEngineType.CLOUD_API) {
+            stopSystemTts()
+            if (networkTtsEngine.speak(content, profile)) return
+        }
 
         speakWithSystemTts(content, profile, targetDevice)
+    }
+
+    /**
+     * 只合成到缓存、不播放，供一键生成/自动生成预设短语语音使用。
+     * 系统 TTS 引擎没有缓存机制，返回 null。
+     */
+    suspend fun synthesizeOnly(text: String, profile: VoiceProfile): File? {
+        if (profile.engineOrDefault == VoiceEngineType.DISABLED) return null
+        val content = normalizeText(text, profile).trim()
+        if (content.isEmpty()) return null
+
+        return when (profile.engineOrDefault) {
+            VoiceEngineType.OFFLINE_NEURAL -> offlineNeuralTtsEngine.generateToCache(content, profile)
+            VoiceEngineType.CLOUD_API -> networkTtsEngine.generateToCache(content, profile)
+            VoiceEngineType.SYSTEM_TTS, VoiceEngineType.DISABLED -> null
+        }
     }
 
     /**
@@ -90,6 +123,7 @@ class TTSManager(
         pendingSystemSpeech = null
         stopSystemTts()
         offlineNeuralTtsEngine.stop()
+        networkTtsEngine.stop()
     }
 
     /**
@@ -98,6 +132,7 @@ class TTSManager(
     fun shutDown() {
         stop()
         offlineNeuralTtsEngine.shutdown()
+        networkTtsEngine.shutdown()
         systemAudioPlayer.stop()
         tts.shutdown()
         isReady = false
@@ -116,7 +151,6 @@ class TTSManager(
             val tempFile = File(appContext.cacheDir, "tts_system_output.wav")
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
-                @RequiresApi(Build.VERSION_CODES.P)
                 override fun onDone(utteranceId: String?) {
                     if (utteranceId == UTTERANCE_ID) {
                         val deviceInfo = targetDevice ?: resolvePreferredDevice()

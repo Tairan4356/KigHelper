@@ -157,6 +157,9 @@ class MainActivity : ComponentActivity() {
                         ttsManager.speakTo(
                             "已选择当前设备", voiceViewModel.activeProfile, deviceInfo
                         )
+                    },
+                    onSynthesizeOnly = { text, profile ->
+                        ttsManager.synthesizeOnly(text, profile)
                     })
             }
         }

@@ -45,6 +45,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ziegler.kighelper.data.Phrase
+import com.ziegler.kighelper.data.VoiceProfile
 import com.ziegler.kighelper.ui.navigation.AppBottomBar
 import com.ziegler.kighelper.ui.navigation.AppNavigationRail
 import com.ziegler.kighelper.ui.navigation.AppRoutes
@@ -100,6 +101,7 @@ fun KigHelperApp(
     onPhraseSpoken: (Phrase) -> Unit = {},
     onPlayAudio: (String) -> Unit = {},
     onTestDevice: (Int) -> Unit = {},
+    onSynthesizeOnly: suspend (String, VoiceProfile) -> java.io.File? = { _, _ -> null },
     initialRoute: String? = null
 ) {
     val navController = rememberNavController()
@@ -444,7 +446,8 @@ fun KigHelperApp(
                         VoiceSettingsScreen(
                             viewModel = voiceViewModel,
                             onBack = { navController.popBackStack() },
-                            onPreview = onSpeak
+                            onPreview = onSpeak,
+                            onSynthesizeOnly = onSynthesizeOnly
                         )
                     }
 
