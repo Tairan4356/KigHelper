@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.3.2",
-  "updateContent": "1. 新增扩列卡片小组件\n2. 新增新用户引导\n3. 设置页面新增主页文字显示区域颜色反转选项\n4. 优化扩列卡片预设背景色\n5. 修复了应用主题动态取色的问题\n6. 升级了部分依赖库",
+  "versionCode": 10,
+  "versionName": "1.3.3",
+  "updateContent": "1. 快捷卡片新增图片和视频显示\n2. 设置页新增主页自定义提示文字\n3. 语音设置新增在线 TTS API 调用功能\n4. 重构部分页面为MD3 Expressive\n5. 修复了小组件无法点击的问题\n6. 升级了部分依赖库",
   "downloadUrl": "https://kighelper.pages.dev/"
 }
