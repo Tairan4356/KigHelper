@@ -56,6 +56,7 @@ import com.ziegler.kighelper.ui.screens.settings.DarkModeOptions
 import com.ziegler.kighelper.ui.screens.settings.FontManagementDialog
 import com.ziegler.kighelper.ui.screens.settings.FontTypeSelector
 import com.ziegler.kighelper.ui.screens.settings.PlaybackDeviceSelector
+import com.ziegler.kighelper.ui.screens.settings.SettingConnectedButtonGroup
 import com.ziegler.kighelper.ui.screens.settings.SettingSection
 import com.ziegler.kighelper.ui.screens.settings.SettingSlider
 import com.ziegler.kighelper.ui.screens.settings.SettingSwitch
@@ -307,6 +308,17 @@ fun SettingsScreen(
                         subtitle = "Android 14+ 手势返回时页面跟随手势动画",
                         checked = settings.predictiveBackEnabled,
                         onCheckedChange = viewModel::updatePredictiveBackEnabled
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "进入输入页自动弹起",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    SettingConnectedButtonGroup(
+                        options = listOf("常用字词", "输入法键盘"),
+                        selectedIndex = settings.inputAutoPopup,
+                        onSelected = viewModel::updateInputAutoPopup
                     )
                 }
             }

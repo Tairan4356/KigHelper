@@ -1,10 +1,12 @@
 package com.ziegler.kighelper.di
 
 import android.content.Context
+import com.ziegler.kighelper.data.InputWordRepository
 import com.ziegler.kighelper.data.NetworkTtsRepository
 import com.ziegler.kighelper.data.PhraseRepository
 import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.data.SettingsRepository
+import com.ziegler.kighelper.data.SharedPreferencesInputWordRepository
 import com.ziegler.kighelper.data.SharedPreferencesNetworkTtsRepository
 import com.ziegler.kighelper.data.SharedPreferencesPhraseRepository
 import com.ziegler.kighelper.data.SharedPreferencesVoiceProfileRepository
@@ -31,6 +33,14 @@ object AppModule {
         @ApplicationContext context: Context
     ): PhraseRepository {
         return SharedPreferencesPhraseRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideInputWordRepository(
+        @ApplicationContext context: Context
+    ): InputWordRepository {
+        return SharedPreferencesInputWordRepository(context)
     }
 
     @Provides

@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
@@ -71,6 +72,7 @@ import com.ziegler.kighelper.ui.screens.edit.exportPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.importPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.openExportDirectory
 import com.ziegler.kighelper.ui.screens.edit.shareExportedFile
+import com.ziegler.kighelper.ui.screens.input.InputWordsManageScreen
 import com.ziegler.kighelper.ui.screens.onboarding.OnboardingScreen
 import com.ziegler.kighelper.ui.utils.findActivity
 import com.ziegler.kighelper.utils.NotificationHelper
@@ -302,11 +304,42 @@ fun KigHelperApp(
                     }
 
                     composable(AppRoutes.INPUT) {
+                        val inputWordViewModel: InputWordViewModel = hiltViewModel()
+                        val inputWords by inputWordViewModel.words.collectAsStateWithLifecycle()
+                        val inputGroups by inputWordViewModel.groups.collectAsStateWithLifecycle()
+
                         InputScreen(
                             contentPadding = innerPadding,
                             onSpeak = onSpeak,
                             onStop = onStop,
-                            fontSizeMultiplier = settings.fontSize
+                            fontSizeMultiplier = settings.fontSize,
+                            words = inputWords,
+                            groups = inputGroups,
+                            autoPopupMode = settings.inputAutoPopup,
+                            onNavigateToManage = {
+                                navController.navigate(AppRoutes.INPUT_WORDS)
+                            }
+                        )
+                    }
+
+                    composable(AppRoutes.INPUT_WORDS) {
+                        val inputWordViewModel: InputWordViewModel = hiltViewModel()
+                        val inputWords by inputWordViewModel.words.collectAsStateWithLifecycle()
+                        val inputGroups by inputWordViewModel.groups.collectAsStateWithLifecycle()
+
+                        InputWordsManageScreen(
+                            words = inputWords,
+                            groups = inputGroups,
+                            onBack = { navController.popBackStack() },
+                            onAddWord = inputWordViewModel::addWord,
+                            onUpdateWord = inputWordViewModel::updateWord,
+                            onDeleteWord = inputWordViewModel::deleteWord,
+                            onReorderWords = inputWordViewModel::updateWordsOrder,
+                            onAddGroup = inputWordViewModel::addGroup,
+                            onRenameGroup = inputWordViewModel::renameGroup,
+                            onDeleteGroup = inputWordViewModel::deleteGroup,
+                            onReorderGroups = inputWordViewModel::updateGroupsOrder,
+                            canAddWordToGroup = inputWordViewModel::canAddWordToGroup
                         )
                     }
 

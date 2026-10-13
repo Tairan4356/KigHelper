@@ -15,6 +15,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 object AppRoutes {
     const val MAIN = "main"
     const val INPUT = "input"
+    const val INPUT_WORDS = "input_words"
     const val EDIT = "edit"
     const val PHRASE_MANAGEMENT = "phrase_management"
     const val VOICE_SETTINGS = "voice_settings"

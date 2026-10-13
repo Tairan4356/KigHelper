@@ -25,8 +25,17 @@ data class AppSettings(
     val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID,
     val selectedCustomFont: String? = null,
     val displayHintText: String = "点击下面按钮文字在此显示",
-    val predictiveBackEnabled: Boolean = true
-)
+    val predictiveBackEnabled: Boolean = true,
+    val inputAutoPopup: Int = INPUT_AUTO_POPUP_WORDS
+) {
+    companion object {
+        /** 进入输入页时自动弹起常用字词面板 */
+        const val INPUT_AUTO_POPUP_WORDS = 0
+
+        /** 进入输入页时自动弹起输入法键盘 */
+        const val INPUT_AUTO_POPUP_KEYBOARD = 1
+    }
+}
 
 @Singleton
 class SettingsRepository @Inject constructor(
@@ -51,6 +60,7 @@ class SettingsRepository @Inject constructor(
         const val SELECTED_CUSTOM_FONT = "selected_custom_font"
         const val DISPLAY_HINT_TEXT = "display_hint_text"
         const val PREDICTIVE_BACK_ENABLED = "predictive_back_enabled"
+        const val INPUT_AUTO_POPUP = "input_auto_popup"
     }
 
     private val _settings = MutableStateFlow(loadSettings())
@@ -78,6 +88,9 @@ class SettingsRepository @Inject constructor(
             ) ?: "",
             predictiveBackEnabled = prefs.getBoolean(
                 Keys.PREDICTIVE_BACK_ENABLED, true
+            ),
+            inputAutoPopup = prefs.getInt(
+                Keys.INPUT_AUTO_POPUP, AppSettings.INPUT_AUTO_POPUP_WORDS
             )
         )
     }
@@ -158,6 +171,11 @@ class SettingsRepository @Inject constructor(
 
     fun updatePredictiveBackEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Keys.PREDICTIVE_BACK_ENABLED, enabled) }
+        saveAndEmit()
+    }
+
+    fun updateInputAutoPopup(mode: Int) {
+        prefs.edit { putInt(Keys.INPUT_AUTO_POPUP, mode) }
         saveAndEmit()
     }
 }

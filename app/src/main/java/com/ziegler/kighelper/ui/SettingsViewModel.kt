@@ -245,4 +245,8 @@ class SettingsViewModel @Inject constructor(
     fun updatePredictiveBackEnabled(enabled: Boolean) {
         settingsRepository.updatePredictiveBackEnabled(enabled)
     }
+
+    fun updateInputAutoPopup(mode: Int) {
+        settingsRepository.updateInputAutoPopup(mode)
+    }
 }
