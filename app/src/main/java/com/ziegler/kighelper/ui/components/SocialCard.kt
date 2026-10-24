@@ -1,6 +1,10 @@
 package com.ziegler.kighelper.ui.components
 
+import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +26,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -49,8 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import android.content.Context
-import android.graphics.BitmapFactory
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -58,9 +64,9 @@ import com.ziegler.kighelper.data.CardTemplates
 import com.ziegler.kighelper.data.SocialCardProfile
 import com.ziegler.kighelper.data.SocialContact
 import com.ziegler.kighelper.data.SocialPlatformIcons
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 把一个字符串路径解析成 Coil 可识别的模型。
@@ -126,7 +132,7 @@ private val DesaturateColorFilter = ColorFilter.colorMatrix(
 )
 
 @Composable
-private fun rememberCardBackground(profile: SocialCardProfile): Color {
+internal fun rememberCardBackground(profile: SocialCardProfile): Color {
     return if (profile.templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && !profile.customBackgroundPath.isNullOrBlank()) {
         Color.Transparent
     } else if (profile.templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX) {
@@ -140,7 +146,7 @@ private fun rememberCardBackground(profile: SocialCardProfile): Color {
 }
 
 @Composable
-private fun cardTextColor(profile: SocialCardProfile): Color {
+internal fun cardTextColor(profile: SocialCardProfile): Color {
     return if (profile.templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && !profile.customBackgroundPath.isNullOrBlank()) {
         Color.White
     } else if (profile.templateIndex == SocialCardProfile.ADAPTIVE_TEMPLATE_INDEX) {
@@ -241,14 +247,15 @@ private fun rememberImageAspectRatio(context: Context, path: String?): Float? {
  *
  * 布局自上而下：
  * 1. 头像 + 昵称 + 签名
- * 2. 平台图标行（最多 4 个/行，选中态显示品牌色，未选中显示灰色）
- * 3. 当前选中平台的二维码区域（默认显示第一个平台）
+ * 2. 平台图标行（集合码固定第一个，最多 4 个/行）
+ * 3. 当前选中条目的二维码区域（默认选中集合码）
  *
- * 点击平台图标切换下方二维码展示，点击二维码进入全屏查看。
+ * 点击图标切换下方二维码展示，点击二维码进入全屏查看。
  *
  * @param profile 待展示的资料
  * @param modifier 修饰符
  * @param showEditHint 是否在头像为空时显示「点击编辑」占位
+ * @param showAggregateQr 是否显示集合码入口（引导页等场景可关闭）
  */
 @Composable
 fun SocialCard(
@@ -256,7 +263,8 @@ fun SocialCard(
     modifier: Modifier = Modifier,
     showEditHint: Boolean = false,
     selectedIndex: Int? = null,
-    onSelectedIndexChange: ((Int) -> Unit)? = null
+    onSelectedIndexChange: ((Int) -> Unit)? = null,
+    showAggregateQr: Boolean = true
 ) {
     val textColor = cardTextColor(profile)
     val context = LocalContext.current
@@ -264,19 +272,52 @@ fun SocialCard(
 
     // 已配置的平台（有账号或二维码都算）
     val visibleContacts = remember(profile.contacts) { profile.visibleContacts }
+    val aggregateState = rememberAggregateQrState(profile)
+    val entries = remember(profile, showAggregateQr, aggregateState.available) {
+        socialCardEntries(profile, showAggregateQr)
+    }
 
-    // 当前选中平台的索引：支持外部上提（state hoisting），未传入时回退到内部状态；
+    // 当前选中条目的索引：支持外部上提（state hoisting），未传入时回退到内部状态；
     // 越界时由 safeIndex 自动夹紧
-    var internalSelectedIndex by remember(visibleContacts.size) {
+    var internalSelectedIndex by remember(entries.size) {
         mutableIntStateOf(0)
     }
     val currentSelectedIndex = selectedIndex ?: internalSelectedIndex
     val onSelectedChange = onSelectedIndexChange ?: { internalSelectedIndex = it }
-    val safeIndex = currentSelectedIndex.coerceIn(0, visibleContacts.lastIndex.coerceAtLeast(0))
-    val selectedContact = visibleContacts.getOrNull(safeIndex)
+    val safeIndex = currentSelectedIndex.coerceIn(0, entries.lastIndex.coerceAtLeast(0))
+    val selectedEntry = entries.getOrNull(safeIndex)
 
-    // 点击二维码进入全屏查看的目标平台
-    var fullscreenContact by remember { mutableStateOf<SocialContact?>(null) }
+    val selectedDisplay = remember(selectedEntry, aggregateState) {
+        when (selectedEntry) {
+            SocialCardEntry.Aggregate -> QrDisplay(
+                name = "集合码",
+                handle = when {
+                    aggregateState.overflow -> "容量超出，请减少分享平台"
+                    aggregateState.bitmap == null -> "二维码生成失败"
+                    else -> "扫码查看全部联系方式"
+                },
+                qrModel = aggregateState.bitmap,
+                emptyText = if (aggregateState.overflow) "容量超出" else "暂无内容",
+                isAggregate = true
+            )
+
+            is SocialCardEntry.Platform -> {
+                val contact = selectedEntry.contact
+                QrDisplay(
+                    name = contact.displayName.ifBlank { "社交平台" },
+                    handle = contact.handle,
+                    qrModel = resolveModel(contact.qrCodePath),
+                    emptyText = "无二维码",
+                    isAggregate = false
+                )
+            }
+
+            null -> null
+        }
+    }
+
+    // 点击二维码进入全屏查看的目标
+    var fullscreenQr by remember { mutableStateOf<FullscreenQr?>(null) }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -284,7 +325,7 @@ fun SocialCard(
         color = Color.Transparent
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            // 背景层：自定义背景图优先；否则渐变背景由 Surface 持有
+            // 背景层：自定义背景图优先；否则纯色背景由 Surface 持有
             val customBgPath = profile.customBackgroundPath
             val isCustomBg =
                 profile.templateIndex == SocialCardProfile.CUSTOM_TEMPLATE_INDEX && !customBgPath.isNullOrBlank()
@@ -327,7 +368,7 @@ fun SocialCard(
                     )
                 }
 
-                // 头像 + 昵称 + 平台图标：竖屏与横屏共用的主内容区
+                // 头像 + 昵称 + 图标行：竖屏与横屏共用的主内容区
                 val mainContent: @Composable () -> Unit = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
@@ -390,8 +431,8 @@ fun SocialCard(
 
                     Spacer(modifier = Modifier.size(20.dp))
 
-                    // 平台图标行：每行 4 个
-                    val rows = visibleContacts.chunked(4)
+                    // 图标行：集合码固定第一个，每行 4 个
+                    val rows = entries.chunked(4)
                     rows.forEachIndexed { rowIndex, row ->
                         if (rowIndex > 0) Spacer(modifier = Modifier.size(16.dp))
                         Row(
@@ -399,10 +440,10 @@ fun SocialCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            row.forEach { contact ->
-                                val indexInList = visibleContacts.indexOf(contact)
+                            row.forEachIndexed { columnIndex, entry ->
+                                val indexInList = rowIndex * 4 + columnIndex
                                 ContactIcon(
-                                    contact = contact,
+                                    entry = entry,
                                     textColor = textColor,
                                     selected = indexInList == safeIndex,
                                     onClick = { onSelectedChange(indexInList) })
@@ -412,6 +453,17 @@ fun SocialCard(
                                 Spacer(modifier = Modifier.size(56.dp))
                             }
                         }
+                    }
+                }
+
+                val onQrClick: () -> Unit = {
+                    selectedDisplay?.let { display ->
+                        fullscreenQr = FullscreenQr(
+                            name = display.name,
+                            handle = display.handle,
+                            qrModel = display.qrModel,
+                            emptyText = display.emptyText
+                        )
                     }
                 }
 
@@ -432,14 +484,14 @@ fun SocialCard(
 
                             Spacer(modifier = Modifier.size(32.dp))
 
-                            // 选中平台的二维码展示区
-                            if (selectedContact != null) {
-                                SelectedContactQrCode(
-                                    contact = selectedContact,
+                            if (selectedDisplay != null) {
+                                SelectedQrCode(
+                                    display = selectedDisplay,
                                     textColor = textColor,
                                     layoutMode = layoutMode,
                                     modifier = Modifier.weight(2f),
-                                    onQrClick = { fullscreenContact = selectedContact })
+                                    onQrClick = onQrClick
+                                )
                             }
                         }
                     }
@@ -456,13 +508,13 @@ fun SocialCard(
 
                             Spacer(modifier = Modifier.size(32.dp))
 
-                            // 选中平台的二维码展示区
-                            if (selectedContact != null) {
-                                SelectedContactQrCode(
-                                    contact = selectedContact,
+                            if (selectedDisplay != null) {
+                                SelectedQrCode(
+                                    display = selectedDisplay,
                                     textColor = textColor,
                                     layoutMode = layoutMode,
-                                    onQrClick = { fullscreenContact = selectedContact })
+                                    onQrClick = onQrClick
+                                )
                             }
                         }
                     }
@@ -476,14 +528,14 @@ fun SocialCard(
 
                             Spacer(modifier = Modifier.size(32.dp))
 
-                            // 选中平台的二维码展示区
-                            if (selectedContact != null) {
-                                SelectedContactQrCode(
-                                    contact = selectedContact,
+                            if (selectedDisplay != null) {
+                                SelectedQrCode(
+                                    display = selectedDisplay,
                                     textColor = textColor,
                                     layoutMode = layoutMode,
                                     modifier = Modifier.fillMaxWidth(),
-                                    onQrClick = { fullscreenContact = selectedContact })
+                                    onQrClick = onQrClick
+                                )
                             }
                         }
                     }
@@ -493,14 +545,29 @@ fun SocialCard(
     }
 
     // 全屏二维码查看
-    fullscreenContact?.let { contact ->
+    fullscreenQr?.let { qr ->
         QrCodeFullScreen(
-            contactName = contact.displayName.ifBlank { "社交平台" },
-            handle = contact.handle,
-            qrImagePath = contact.qrCodePath,
-            onDismiss = { fullscreenContact = null })
+            contactName = qr.name,
+            handle = qr.handle,
+            qrModel = qr.qrModel,
+            emptyText = qr.emptyText,
+            onDismiss = { fullscreenQr = null })
     }
 }
+
+/** 当前选中的二维码展示数据，统一平台与集合码的渲染。 */
+private data class QrDisplay(
+    val name: String,
+    val handle: String,
+    val qrModel: Any?,
+    val emptyText: String,
+    val isAggregate: Boolean
+)
+
+/** 全屏二维码查看数据。 */
+private data class FullscreenQr(
+    val name: String, val handle: String, val qrModel: Any?, val emptyText: String
+)
 
 /**
  * 单个平台图标。
@@ -512,10 +579,15 @@ fun SocialCard(
  */
 @Composable
 private fun ContactIcon(
-    contact: SocialContact, textColor: Color, selected: Boolean, onClick: () -> Unit
+    entry: SocialCardEntry, textColor: Color, selected: Boolean, onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val (customModel, drawableRes) = resolveContactIcon(contact)
+    val contact = (entry as? SocialCardEntry.Platform)?.contact
+    val (customModel, drawableRes) = if (contact != null) {
+        resolveContactIcon(contact)
+    } else {
+        null to 0
+    }
 
     val borderColor = if (selected) Color.White else Color.Transparent
     val borderWidth = if (selected) 2.dp else 0.dp
@@ -532,10 +604,16 @@ private fun ContactIcon(
             modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
         ) {
             when {
+                entry is SocialCardEntry.Aggregate -> Icon(
+                    imageVector = Icons.Default.QrCode,
+                    contentDescription = "集合码",
+                    tint = if (selected) MaterialTheme.colorScheme.primary else UnselectedGrayTint,
+                    modifier = Modifier.size(34.dp)
+                )
                 // 自定义上传图标：选中彩色，未选中做去色
                 customModel != null -> AsyncImage(
                     model = ImageRequest.Builder(context).data(customModel).build(),
-                    contentDescription = contact.displayName,
+                    contentDescription = contact?.displayName,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
                     colorFilter = if (selected) null else DesaturateColorFilter
@@ -543,13 +621,13 @@ private fun ContactIcon(
                 // 预设 drawable 图标：选中显示原色，未选中着灰
                 drawableRes != 0 -> Icon(
                     painter = painterResource(drawableRes),
-                    contentDescription = contact.displayName,
+                    contentDescription = contact?.displayName,
                     tint = if (selected) Color.Unspecified else UnselectedGrayTint,
                     modifier = Modifier.size(32.dp)
                 )
                 // 首字回退
                 else -> Text(
-                    text = contact.displayName.firstOrNull()?.toString() ?: "?",
+                    text = contact?.displayName?.firstOrNull()?.toString() ?: "?",
                     color = if (selected) textColor else UnselectedGrayTint,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
@@ -573,14 +651,13 @@ private fun ContactIcon(
  * @param onQrClick 点击二维码回调，进入全屏查看。
  */
 @Composable
-private fun SelectedContactQrCode(
-    contact: SocialContact,
+private fun SelectedQrCode(
+    display: QrDisplay,
     textColor: Color,
     layoutMode: SocialCardLayoutMode,
     modifier: Modifier = Modifier,
     onQrClick: () -> Unit
 ) {
-    val qrModel = resolveModel(contact.qrCodePath)
     val isTabletLandscape = layoutMode == SocialCardLayoutMode.LANDSCAPE_TABLET
 
     Column(
@@ -596,8 +673,11 @@ private fun SelectedContactQrCode(
             ) {
                 val qrSize = minOf(maxHeight, maxWidth)
                 QrCodeBox(
-                    qrModel = qrModel,
-                    contactName = contact.displayName,
+                    qrModel = display.qrModel,
+                    contactName = display.name,
+                    emptyText = display.emptyText,
+                    fit = display.isAggregate,
+                    qrBackground = if (display.isAggregate) Color.White else Color(0x33FFFFFF),
                     textColor = textColor,
                     modifier = Modifier.size(qrSize),
                     onQrClick = onQrClick
@@ -606,8 +686,11 @@ private fun SelectedContactQrCode(
         } else {
             // 竖屏 / 横屏手机：二维码固定 180dp
             QrCodeBox(
-                qrModel = qrModel,
-                contactName = contact.displayName,
+                qrModel = display.qrModel,
+                contactName = display.name,
+                emptyText = display.emptyText,
+                fit = display.isAggregate,
+                qrBackground = if (display.isAggregate) Color.White else Color(0x33FFFFFF),
                 textColor = textColor,
                 modifier = Modifier.size(180.dp),
                 onQrClick = onQrClick
@@ -616,36 +699,51 @@ private fun SelectedContactQrCode(
 
         Spacer(modifier = Modifier.size(16.dp))
 
-        ContactCaption(contact = contact, textColor = textColor)
+        QrCaption(name = display.name, handle = display.handle, textColor = textColor)
     }
 }
 
 /**
- * 二维码图片容器：有图显示二维码（Crop 填充），无图显示占位文字。
- * 尺寸与圆角/背景由 [modifier] 决定，便于在不同布局模式下复用。
+ * 二维码图片容器：平台图片使用 Crop，集合码使用 Fit 并保持白底。
  */
 @Composable
 private fun QrCodeBox(
-    qrModel: Any?, contactName: String, textColor: Color, modifier: Modifier, onQrClick: () -> Unit
+    qrModel: Any?,
+    contactName: String,
+    emptyText: String,
+    fit: Boolean,
+    qrBackground: Color,
+    textColor: Color,
+    modifier: Modifier,
+    onQrClick: () -> Unit
 ) {
     val context = LocalContext.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0x33FFFFFF))
+            .background(qrBackground)
             .clickable(enabled = qrModel != null, onClick = onQrClick),
         contentAlignment = Alignment.Center
     ) {
         if (qrModel != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(qrModel).build(),
-                contentDescription = "$contactName 二维码",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            if (qrModel is Bitmap) {
+                Image(
+                    bitmap = qrModel.asImageBitmap(),
+                    contentDescription = "$contactName 二维码",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(qrModel).build(),
+                    contentDescription = "$contactName 二维码",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = if (fit) ContentScale.Fit else ContentScale.Crop
+                )
+            }
         } else {
             Text(
-                text = "无二维码",
+                text = emptyText,
                 color = textColor.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.labelSmall,
                 textAlign = TextAlign.Center
@@ -655,26 +753,26 @@ private fun QrCodeBox(
 }
 
 /**
- * 选中平台的文字说明：平台名 + handle（若有）。
+ * 选中条目的文字说明：名称 + handle（若有）。
  */
 @Composable
-private fun ContactCaption(contact: SocialContact, textColor: Color) {
+private fun QrCaption(name: String, handle: String, textColor: Color) {
     Column(
         modifier = Modifier.height(intrinsicSize = IntrinsicSize.Max),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = contact.displayName.ifBlank { "社交平台" },
+            text = name.ifBlank { "社交平台" },
             color = textColor,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        if (contact.handle.isNotBlank()) {
+        if (handle.isNotBlank()) {
             Spacer(modifier = Modifier.size(4.dp))
             Text(
-                text = contact.handle,
+                text = handle,
                 color = textColor.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
@@ -696,15 +794,15 @@ private fun ContactCaption(contact: SocialContact, textColor: Color) {
  *
  * @param contactName 平台名称（标题）
  * @param handle 用户填写的账号/ID
- * @param qrImagePath 二维码本地路径或 Uri 字符串
+ * @param qrModel 二维码模型（Bitmap/File/Uri）
+ * @param emptyText 二维码为空时的占位提示
  * @param onDismiss 关闭回调
  */
 @Composable
 private fun QrCodeFullScreen(
-    contactName: String, handle: String, qrImagePath: String?, onDismiss: () -> Unit
+    contactName: String, handle: String, qrModel: Any?, emptyText: String, onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val qrModel = remember(qrImagePath) { resolveModel(qrImagePath) }
 
     Dialog(
         onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -743,15 +841,32 @@ private fun QrCodeFullScreen(
                 Spacer(modifier = Modifier.size(24.dp))
 
                 if (qrModel != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(qrModel).build(),
-                        contentDescription = "$contactName 二维码",
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .aspectRatio(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.White),
-                        contentScale = ContentScale.Fit
-                    )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (qrModel is Bitmap) {
+                            Image(
+                                bitmap = qrModel.asImageBitmap(),
+                                contentDescription = "$contactName 二维码",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(qrModel).build(),
+                                contentDescription = "$contactName 二维码",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -762,7 +877,7 @@ private fun QrCodeFullScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "无二维码",
+                            text = emptyText,
                             color = Color.White.copy(alpha = 0.7f),
                             style = MaterialTheme.typography.bodyMedium
                         )

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.SettingsVoice
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -48,8 +49,9 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.SocialCardProfile
-import com.ziegler.kighelper.data.SocialContact
 import com.ziegler.kighelper.ui.components.SocialCard
+import com.ziegler.kighelper.ui.components.SocialCardEntry
+import com.ziegler.kighelper.ui.components.socialCardEntries
 import com.ziegler.kighelper.utils.SocialPlatformLauncher
 
 /**
@@ -67,17 +69,18 @@ fun ToolboxScreen(
     onNavigateToPhraseManager: () -> Unit,
     onNavigateToVoiceSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onShareAggregate: () -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val pagePadding = 16.dp
 
-    // 选中平台状态上提（state hoisting）：SocialCard 与下方动作按钮共用，
-    // 避免选中态被锁在 SocialCard 内部、外部无法获知当前操作的目标平台。
+    // 选中条目状态上提（state hoisting）：SocialCard 与下方动作按钮共用，
+    // 避免选中态被锁在 SocialCard 内部、外部无法获知当前操作的目标。
     var selectedIndex by remember { mutableIntStateOf(0) }
-    val visibleContacts = socialCardProfile.visibleContacts
-    val selectedContact = visibleContacts.getOrNull(
-        selectedIndex.coerceIn(0, visibleContacts.lastIndex.coerceAtLeast(0))
+    val entries = remember(socialCardProfile) { socialCardEntries(socialCardProfile) }
+    val selectedEntry = entries.getOrNull(
+        selectedIndex.coerceIn(0, entries.lastIndex.coerceAtLeast(0))
     )
 
     val outerStartPadding = contentPadding.calculateStartPadding(layoutDirection)
@@ -106,7 +109,9 @@ fun ToolboxScreen(
 
         item {
             SocialCardActions(
-                selectedContact = selectedContact, onEdit = onNavigateToSocialCardEdit
+                selectedEntry = selectedEntry,
+                onEdit = onNavigateToSocialCardEdit,
+                onShareAggregate = onShareAggregate
             )
         }
 
@@ -160,28 +165,55 @@ fun ToolboxScreen(
 /**
  * 社交卡片下方的动作工具条。
  *
- * 左侧两个按钮作用于卡片中当前选中的平台：
- * - 扫码：拉起该平台的扫码 Activity（仅对已知扫码入口的平台启用）
- * - 打开应用：拉起该平台 App 的主界面
+ * 左侧操作随选中条目变化：
+ * - 集合码：显示分享入口
+ * - 平台：显示扫码 / 打开应用
  *
  * 右侧为「编辑卡片信息」单图标按钮。平台包名与扫码组件等知识由
  * [SocialPlatformLauncher] 集中维护，本组合函数仅负责调用与失败反馈。
  *
- * @param selectedContact 卡片当前选中的联系方式，null 表示无可操作平台
+ * @param selectedEntry 卡片当前选中的条目，null 表示无可用条目
  * @param onEdit 点击编辑按钮的回调
+ * @param onShareAggregate 点击分享集合码的回调
  */
 @Composable
 private fun SocialCardActions(
-    selectedContact: SocialContact?, onEdit: () -> Unit
+    selectedEntry: SocialCardEntry?, onEdit: () -> Unit, onShareAggregate: () -> Unit
 ) {
     val context = LocalContext.current
+    val selectedContact = (selectedEntry as? SocialCardEntry.Platform)?.contact
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 若选中平台，显示撑满空间的胶囊组合按钮
-        if (selectedContact != null) {
+        if (selectedEntry is SocialCardEntry.Aggregate) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(onClick = onShareAggregate)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "分享扩列卡片", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        } else if (selectedContact != null) {
             val canScan = SocialPlatformLauncher.supportsScan(selectedContact)
             val canLaunchMain = SocialPlatformLauncher.supportsMain(selectedContact)
 

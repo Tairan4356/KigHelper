@@ -27,6 +27,12 @@ class SocialCardViewModel @Inject constructor(
         initialValue = repository.current
     )
 
+    init {
+        viewModelScope.launch {
+            repository.ensureQrContentsDecoded()
+        }
+    }
+
     /**
      * 提交编辑结果。所有图片 URI 都由编辑页收集后一次性传入，
      * 仓库会负责把它们拷贝到内部存储并更新路径。

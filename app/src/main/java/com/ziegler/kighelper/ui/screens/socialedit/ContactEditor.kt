@@ -25,7 +25,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -194,6 +193,25 @@ internal fun ContactEditor(
                         Text("上传二维码")
                     }
                 }
+            }
+
+            if (qrPreviewModel != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = when {
+                        contact.qrContentChecked && !contact.qrContent.isNullOrBlank() -> "二维码有效"
+
+                        contact.qrContentChecked -> "未能识别二维码，集合码将按账号ID生成。"
+
+                        else -> "保存后将识别二维码合法性"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (contact.qrContentChecked && contact.qrContent.isNullOrBlank()) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
             }
         }
     }

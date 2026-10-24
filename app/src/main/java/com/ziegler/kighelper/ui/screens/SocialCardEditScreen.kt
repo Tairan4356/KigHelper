@@ -37,12 +37,15 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -74,6 +77,7 @@ import coil.request.ImageRequest
 import com.smarttoolfactory.cropper.model.AspectRatio
 import com.ziegler.kighelper.data.CardTemplates
 import com.ziegler.kighelper.data.SocialCardProfile
+import com.ziegler.kighelper.data.socialshare.SocialCardShareCodec
 import com.ziegler.kighelper.data.SocialContact
 import com.ziegler.kighelper.ui.components.ColorPickerDialog
 import com.ziegler.kighelper.ui.components.CropRequest
@@ -134,6 +138,8 @@ fun SocialCardEditScreen(
     val contacts = remember {
         mutableStateListOf<SocialContact>().apply { addAll(initialProfile.contacts) }
     }
+    // null 表示默认全选；用户手动调整后保存为显式集合。
+    var aggregateContactIds by remember { mutableStateOf(initialProfile.aggregateContactIds) }
     val qrCodeUris = remember { mutableStateMapOf<String, Uri>() }
     val iconUris = remember { mutableStateMapOf<String, Uri>() }
     // 临时移除自定义图标的 contactId 集合（保存时通知 Repository 清理）
@@ -217,7 +223,8 @@ fun SocialCardEditScreen(
             templateIndex = templateIndex,
             customBackgroundPath = customBackgroundPath,
             customColor = customColor,
-            contacts = finalContacts
+            contacts = finalContacts,
+            aggregateContactIds = aggregateContactIds
         )
         onSave(finalProfile, avatarUri, backgroundUri, qrCodeUris.toMap(), iconUris.toMap())
         onBack()
@@ -236,6 +243,10 @@ fun SocialCardEditScreen(
         if (customBackgroundPath != initialProfile.customBackgroundPath) return true
         if (customColor != initialProfile.customColor) return true
         if (backgroundUri != null) return true
+        val initialAggregateIds =
+            initialProfile.aggregateContactIds ?: initialProfile.contacts.map { it.id }.toSet()
+        val currentAggregateIds = aggregateContactIds ?: contacts.map { it.id }.toSet()
+        if (currentAggregateIds != initialAggregateIds) return true
 
         // 联系人列表差异检测
         val current = contacts.toList()
@@ -303,9 +314,13 @@ fun SocialCardEditScreen(
             val pendingIcon = iconUris[c.id]
             c.copy(
                 qrCodePath = pendingQr?.toString() ?: c.qrCodePath,
+                qrContent = if (pendingQr != null) null else c.qrContent,
+                qrContentChecked = if (pendingQr != null) false else c.qrContentChecked,
                 customIconPath = pendingIcon?.toString() ?: c.customIconPath
             )
-        })
+        },
+        aggregateContactIds = aggregateContactIds
+    )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
@@ -538,24 +553,29 @@ fun SocialCardEditScreen(
                         onRemoveQr = {
                             qrCodeUris.remove(contact.id)
                             val idx = contacts.indexOfFirst { it.id == contact.id }
-                            if (idx >= 0) contacts[idx] = contacts[idx].copy(qrCodePath = null)
+                            if (idx >= 0) {
+                                contacts[idx] = contacts[idx].copy(
+                                    qrCodePath = null, qrContent = null, qrContentChecked = false
+                                )
+                            }
                         },
                         onDelete = {
                             qrCodeUris.remove(contact.id)
                             iconUris.remove(contact.id)
                             removedIconIds.remove(contact.id)
                             contacts.removeAll { it.id == contact.id }
+                            aggregateContactIds = aggregateContactIds?.minus(contact.id)
                         })
                     Spacer(Modifier.height(12.dp))
                 }
 
                 FilledTonalButton(
                     onClick = {
-                        contacts.add(
-                            SocialContact(
-                                id = UUID.randomUUID().toString(), displayName = ""
-                            )
+                        val newContact = SocialContact(
+                            id = UUID.randomUUID().toString(), displayName = ""
                         )
+                        contacts.add(newContact)
+                        aggregateContactIds = aggregateContactIds?.plus(newContact.id)
                     }, modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
@@ -563,6 +583,121 @@ fun SocialCardEditScreen(
                     )
                     Spacer(Modifier.size(8.dp))
                     Text("添加平台")
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ===== 集合码内容 =====
+            SettingSection(title = "集合码内容", icon = Icons.Filled.QrCode2) {
+                val selectedIds = aggregateContactIds ?: contacts.map { it.id }.toSet()
+                val aggregateResult = remember(previewProfile) {
+                    SocialCardShareCodec.encodeQr(previewProfile)
+                }
+                val maxUrlBytes =
+                    aggregateResult.maxUrlBytes ?: SocialCardShareCodec.MAX_QR_URL_BYTES
+
+                Text(
+                    text = "选择要包含在集合码中的平台",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (contacts.isEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "暂无社交平台",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Spacer(Modifier.height(8.dp))
+                    contacts.forEach { contact ->
+                        Row(modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val current = aggregateContactIds ?: contacts.map { it.id }.toSet()
+                                aggregateContactIds = if (contact.id in current) {
+                                    current - contact.id
+                                } else {
+                                    current + contact.id
+                                }
+                            }
+                            .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = contact.id in selectedIds, onCheckedChange = { checked ->
+                                    val current =
+                                        aggregateContactIds ?: contacts.map { it.id }.toSet()
+                                    aggregateContactIds = if (checked) {
+                                        current + contact.id
+                                    } else {
+                                        current - contact.id
+                                    }
+                                })
+                            Column(modifier = Modifier.padding(start = 8.dp)) {
+                                Text(
+                                    text = contact.displayName.ifBlank { "未命名平台" },
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (contact.handle.isNotBlank()) {
+                                    Text(
+                                        text = contact.handle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "二维码容量",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${aggregateResult.urlBytes} / $maxUrlBytes 字节",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (aggregateResult.overflow) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = {
+                        (aggregateResult.urlBytes.toFloat() / maxUrlBytes).coerceIn(0f, 1f)
+                    }, modifier = Modifier.fillMaxWidth(), color = if (aggregateResult.overflow) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
+                )
+                if (aggregateResult.signatureTruncated && !aggregateResult.overflow) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "签名将在二维码中自动截断以适配容量。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (aggregateResult.overflow) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "超出容量，请取消部分平台或缩短昵称、签名。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
 
@@ -647,6 +782,12 @@ fun SocialCardEditScreen(
             tag?.startsWith(TAG_QR_PREFIX) == true -> {
                 val contactId = tag.removePrefix(TAG_QR_PREFIX)
                 qrCodeUris[contactId] = resultUri
+                val idx = contacts.indexOfFirst { it.id == contactId }
+                if (idx >= 0) {
+                    contacts[idx] = contacts[idx].copy(
+                        qrContent = null, qrContentChecked = false
+                    )
+                }
             }
 
             tag?.startsWith(TAG_ICON_PREFIX) == true -> {

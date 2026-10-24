@@ -4,12 +4,15 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.edit
 import com.google.gson.Gson
+import com.ziegler.kighelper.data.socialshare.SocialCardQrCodec
 import com.ziegler.kighelper.widget.SocialCardWidgetReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -39,6 +42,8 @@ class SocialCardRepository @Inject constructor(
 
     val current: SocialCardProfile get() = _profile.value
 
+    private val qrDecodeMutex = Mutex()
+
     /**
      * 提交一份新的卡片资料。
      *
@@ -56,87 +61,134 @@ class SocialCardRepository @Inject constructor(
         qrCodeUris: Map<String, Uri>,
         iconUris: Map<String, Uri> = emptyMap()
     ): SocialCardProfile = withContext(ioDispatcher) {
-        val dir = storageDir().apply { mkdirs() }
+        qrDecodeMutex.withLock {
+            val dir = storageDir().apply { mkdirs() }
 
-        // 头像：固定文件名，覆盖写入
-        var newAvatarPath = profile.avatarPath
-        if (avatarUri != null) {
-            val ext = guessExtension(avatarUri) ?: DEFAULT_IMG_EXT
-            val dest = File(dir, "$FILE_AVATAR.$ext")
-            copyUriTo(avatarUri, dest)
-            newAvatarPath = dest.absolutePath
-        } else if (profile.avatarPath == null) {
-            // 用户主动移除头像，清理磁盘残留
-            deleteFilesWithPrefix(dir, FILE_AVATAR)
-        }
-
-        // 背景：固定文件名，覆盖写入
-        var newBgPath = profile.customBackgroundPath
-        if (backgroundUri != null) {
-            val ext = guessExtension(backgroundUri) ?: DEFAULT_IMG_EXT
-            val dest = File(dir, "$FILE_BACKGROUND.$ext")
-            copyUriTo(backgroundUri, dest)
-            newBgPath = dest.absolutePath
-        } else if (profile.customBackgroundPath == null) {
-            deleteFilesWithPrefix(dir, FILE_BACKGROUND)
-        }
-
-        // 联系方式：保留传入顺序，按需复制新二维码与新图标
-        val remainingContactIds = profile.contacts.map { it.id }.toSet()
-        val updatedContacts = profile.contacts.map { contact ->
-            var updated = contact
-
-            // 二维码
-            val newQrUri = qrCodeUris[contact.id]
-            if (newQrUri != null) {
-                val ext = guessExtension(newQrUri) ?: DEFAULT_QR_EXT
-                val dest = File(dir, "${contact.id}_qr.$ext")
-                copyUriTo(newQrUri, dest)
-                updated = updated.copy(qrCodePath = dest.absolutePath)
+            // 头像：固定文件名，覆盖写入
+            var newAvatarPath = profile.avatarPath
+            if (avatarUri != null) {
+                val ext = guessExtension(avatarUri) ?: DEFAULT_IMG_EXT
+                val dest = File(dir, "$FILE_AVATAR.$ext")
+                copyUriTo(avatarUri, dest)
+                newAvatarPath = dest.absolutePath
+            } else if (profile.avatarPath == null) {
+                // 用户主动移除头像，清理磁盘残留
+                deleteFilesWithPrefix(dir, FILE_AVATAR)
             }
 
-            // 自定义图标
-            val newIconUri = iconUris[contact.id]
-            if (newIconUri != null) {
-                val ext = guessExtension(newIconUri) ?: DEFAULT_IMG_EXT
-                val dest = File(dir, "${contact.id}_icon.$ext")
-                copyUriTo(newIconUri, dest)
-                updated = updated.copy(customIconPath = dest.absolutePath)
-            } else if (contact.customIconPath == null) {
-                // 用户主动移除自定义图标，清理磁盘残留
-                deleteFilesWithPrefix(dir, "${contact.id}_icon")
+            // 背景：固定文件名，覆盖写入
+            var newBgPath = profile.customBackgroundPath
+            if (backgroundUri != null) {
+                val ext = guessExtension(backgroundUri) ?: DEFAULT_IMG_EXT
+                val dest = File(dir, "$FILE_BACKGROUND.$ext")
+                copyUriTo(backgroundUri, dest)
+                newBgPath = dest.absolutePath
+            } else if (profile.customBackgroundPath == null) {
+                deleteFilesWithPrefix(dir, FILE_BACKGROUND)
             }
 
-            updated
+            // 联系方式：保留传入顺序，按需复制新二维码与新图标
+            val remainingContactIds = profile.contacts.map { it.id }.toSet()
+            val updatedContacts = profile.contacts.map { contact ->
+                var updated = contact
+
+                // 二维码
+                val newQrUri = qrCodeUris[contact.id]
+                if (newQrUri != null) {
+                    val ext = guessExtension(newQrUri) ?: DEFAULT_QR_EXT
+                    val dest = File(dir, "${contact.id}_qr.$ext")
+                    copyUriTo(newQrUri, dest)
+                    updated = updated.copy(
+                        qrCodePath = dest.absolutePath,
+                        qrContent = null,
+                        qrContentChecked = false
+                    )
+                } else if (contact.qrCodePath == null) {
+                    updated = updated.copy(qrContent = null, qrContentChecked = false)
+                }
+
+                // 新上传、旧版本遗留或未识别过的二维码都在落库时补齐文本
+                if (updated.qrCodePath != null && !updated.qrContentChecked) {
+                    val decoded = SocialCardQrCodec.decode(context, updated.qrCodePath)
+                    updated = updated.copy(
+                        qrContent = decoded?.takeIf { it.isNotBlank() },
+                        qrContentChecked = true
+                    )
+                }
+
+                // 自定义图标
+                val newIconUri = iconUris[contact.id]
+                if (newIconUri != null) {
+                    val ext = guessExtension(newIconUri) ?: DEFAULT_IMG_EXT
+                    val dest = File(dir, "${contact.id}_icon.$ext")
+                    copyUriTo(newIconUri, dest)
+                    updated = updated.copy(customIconPath = dest.absolutePath)
+                } else if (contact.customIconPath == null) {
+                    // 用户主动移除自定义图标，清理磁盘残留
+                    deleteFilesWithPrefix(dir, "${contact.id}_icon")
+                }
+
+                updated
+            }
+
+            // 清理已删除联系人的二维码与图标文件
+            dir.listFiles { f ->
+                val name = f.name
+                name.endsWith("_qr.png") || name.endsWith("_qr.jpg") || name.endsWith("_qr.webp") || name.endsWith(
+                    "_icon.jpg"
+                ) || name.endsWith("_icon.png") || name.endsWith("_icon.webp")
+            }?.forEach { f ->
+                // 文件名格式为 "{contactId}_qr.png" / "{contactId}_icon.jpg"
+                // 取最后一个下划线之前的部分作为 owner；UUID 与预设 id 都不含下划线，
+                // 即使含下划线，此方法也能正确保留 owner 全名
+                val ownerId = f.name.substringBeforeLast('_')
+                if (ownerId !in remainingContactIds) f.delete()
+            }
+
+            val final = profile.copy(
+                avatarPath = newAvatarPath, customBackgroundPath = newBgPath, contacts = updatedContacts
+            )
+
+            prefs.edit(commit = true) {
+                putString(KEY_PROFILE, gson.toJson(final))
+            }
+            _profile.value = final
+
+            // 通知桌面小组件刷新
+            SocialCardWidgetReceiver.updateAllWidgets(context)
+
+            final
         }
+    }
 
-        // 清理已删除联系人的二维码与图标文件
-        dir.listFiles { f ->
-            val name = f.name
-            name.endsWith("_qr.png") || name.endsWith("_qr.jpg") || name.endsWith("_qr.webp") || name.endsWith(
-                "_icon.jpg"
-            ) || name.endsWith("_icon.png") || name.endsWith("_icon.webp")
-        }?.forEach { f ->
-            // 文件名格式为 "{contactId}_qr.png" / "{contactId}_icon.jpg"
-            // 取最后一个下划线之前的部分作为 owner；UUID 与预设 id 都不含下划线，
-            // 即使含下划线，此方法也能正确保留 owner 全名
-            val ownerId = f.name.substringBeforeLast('_')
-            if (ownerId !in remainingContactIds) f.delete()
+    /**
+     * 为旧版本已上传但尚未识别的二维码补齐文本。
+     * 识别失败会标记 checked，避免每次启动重复尝试。
+     */
+    suspend fun ensureQrContentsDecoded() = withContext(ioDispatcher) {
+        qrDecodeMutex.withLock {
+            val currentProfile = _profile.value
+            var changed = false
+            val updatedContacts = currentProfile.contacts.map { contact ->
+                if (contact.qrCodePath == null || contact.qrContentChecked) {
+                    contact
+                } else {
+                    val decoded = SocialCardQrCodec.decode(context, contact.qrCodePath)
+                    changed = true
+                    contact.copy(
+                        qrContent = decoded?.takeIf { it.isNotBlank() },
+                        qrContentChecked = true
+                    )
+                }
+            }
+            if (!changed) return@withLock
+
+            val final = currentProfile.copy(contacts = updatedContacts)
+            prefs.edit(commit = true) {
+                putString(KEY_PROFILE, gson.toJson(final))
+            }
+            _profile.value = final
         }
-
-        val final = profile.copy(
-            avatarPath = newAvatarPath, customBackgroundPath = newBgPath, contacts = updatedContacts
-        )
-
-        prefs.edit(commit = true) {
-            putString(KEY_PROFILE, gson.toJson(final))
-        }
-        _profile.value = final
-
-        // 通知桌面小组件刷新
-        SocialCardWidgetReceiver.updateAllWidgets(context)
-
-        final
     }
 
     private fun loadProfile(): SocialCardProfile {

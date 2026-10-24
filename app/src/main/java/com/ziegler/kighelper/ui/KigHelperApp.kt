@@ -54,6 +54,7 @@ import com.ziegler.kighelper.ui.navigation.PredictiveBackGate
 import com.ziegler.kighelper.ui.navigation.navSlideDirection
 import com.ziegler.kighelper.ui.navigation.navigateToTopLevelDestination
 import com.ziegler.kighelper.ui.navigation.topLevelRoutes
+import com.ziegler.kighelper.ui.components.SocialCardShareSheet
 import com.ziegler.kighelper.ui.screens.AboutScreen
 import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
@@ -122,6 +123,7 @@ fun KigHelperApp(
     }
 
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
+    var showSocialCardShare by rememberSaveable { mutableStateOf(false) }
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
     val isExpanded = windowSize.widthSizeClass != WindowWidthSizeClass.Compact
     val isImeVisible = WindowInsets.isImeVisible
@@ -328,7 +330,8 @@ fun KigHelperApp(
                             },
                             onNavigateToSettings = {
                                 navController.navigate(AppRoutes.SETTINGS)
-                            })
+                            },
+                            onShareAggregate = { showSocialCardShare = true })
                     }
 
                     composable(AppRoutes.PHRASE_MANAGEMENT) {
@@ -527,6 +530,13 @@ fun KigHelperApp(
                 }
             }
         }
+    }
+
+    if (showSocialCardShare) {
+        SocialCardShareSheet(
+            profile = socialCardProfile,
+            onDismiss = { showSocialCardShare = false }
+        )
     }
 }
 

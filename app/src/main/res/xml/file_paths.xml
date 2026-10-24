@@ -6,6 +6,9 @@
     <cache-path
         name="phrase_exports"
         path="phrase_exports/" />
+    <cache-path
+        name="social_card_share"
+        path="social_card_share/" />
     <files-path
         name="social_card"
         path="social_card/" />
