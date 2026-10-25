@@ -40,7 +40,8 @@ data class SocialContact(
  * @param customBackgroundPath 自定义背景图本地路径
  * @param customColor 自定义背景颜色（仅当 templateIndex 为 [CUSTOM_COLOR_TEMPLATE_INDEX] 时使用）
  * @param contacts 已配置的社交平台列表，按用户排序
- * @param aggregateContactIds 加入总二维码的联系人 ID 集合；null 表示全部可见平台
+ * @param aggregateContactIds 加入集合码的联系人 ID 集合；null 表示全部可见平台
+ * @param showAggregate 是否在卡片中显示集合码
  */
 data class SocialCardProfile(
     val nickname: String = "",
@@ -50,7 +51,8 @@ data class SocialCardProfile(
     val customBackgroundPath: String? = null,
     val customColor: Long = 0xFF6650A4, // 默认紫色
     val contacts: List<SocialContact> = emptyList(),
-    val aggregateContactIds: Set<String>? = null
+    val aggregateContactIds: Set<String>? = null,
+    val showAggregate: Boolean = true
 ) {
     /**
      * 已配置（有账号或二维码）的联系方式，按用户排序。
@@ -60,7 +62,7 @@ data class SocialCardProfile(
         get() = contacts.filter { it.qrCodePath != null || it.handle.isNotBlank() }
 
     /**
-     * 加入总二维码的联系方式。
+     * 加入集合码的联系方式。
      * [aggregateContactIds] 为 null 时默认包含全部可见平台。
      */
     val aggregateContacts: List<SocialContact>
