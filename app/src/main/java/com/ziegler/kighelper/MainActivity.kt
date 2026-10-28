@@ -1,10 +1,12 @@
 package com.ziegler.kighelper
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -31,6 +33,7 @@ import com.ziegler.kighelper.ui.theme.KigHelperTheme
 import com.ziegler.kighelper.utils.AudioPlayerManager
 import com.ziegler.kighelper.utils.NotificationHelper
 import com.ziegler.kighelper.utils.TTSManager
+import com.ziegler.kighelper.utils.VolumeKeyDispatcher
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -130,10 +133,9 @@ class MainActivity : ComponentActivity() {
                         audioPlayerManager.stop()
                     },
                     onPhraseSpoken = { phrase ->
-                        val mediaPath =
-                            if (phrase.hasVideo) phrase.videoPath
-                            else if (phrase.hasAudio) phrase.audioPath
-                            else null
+                        val mediaPath = if (phrase.hasVideo) phrase.videoPath
+                        else if (phrase.hasAudio) phrase.audioPath
+                        else null
                         notificationHelper.showSilentLockScreenNotification(
                             phraseLabel = phrase.label,
                             phraseSpeech = phrase.speech,
@@ -163,6 +165,14 @@ class MainActivity : ComponentActivity() {
                     })
             }
         }
+    }
+
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) && VolumeKeyDispatcher.handler?.invoke() == true) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onStart() {

@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -15,7 +16,9 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 object AppRoutes {
     const val MAIN = "main"
     const val INPUT = "input"
+    const val CAMERA = "camera"
     const val EDIT = "edit"
+    const val TIMELINE = "timeline"
     const val PHRASE_MANAGEMENT = "phrase_management"
     const val VOICE_SETTINGS = "voice_settings"
     const val ABOUT = "about"
@@ -50,6 +53,7 @@ data class TopLevelDestination(
 val topLevelDestinations = listOf(
     TopLevelDestination(AppRoutes.MAIN, "快捷", Icons.Filled.Home),
     TopLevelDestination(AppRoutes.INPUT, "输入", Icons.Filled.Keyboard),
+    TopLevelDestination(AppRoutes.CAMERA, "相机", Icons.Filled.PhotoCamera),
     TopLevelDestination(AppRoutes.EDIT, "工具", Icons.Filled.Build)
 )
 

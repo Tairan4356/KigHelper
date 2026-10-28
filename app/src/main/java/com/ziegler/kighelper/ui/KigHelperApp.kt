@@ -46,6 +46,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ziegler.kighelper.data.Phrase
 import com.ziegler.kighelper.data.VoiceProfile
+import com.ziegler.kighelper.data.camera.CameraProvider
+import com.ziegler.kighelper.ui.components.SocialCardShareSheet
 import com.ziegler.kighelper.ui.navigation.AppBottomBar
 import com.ziegler.kighelper.ui.navigation.AppNavigationRail
 import com.ziegler.kighelper.ui.navigation.AppRoutes
@@ -54,7 +56,6 @@ import com.ziegler.kighelper.ui.navigation.PredictiveBackGate
 import com.ziegler.kighelper.ui.navigation.navSlideDirection
 import com.ziegler.kighelper.ui.navigation.navigateToTopLevelDestination
 import com.ziegler.kighelper.ui.navigation.topLevelRoutes
-import com.ziegler.kighelper.ui.components.SocialCardShareSheet
 import com.ziegler.kighelper.ui.screens.AboutScreen
 import com.ziegler.kighelper.ui.screens.AddEditPhraseScreen
 import com.ziegler.kighelper.ui.screens.EditScreen
@@ -64,6 +65,7 @@ import com.ziegler.kighelper.ui.screens.SettingsScreen
 import com.ziegler.kighelper.ui.screens.SocialCardEditScreen
 import com.ziegler.kighelper.ui.screens.ToolboxScreen
 import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
+import com.ziegler.kighelper.ui.screens.camera.CameraScreen
 import com.ziegler.kighelper.ui.screens.edit.ExportResult
 import com.ziegler.kighelper.ui.screens.edit.PhraseExportDialog
 import com.ziegler.kighelper.ui.screens.edit.PhraseExportResultDialog
@@ -72,6 +74,7 @@ import com.ziegler.kighelper.ui.screens.edit.exportPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.importPhraseArchive
 import com.ziegler.kighelper.ui.screens.edit.openExportDirectory
 import com.ziegler.kighelper.ui.screens.edit.shareExportedFile
+import com.ziegler.kighelper.ui.screens.history.TimelineScreen
 import com.ziegler.kighelper.ui.screens.onboarding.OnboardingScreen
 import com.ziegler.kighelper.ui.utils.findActivity
 import com.ziegler.kighelper.utils.NotificationHelper
@@ -124,18 +127,27 @@ fun KigHelperApp(
 
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
     var showSocialCardShare by rememberSaveable { mutableStateOf(false) }
+    var cameraLaunchRequested by rememberSaveable { mutableStateOf(false) }
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
     val isExpanded = windowSize.widthSizeClass != WindowWidthSizeClass.Compact
     val isImeVisible = WindowInsets.isImeVisible
 
     val showBottomBar =
         showNavigation && !isExpanded && !(currentRoute == AppRoutes.INPUT && isImeVisible)
+    // 重复点击当前 Tab 不能再次导航：相机会因此重建 CameraX 会话并表现为卡死。
+    val onDestinationClick: (String) -> Unit = { route ->
+        if (route != currentRoute) {
+            if (route == AppRoutes.CAMERA && settings.cameraProvider != CameraProvider.BUILT_IN) {
+                cameraLaunchRequested = true
+            }
+            navController.navigateToTopLevelDestination(route)
+        }
+    }
 
     Row(modifier = Modifier.fillMaxSize()) {
         if (showNavigation && isExpanded) {
             AppNavigationRail(
-                currentRoute = currentRoute,
-                onDestinationClick = navController::navigateToTopLevelDestination
+                currentRoute = currentRoute, onDestinationClick = onDestinationClick
             )
         }
 
@@ -146,7 +158,7 @@ fun KigHelperApp(
                 AppBottomBar(
                     visible = showBottomBar,
                     currentRoute = currentRoute,
-                    onDestinationClick = navController::navigateToTopLevelDestination
+                    onDestinationClick = onDestinationClick
                 )
             }) { innerPadding ->
             SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
@@ -310,6 +322,25 @@ fun KigHelperApp(
                             onStop = onStop,
                             fontSizeMultiplier = settings.fontSize
                         )
+                    }
+
+                    composable(AppRoutes.CAMERA) {
+                        CameraScreen(
+                            contentPadding = innerPadding,
+                            onOpenTimeline = {
+                                navController.navigate(AppRoutes.TIMELINE)
+                            },
+                            onOpenSettings = {
+                                navController.navigate(AppRoutes.SETTINGS)
+                            },
+                            externalLaunchRequested = cameraLaunchRequested,
+                            onExternalLaunchHandled = {
+                                cameraLaunchRequested = false
+                            })
+                    }
+
+                    composable(AppRoutes.TIMELINE) {
+                        TimelineScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(AppRoutes.EDIT) {
@@ -534,9 +565,7 @@ fun KigHelperApp(
 
     if (showSocialCardShare) {
         SocialCardShareSheet(
-            profile = socialCardProfile,
-            onDismiss = { showSocialCardShare = false }
-        )
+            profile = socialCardProfile, onDismiss = { showSocialCardShare = false })
     }
 }
 

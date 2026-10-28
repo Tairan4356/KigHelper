@@ -11,6 +11,9 @@ import com.ziegler.kighelper.data.FontRepository
 import com.ziegler.kighelper.data.PlaybackDevice
 import com.ziegler.kighelper.data.PlaybackDeviceProvider
 import com.ziegler.kighelper.data.SettingsRepository
+import com.ziegler.kighelper.data.camera.CameraAppInfo
+import com.ziegler.kighelper.data.camera.CameraAppResolver
+import com.ziegler.kighelper.data.camera.CameraProvider
 import com.ziegler.kighelper.utils.FontManager
 import com.ziegler.kighelper.utils.InstalledFont
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +41,7 @@ data class FontDownloadState(
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val fontRepository: FontRepository,
+    private val cameraAppResolver: CameraAppResolver,
     private val application: Application,
     playbackDeviceProvider: PlaybackDeviceProvider
 ) : ViewModel() {
@@ -58,8 +62,23 @@ class SettingsViewModel @Inject constructor(
     private val _isLoadingCatalog = MutableStateFlow(false)
     val isLoadingCatalog: StateFlow<Boolean> = _isLoadingCatalog.asStateFlow()
 
+    private val _cameraApps = MutableStateFlow<List<CameraAppInfo>>(emptyList())
+    val cameraApps: StateFlow<List<CameraAppInfo>> = _cameraApps.asStateFlow()
+
     init {
         loadFontCatalog()
+    }
+
+    fun refreshCameraApps() {
+        viewModelScope.launch {
+            _cameraApps.value = withContext(Dispatchers.IO) {
+                cameraAppResolver.availableLaunchableApps()
+            }
+        }
+    }
+
+    fun isCameraActivityAvailable(packageName: String?, activityName: String?): Boolean {
+        return cameraAppResolver.isActivityAvailable(packageName, activityName)
     }
 
     fun loadFontCatalog() {
@@ -244,5 +263,25 @@ class SettingsViewModel @Inject constructor(
 
     fun updatePredictiveBackEnabled(enabled: Boolean) {
         settingsRepository.updatePredictiveBackEnabled(enabled)
+    }
+
+    fun updateCameraProvider(provider: CameraProvider) {
+        settingsRepository.updateCameraProvider(provider)
+    }
+
+    fun updateThirdPartyCamera(packageName: String?, activityName: String?) {
+        settingsRepository.updateThirdPartyCamera(packageName, activityName)
+    }
+
+    fun updateWritePhotoLocation(enabled: Boolean) {
+        settingsRepository.updateWritePhotoLocation(enabled)
+    }
+
+    fun updateLivePhotoEnabled(enabled: Boolean) {
+        settingsRepository.updateLivePhotoEnabled(enabled)
+    }
+
+    fun updateCameraCompatibilityMode(enabled: Boolean) {
+        settingsRepository.updateCameraCompatibilityMode(enabled)
     }
 }

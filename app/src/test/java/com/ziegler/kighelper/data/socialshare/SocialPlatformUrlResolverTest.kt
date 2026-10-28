@@ -2,6 +2,7 @@ package com.ziegler.kighelper.data.socialshare
 
 import com.ziegler.kighelper.data.SocialPlatformIcons
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -62,5 +63,57 @@ class SocialPlatformUrlResolverTest {
                 "https://example.com/someone"
             )
         )
+    }
+
+    @Test
+    fun detectsSupportedPlatformUrls() {
+        assertEquals(
+            SocialPlatformIcons.KEY_QQ,
+            SocialPlatformUrlResolver.detect("https://qm.qq.com/q/abc")?.iconKey
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_WECHAT,
+            SocialPlatformUrlResolver.detect("https://u.wechat.com/abc")?.iconKey
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_BILIBILI,
+            SocialPlatformUrlResolver.detect("https://b23.tv/abc")?.iconKey
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_DOUYIN,
+            SocialPlatformUrlResolver.detect("https://v.douyin.com/abc")?.iconKey
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_WEIBO,
+            SocialPlatformUrlResolver.detect("https://m.weibo.cn/abc")?.iconKey
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_X,
+            SocialPlatformUrlResolver.detect("https://x.com/abc")?.iconKey
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_TELEGRAM,
+            SocialPlatformUrlResolver.detect("https://t.me/abc")?.iconKey
+        )
+    }
+
+    @Test
+    fun detectsPlatformSchemesAndRejectsLookalikeHosts() {
+        assertNotNull(SocialPlatformUrlResolver.detect("weixin://qrcode"))
+        assertNull(SocialPlatformUrlResolver.detect("https://notqq.com/q/abc"))
+        assertNull(SocialPlatformUrlResolver.detect("普通文本"))
+    }
+
+    @Test
+    fun platformIdsMapBackToIconsAndNames() {
+        assertEquals(
+            SocialPlatformIcons.KEY_QQ,
+            SocialPlatformShareIds.iconKeyOf(SocialPlatformShareIds.QQ)
+        )
+        assertEquals(
+            SocialPlatformIcons.KEY_TELEGRAM,
+            SocialPlatformShareIds.iconKeyOf(SocialPlatformShareIds.TELEGRAM)
+        )
+        assertEquals("微信", SocialPlatformShareIds.displayNameOf(SocialPlatformShareIds.WECHAT))
     }
 }

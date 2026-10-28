@@ -2,14 +2,20 @@ package com.ziegler.kighelper.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
+import com.ziegler.kighelper.data.camera.CameraProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.content.edit
 
+/**
+ * 应用设置快照。
+ *
+ * 所有字段都有默认值，新增字段时旧版本 SharedPreferences 无需迁移即可读取。
+ */
 data class AppSettings(
     val fontSize: Float = 1.0f,
     val fontType: Int = 0,
@@ -25,9 +31,29 @@ data class AppSettings(
     val playbackDeviceId: Int = PLAYBACK_DEVICE_SYSTEM_DEFAULT_ID,
     val selectedCustomFont: String? = null,
     val displayHintText: String = "点击下面按钮文字在此显示",
-    val predictiveBackEnabled: Boolean = true
+    val predictiveBackEnabled: Boolean = true,
+
+    /** 拍照来源；扫码模式不受该字段影响，始终使用内置 CameraX。 */
+    val cameraProvider: CameraProvider = CameraProvider.BUILT_IN,
+    val thirdPartyCameraPackage: String? = null,
+    val thirdPartyCameraActivity: String? = null,
+
+    /** 是否尝试把定位写入照片 EXIF。 */
+    val writePhotoLocation: Boolean = true,
+
+    /** 拍照时是否同时录制约 2 秒实况视频。 */
+    val livePhotoEnabled: Boolean = true,
+
+    /** 开启后跳过 HDR SessionConfig，用于相机兼容性有问题的设备。 */
+    val cameraCompatibilityMode: Boolean = false
 )
 
+/**
+ * 应用设置的唯一持久化入口。
+ *
+ * SharedPreferences 负责落盘，[settings] 的 StateFlow 负责通知界面；
+ * 所有更新方法都会重新读取完整快照，保证 UI 与其他消费者拿到一致数据。
+ */
 @Singleton
 class SettingsRepository @Inject constructor(
     @param:ApplicationContext private val context: Context
@@ -35,6 +61,7 @@ class SettingsRepository @Inject constructor(
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
+    /** SharedPreferences 键名集中管理，避免字符串散落在更新方法中。 */
     private object Keys {
         const val FONT_SIZE = "font_size"
         const val FONT_TYPE = "font_type"
@@ -51,11 +78,26 @@ class SettingsRepository @Inject constructor(
         const val SELECTED_CUSTOM_FONT = "selected_custom_font"
         const val DISPLAY_HINT_TEXT = "display_hint_text"
         const val PREDICTIVE_BACK_ENABLED = "predictive_back_enabled"
+        const val CAMERA_PROVIDER = "camera_provider"
+        const val THIRD_PARTY_CAMERA_PACKAGE = "third_party_camera_package"
+        const val THIRD_PARTY_CAMERA_ACTIVITY = "third_party_camera_activity"
+        const val LEGACY_THIRD_PARTY_CAMERA_COMPONENT = "third_party_camera_component"
+        const val WRITE_PHOTO_LOCATION = "write_photo_location"
+        const val LIVE_PHOTO_ENABLED = "live_photo_enabled"
+        const val CAMERA_COMPATIBILITY_MODE = "camera_compatibility_mode"
     }
 
     private val _settings = MutableStateFlow(loadSettings())
     val settings: Flow<AppSettings> = _settings.asStateFlow()
 
+    /** 同步快照，供 ViewModel 初始化时避免等待首次收集。 */
+    val currentSettings: AppSettings get() = _settings.value
+
+    /**
+     * 从 SharedPreferences 构造完整设置快照。
+     *
+     * 第三方相机保留旧版 `package/activity` 单字段的兼容读取。
+     */
     private fun loadSettings(): AppSettings {
         return AppSettings(
             fontSize = prefs.getFloat(Keys.FONT_SIZE, 1.0f),
@@ -78,14 +120,37 @@ class SettingsRepository @Inject constructor(
             ) ?: "",
             predictiveBackEnabled = prefs.getBoolean(
                 Keys.PREDICTIVE_BACK_ENABLED, true
+            ),
+            cameraProvider = CameraProvider.fromStored(
+                prefs.getInt(Keys.CAMERA_PROVIDER, CameraProvider.BUILT_IN.ordinal)
+            ),
+            // 旧版本把 package/activity 合并存在同一个字符串中，这里按 '/' 拆分迁移。
+            thirdPartyCameraPackage = prefs.getString(
+                Keys.THIRD_PARTY_CAMERA_PACKAGE, null
+            ) ?: prefs.getString(Keys.LEGACY_THIRD_PARTY_CAMERA_COMPONENT, null)
+                ?.substringBefore('/'),
+            thirdPartyCameraActivity = prefs.getString(
+                Keys.THIRD_PARTY_CAMERA_ACTIVITY, null
+            ) ?: prefs.getString(Keys.LEGACY_THIRD_PARTY_CAMERA_COMPONENT, null)
+                ?.substringAfter('/', "")?.takeIf { it.isNotBlank() },
+            writePhotoLocation = prefs.getBoolean(
+                Keys.WRITE_PHOTO_LOCATION, false
+            ),
+            livePhotoEnabled = prefs.getBoolean(
+                Keys.LIVE_PHOTO_ENABLED, false
+            ),
+            cameraCompatibilityMode = prefs.getBoolean(
+                Keys.CAMERA_COMPATIBILITY_MODE, false
             )
         )
     }
 
+    /** 写入后重新读取完整设置，统一触发所有设置的 StateFlow 更新。 */
     private fun saveAndEmit() {
         _settings.value = loadSettings()
     }
 
+    // 字体与显示设置
     fun updateFontSize(size: Float) {
         prefs.edit { putFloat(Keys.FONT_SIZE, size) }
         saveAndEmit()
@@ -158,6 +223,37 @@ class SettingsRepository @Inject constructor(
 
     fun updatePredictiveBackEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Keys.PREDICTIVE_BACK_ENABLED, enabled) }
+        saveAndEmit()
+    }
+
+    // 相机设置
+    fun updateCameraProvider(provider: CameraProvider) {
+        prefs.edit { putInt(Keys.CAMERA_PROVIDER, provider.ordinal) }
+        saveAndEmit()
+    }
+
+    /** packageName 与 activityName 必须成对更新，避免残留旧应用入口。 */
+    fun updateThirdPartyCamera(packageName: String?, activityName: String?) {
+        prefs.edit {
+            putString(Keys.THIRD_PARTY_CAMERA_PACKAGE, packageName)
+            putString(Keys.THIRD_PARTY_CAMERA_ACTIVITY, activityName)
+        }
+        saveAndEmit()
+    }
+
+    fun updateWritePhotoLocation(enabled: Boolean) {
+        prefs.edit { putBoolean(Keys.WRITE_PHOTO_LOCATION, enabled) }
+        saveAndEmit()
+    }
+
+    fun updateLivePhotoEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(Keys.LIVE_PHOTO_ENABLED, enabled) }
+        saveAndEmit()
+    }
+
+    /** 兼容模式会持久化，拍照超时自动降级后下次启动仍然生效。 */
+    fun updateCameraCompatibilityMode(enabled: Boolean) {
+        prefs.edit { putBoolean(Keys.CAMERA_COMPATIBILITY_MODE, enabled) }
         saveAndEmit()
     }
 }

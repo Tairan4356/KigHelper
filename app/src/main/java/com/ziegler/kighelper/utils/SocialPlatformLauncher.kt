@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import androidx.core.net.toUri
 import com.ziegler.kighelper.data.SocialContact
 import com.ziegler.kighelper.data.SocialPlatformIcons
+import com.ziegler.kighelper.data.socialshare.SocialPlatformUrlResolver
 import com.ziegler.kighelper.utils.SocialPlatformLauncher.launchMain
 import com.ziegler.kighelper.utils.SocialPlatformLauncher.launchScan
 import com.ziegler.kighelper.utils.SocialPlatformLauncher.platforms
@@ -91,6 +92,61 @@ object SocialPlatformLauncher {
             } else {
                 false
             }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 打开扫描到的平台内容。优先使用对应 App 处理 URL，其次回退浏览器，
+     * 最后回退到平台主界面。
+     */
+    fun openScannedContent(
+        context: Context,
+        rawContent: String,
+        iconKey: String
+    ): Boolean {
+        val target = rawContent.trim()
+        if (target.isEmpty()) return false
+        val resolved = if (target.startsWith("http://", ignoreCase = true) ||
+            target.startsWith("https://", ignoreCase = true) ||
+            target.contains("://")
+        ) {
+            target
+        } else {
+            SocialPlatformUrlResolver.resolve(iconKey, target) ?: return false
+        }
+        val uri = resolved.toUri()
+        val platform = platforms[iconKey]
+        val appIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            platform?.let { setPackage(it.packageName) }
+        }
+        if (platform != null && tryStart(context, appIntent)) return true
+
+        if (iconKey == SocialPlatformIcons.KEY_WECHAT && platform != null) {
+            if (launchMain(context, SocialContact(displayName = "微信", iconKey = iconKey))) {
+                return true
+            }
+        }
+
+        if (tryStart(context, Intent(Intent.ACTION_VIEW, uri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        ) {
+            return true
+        }
+
+        return platform != null && launchMain(
+            context,
+            SocialContact(displayName = "", iconKey = iconKey)
+        )
+    }
+
+    private fun tryStart(context: Context, intent: Intent): Boolean {
+        return try {
+            context.startActivity(intent)
+            true
         } catch (_: Exception) {
             false
         }

@@ -32,6 +32,32 @@ object SocialPlatformShareIds {
         SocialPlatformIcons.KEY_TELEGRAM -> TELEGRAM
         else -> DEFAULT
     }
+
+    fun iconKeyOf(platformId: Int): String = when (platformId) {
+        QQ -> SocialPlatformIcons.KEY_QQ
+        WECHAT -> SocialPlatformIcons.KEY_WECHAT
+        BILIBILI -> SocialPlatformIcons.KEY_BILIBILI
+        DOUYIN -> SocialPlatformIcons.KEY_DOUYIN
+        WEIBO -> SocialPlatformIcons.KEY_WEIBO
+        X -> SocialPlatformIcons.KEY_X
+        FACEBOOK -> SocialPlatformIcons.KEY_FACEBOOK
+        INSTAGRAM -> SocialPlatformIcons.KEY_INSTAGRAM
+        TELEGRAM -> SocialPlatformIcons.KEY_TELEGRAM
+        else -> SocialPlatformIcons.KEY_DEFAULT
+    }
+
+    fun displayNameOf(platformId: Int): String = when (platformId) {
+        QQ -> "QQ"
+        WECHAT -> "微信"
+        BILIBILI -> "B站"
+        DOUYIN -> "抖音"
+        WEIBO -> "微博"
+        X -> "X"
+        FACEBOOK -> "Facebook"
+        INSTAGRAM -> "Instagram"
+        TELEGRAM -> "Telegram"
+        else -> "社交平台"
+    }
 }
 
 /**
@@ -42,8 +68,88 @@ object SocialPlatformShareIds {
  */
 object SocialPlatformUrlResolver {
 
+    data class PlatformMatch(
+        val iconKey: String, val displayName: String
+    )
+
+    private data class PlatformRule(
+        val iconKey: String,
+        val displayName: String,
+        val hosts: Set<String>,
+        val schemes: Set<String>
+    )
+
+    private val rules = listOf(
+        PlatformRule(
+            SocialPlatformIcons.KEY_QQ,
+            "QQ",
+            setOf("qq.com", "qm.qq.com"),
+            setOf("mqqapi", "mqq", "qq")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_WECHAT,
+            "微信",
+            setOf("weixin.qq.com", "wechat.com", "weixin.com"),
+            setOf("weixin", "wechat")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_BILIBILI,
+            "B站",
+            setOf("bilibili.com", "b23.tv", "bili2233.cn"),
+            setOf("bilibili", "bstar")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_DOUYIN,
+            "抖音",
+            setOf("douyin.com", "iesdouyin.com"),
+            setOf("snssdk1128", "aweme")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_WEIBO,
+            "微博",
+            setOf("weibo.com", "weibo.cn"),
+            setOf("sinaweibo", "weibo")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_X, "X", setOf("x.com", "twitter.com"), setOf("twitter")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_FACEBOOK,
+            "Facebook",
+            setOf("facebook.com", "fb.com", "fb.me"),
+            setOf("fb", "facebook")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_INSTAGRAM,
+            "Instagram",
+            setOf("instagram.com", "instagr.am"),
+            setOf("instagram")
+        ), PlatformRule(
+            SocialPlatformIcons.KEY_TELEGRAM,
+            "Telegram",
+            setOf("t.me", "telegram.me", "telegram.org"),
+            setOf("tg", "telegram")
+        )
+    )
+
     private val absoluteUrlRegex = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://.*")
     private val numericRegex = Regex("^\\d+$")
+
+    fun detect(raw: String): PlatformMatch? {
+        val value = raw.trim()
+        if (value.isEmpty()) return null
+        val scheme = runCatching { java.net.URI(value).scheme }.getOrNull()?.lowercase()
+        val normalized = if (value.startsWith("www.", ignoreCase = true)) {
+            "https://$value"
+        } else {
+            value
+        }
+        val host = runCatching { java.net.URI(normalized).host }.getOrNull()?.lowercase()
+            ?.removeSuffix(".")
+        for (rule in rules) {
+            val hostMatched = host != null && rule.hosts.any { suffix ->
+                host == suffix || host.endsWith(".$suffix")
+            }
+            val schemeMatched = scheme != null && scheme in rule.schemes
+            if (hostMatched || schemeMatched) {
+                return PlatformMatch(rule.iconKey, rule.displayName)
+            }
+        }
+        return null
+    }
 
     fun resolve(iconKey: String, rawHandle: String): String? {
         val handle = rawHandle.trim()

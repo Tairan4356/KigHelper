@@ -26,7 +26,7 @@ import com.ziegler.kighelper.R
 internal const val NavTransitionDurationMillis = 300
 
 private val topLevelRouteOrder = listOf(
-    AppRoutes.MAIN, AppRoutes.INPUT, AppRoutes.EDIT
+    AppRoutes.MAIN, AppRoutes.INPUT, AppRoutes.CAMERA, AppRoutes.EDIT
 )
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection(

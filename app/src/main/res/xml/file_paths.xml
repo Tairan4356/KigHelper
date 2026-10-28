@@ -9,6 +9,9 @@
     <cache-path
         name="social_card_share"
         path="social_card_share/" />
+    <cache-path
+        name="camera_capture"
+        path="camera_capture/" />
     <files-path
         name="social_card"
         path="social_card/" />

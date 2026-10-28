@@ -4,6 +4,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,22 +13,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -36,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,8 +52,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.ziegler.kighelper.data.camera.CameraAppInfo
+import com.ziegler.kighelper.data.camera.CameraProvider
 import com.ziegler.kighelper.ui.SettingsViewModel
 import com.ziegler.kighelper.ui.components.ColorPickerDialog
 import com.ziegler.kighelper.ui.components.CustomColorSelector
@@ -56,6 +67,7 @@ import com.ziegler.kighelper.ui.screens.settings.DarkModeOptions
 import com.ziegler.kighelper.ui.screens.settings.FontManagementDialog
 import com.ziegler.kighelper.ui.screens.settings.FontTypeSelector
 import com.ziegler.kighelper.ui.screens.settings.PlaybackDeviceSelector
+import com.ziegler.kighelper.ui.screens.settings.SettingConnectedButtonGroup
 import com.ziegler.kighelper.ui.screens.settings.SettingSection
 import com.ziegler.kighelper.ui.screens.settings.SettingSlider
 import com.ziegler.kighelper.ui.screens.settings.SettingSwitch
@@ -63,6 +75,26 @@ import com.ziegler.kighelper.ui.theme.FontType
 import com.ziegler.kighelper.utils.WindowConfig
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+private data class CameraPreset(
+    val label: String, val packageName: String, val activityName: String
+)
+
+private val cameraPresets = listOf(
+    CameraPreset(
+        "AOSP 相机", "com.android.camera2", "com.android.camera.CameraActivity"
+    ), CameraPreset(
+        "Open Camera", "net.sourceforge.opencamera", "net.sourceforge.opencamera.MainActivity"
+    ), CameraPreset(
+        "Google Camera", "com.google.android.GoogleCamera", "com.android.camera.CameraLauncher"
+    ), CameraPreset(
+        "三星相机", "com.sec.android.app.camera", "com.sec.android.app.camera.Camera"
+    ), CameraPreset(
+        "小米相机", "com.android.camera", "com.android.camera.Camera"
+    ), CameraPreset(
+        "华为相机", "com.huawei.camera", "com.huawei.camera.controller.CameraAbility"
+    )
+)
 
 private fun snapToNearestWeight(value: Int, weights: List<Int>): Int {
     return weights.minByOrNull { kotlin.math.abs(it - value) } ?: 400
@@ -75,6 +107,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val playbackDevices by viewModel.playbackDevices.collectAsStateWithLifecycle()
+    val cameraApps by viewModel.cameraApps.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val fontCatalog by viewModel.fontCatalog.collectAsStateWithLifecycle()
@@ -87,6 +120,11 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     var showFontManagementDialog by remember { mutableStateOf(false) }
+    var showCameraPicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshCameraApps()
+    }
 
     val fontFilePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -312,6 +350,111 @@ fun SettingsScreen(
             }
 
             item {
+                SettingSection(title = "相机", icon = Icons.Filled.PhotoCamera) {
+                    Text(
+                        "拍照使用",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    SettingConnectedButtonGroup(
+                        options = listOf("内置", "系统相机", "第三方"),
+                        selectedIndex = settings.cameraProvider.ordinal,
+                        onSelected = { index ->
+                            val provider = CameraProvider.entries.getOrElse(index) {
+                                CameraProvider.BUILT_IN
+                            }
+                            viewModel.updateCameraProvider(provider)
+                            if (provider == CameraProvider.THIRD_PARTY) {
+                                showCameraPicker = true
+                            }
+                        })
+                    if (settings.cameraProvider == CameraProvider.THIRD_PARTY) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        val selectedCamera = cameraApps.firstOrNull {
+                            it.packageName == settings.thirdPartyCameraPackage
+                        }
+                        val activityInvalid =
+                            settings.thirdPartyCameraActivity?.isNotBlank() == true && !viewModel.isCameraActivityAvailable(
+                                settings.thirdPartyCameraPackage, settings.thirdPartyCameraActivity
+                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = selectedCamera?.label ?: "未选择第三方应用",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (selectedCamera == null) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                                Text(
+                                    text = selectedCamera?.packageName
+                                        ?: "应用不可用时会使用系统相机",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            TextButton(onClick = { showCameraPicker = true }) {
+                                Text("选择")
+                            }
+                        }
+                        if (settings.thirdPartyCameraPackage != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            OutlinedTextField(
+                                value = settings.thirdPartyCameraActivity.orEmpty(),
+                                onValueChange = { value ->
+                                    viewModel.updateThirdPartyCamera(
+                                        settings.thirdPartyCameraPackage, value.ifBlank { null })
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Activity 名称") },
+                                placeholder = { Text("留空使用应用默认启动 Activity") },
+                                singleLine = true,
+                                isError = activityInvalid
+                            )
+                            if (activityInvalid) {
+                                Text(
+                                    "Activity 不存在，将使用应用默认启动 Activity",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (settings.cameraProvider == CameraProvider.BUILT_IN) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SettingSwitch(
+                            title = "实况照片",
+                            subtitle = "保存拍照后 2 秒动态画面",
+                            checked = settings.livePhotoEnabled,
+                            onCheckedChange = viewModel::updateLivePhotoEnabled
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SettingSwitch(
+                            title = "记录拍摄地点",
+                            subtitle = "写入拍照时的地理坐标",
+                            checked = settings.writePhotoLocation,
+                            onCheckedChange = viewModel::updateWritePhotoLocation
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SettingSwitch(
+                            title = "兼容模式",
+                            subtitle = "拍照异常时开启此模式",
+                            checked = settings.cameraCompatibilityMode,
+                            onCheckedChange = viewModel::updateCameraCompatibilityMode
+                        )
+                    }
+                }
+            }
+
+            item {
                 SettingSection(title = "权限", icon = Icons.Filled.Security) {
                     SettingSwitch(
                         title = "通知显示",
@@ -392,4 +535,185 @@ fun SettingsScreen(
             onRefreshCatalog = viewModel::loadFontCatalog,
             onDismiss = { showFontManagementDialog = false })
     }
+
+    if (showCameraPicker) {
+        CameraAppPickerDialog(
+            apps = cameraApps.filterNot { it.packageName == context.packageName },
+            selectedPackage = settings.thirdPartyCameraPackage,
+            onSelect = { app ->
+                viewModel.updateCameraProvider(CameraProvider.THIRD_PARTY)
+                viewModel.updateThirdPartyCamera(
+                    app.packageName, app.component.className
+                )
+                showCameraPicker = false
+            },
+            onSelectPreset = { preset ->
+                viewModel.updateCameraProvider(CameraProvider.THIRD_PARTY)
+                viewModel.updateThirdPartyCamera(
+                    preset.packageName, preset.activityName
+                )
+                showCameraPicker = false
+            },
+            onDismiss = { showCameraPicker = false })
+    }
+}
+
+@Composable
+private fun CameraAppPickerDialog(
+    apps: List<CameraAppInfo>,
+    selectedPackage: String?,
+    onSelect: (CameraAppInfo) -> Unit,
+    onSelectPreset: (CameraPreset) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var query by remember { mutableStateOf("") }
+    val normalizedQuery = query.trim()
+    val filteredPresets = remember(normalizedQuery, cameraPresets) {
+        if (normalizedQuery.isEmpty()) {
+            cameraPresets
+        } else {
+            cameraPresets.filter {
+                it.label.contains(normalizedQuery, ignoreCase = true) || it.packageName.contains(
+                    normalizedQuery,
+                    ignoreCase = true
+                ) || it.activityName.contains(normalizedQuery, ignoreCase = true)
+            }
+        }
+    }
+    val filteredApps = remember(normalizedQuery, apps) {
+        if (normalizedQuery.isEmpty()) {
+            apps
+        } else {
+            apps.filter {
+                it.label.contains(normalizedQuery, ignoreCase = true) || it.packageName.contains(
+                    normalizedQuery,
+                    ignoreCase = true
+                ) || it.component.className.contains(normalizedQuery, ignoreCase = true)
+            }
+        }
+    }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("选择第三方应用") }, text = {
+        LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+            item {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    placeholder = { Text("搜索应用名称、包名或 Activity") },
+                    singleLine = true
+                )
+            }
+            if (filteredPresets.isNotEmpty()) {
+                item {
+                    Text(
+                        "常用相机预设",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                items(filteredPresets, key = { "preset:${it.packageName}" }) { preset ->
+                    val installed = remember(preset.packageName) {
+                        runCatching {
+                            context.packageManager.getApplicationInfo(
+                                preset.packageName, 0
+                            )
+                        }.isSuccess
+                    }
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = installed) {
+                            onSelectPreset(preset)
+                        }
+                        .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = preset.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (installed) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.outline
+                                }
+                            )
+                            Text(
+                                text = if (installed) preset.packageName
+                                else "${preset.packageName}（未安装）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        RadioButton(
+                            selected = preset.packageName == selectedPackage,
+                            onClick = null,
+                            enabled = installed
+                        )
+                    }
+                }
+            }
+            item {
+                Text(
+                    "全部可启动应用",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+                )
+            }
+            if (filteredApps.isEmpty()) {
+                item {
+                    Text(
+                        if (normalizedQuery.isEmpty()) "未找到可启动的应用"
+                        else "未找到匹配的应用"
+                    )
+                }
+            } else {
+                items(filteredApps, key = { "app:${it.flattenedComponent}" }) { app ->
+                    val icon = remember(app.flattenedComponent) {
+                        runCatching {
+                            context.packageManager.getActivityInfo(app.component, 0)
+                                .loadIcon(context.packageManager)
+                        }.getOrNull()
+                    }
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(app) }
+                        .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(
+                            model = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = app.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = app.packageName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        RadioButton(
+                            selected = app.packageName == selectedPackage, onClick = null
+                        )
+                    }
+                }
+            }
+        }
+    }, confirmButton = {
+        TextButton(onClick = onDismiss) { Text("关闭") }
+    })
 }
