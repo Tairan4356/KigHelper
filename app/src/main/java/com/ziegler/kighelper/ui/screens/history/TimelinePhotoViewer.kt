@@ -76,9 +76,20 @@ fun TimelinePhotoViewer(photo: GalleryPhoto, onDismiss: () -> Unit) {
     var isPreparing by remember(photo.id) { mutableStateOf(false) }
     var errorMessage by remember(photo.id) { mutableStateOf<String?>(null) }
 
-    // 只读取元数据，不复制视频；进入查看器时开销很小。
+    // 先读取 XMP；如果是实况照片，自动提取并播放一次。
     LaunchedEffect(photo.id) {
         motionPhoto = reader.read(photo.uri)
+        val info = motionPhoto ?: return@LaunchedEffect
+        isPreparing = true
+        errorMessage = null
+        val file = reader.extract(photo.uri, info, photo.id)
+        isPreparing = false
+        if (file == null) {
+            errorMessage = "无法读取实况视频"
+        } else {
+            videoFile = file
+            isPlaying = true
+        }
     }
 
     Dialog(
@@ -188,7 +199,7 @@ fun TimelinePhotoViewer(photo: GalleryPhoto, onDismiss: () -> Unit) {
                     )
                 }
                 Text(
-                    text = photo.displayName,
+                    text = formatTimelineTimestamp(photo.timestamp),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium
                 )

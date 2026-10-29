@@ -174,6 +174,39 @@ class CameraViewModel @Inject constructor(
     }
 
     /**
+     * 扫码模式手动快门：只占用拍摄状态，照片不会保存到相册。
+     *
+     * 自动识别对密集/过小二维码可能失效，用户可拍一张清晰照片后由本地解码器识别。
+     */
+    fun onScanCaptureStarted(): Boolean {
+        if (_state.value.isCapturing || _state.value.isProcessing) return false
+        _state.update { it.copy(isCapturing = true) }
+        Log.i(CAMERA_LOG_TAG, "scan snapshot capture started")
+        return true
+    }
+
+    /**
+     * 解码扫码模式拍下的临时照片，完成后立即清理缓存文件。
+     *
+     * 识别成功仍复用正常的扫码结果流程（历史入库、自动拉起平台）。
+     */
+    fun onScanImageCaptured(file: File) {
+        _state.update { it.copy(isCapturing = false, isProcessing = true) }
+        viewModelScope.launch {
+            val decoded = withContext(Dispatchers.IO) {
+                SocialCardQrCodec.decode(context, file.absolutePath)
+            }
+            CameraCaptureFiles.cleanup(context, file)
+            _state.update { it.copy(isProcessing = false) }
+            if (decoded.isNullOrBlank()) {
+                _events.emit(CameraEvent.Message("未识别到二维码，请调整距离后重试"))
+            } else {
+                onQrDetected(decoded)
+            }
+        }
+    }
+
+    /**
      * 统一处理相机错误；HDR 拍照超时会自动降级并持久化兼容模式，下次启动不再重试 HDR。
      */
     fun reportCameraError(message: String) {

@@ -17,51 +17,41 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -72,44 +62,34 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.ziegler.kighelper.data.camera.GalleryPhoto
 import com.ziegler.kighelper.data.camera.MediaAccessState
 import com.ziegler.kighelper.data.camera.MediaPermissions
 import com.ziegler.kighelper.data.camera.TimelineAssembler
-import com.ziegler.kighelper.data.camera.TimelineFilter
 import com.ziegler.kighelper.data.camera.TimelineItem
 import com.ziegler.kighelper.data.scan.ScanRecord
-import com.ziegler.kighelper.data.scan.ScanRecordType
 import com.ziegler.kighelper.data.scan.ScannedContentClassifier
 import com.ziegler.kighelper.ui.TimelineEvent
 import com.ziegler.kighelper.ui.TimelineViewModel
 import com.ziegler.kighelper.ui.screens.camera.ScanResultDialog
 import com.ziegler.kighelper.ui.utils.findActivity
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-// 时间线和分组标题使用不同格式，避免每行重复创建 Formatter。
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-private val dateFormatter = DateTimeFormatter.ofPattern("yyyy年M月d日", Locale.CHINA)
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 时光轴：把相册照片和扫码记录合并为统一时间线。
@@ -120,12 +100,13 @@ private val dateFormatter = DateTimeFormatter.ofPattern("yyyy年M月d日", Local
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TimelineScreen(
-    onBack: () -> Unit,
-    viewModel: TimelineViewModel = hiltViewModel()
+    onBack: () -> Unit, viewModel: TimelineViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     val keyguardManager = remember {
         context.getSystemService(KeyguardManager::class.java)
     }
@@ -156,6 +137,18 @@ fun TimelineScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         isLocked = keyguardManager?.isKeyguardLocked == true
         if (!isLocked) viewModel.refresh()
+    }
+
+    // 部分 ROM 解锁后不会补发 ON_RESUME，持续检测锁屏状态变化并主动刷新。
+    LaunchedEffect(Unit) {
+        while (true) {
+            val locked = keyguardManager?.isKeyguardLocked == true
+            if (locked != isLocked) {
+                isLocked = locked
+                if (!locked) viewModel.refresh()
+            }
+            delay(500L.milliseconds)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -190,9 +183,7 @@ fun TimelineScreen(
     LaunchedEffect(isLocked) {
         if (!isLocked) {
             val access = MediaPermissions.current(context)
-            if (access == MediaAccessState.DENIED &&
-                !viewModel.hasRequestedMediaPermission
-            ) {
+            if (access == MediaAccessState.DENIED && !viewModel.hasRequestedMediaPermission) {
                 viewModel.markMediaPermissionRequested()
                 mediaPermissionLauncher.launch(MediaPermissions.requestedPermissions)
             }
@@ -210,9 +201,7 @@ fun TimelineScreen(
             }
         }
         context.contentResolver.registerContentObserver(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            true,
-            observer
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, observer
         )
         onDispose {
             context.contentResolver.unregisterContentObserver(observer)
@@ -222,13 +211,11 @@ fun TimelineScreen(
     // 锁屏状态优先于正常列表，避免任何照片或扫码记录出现在预览中。
     if (isLocked) {
         LockedTimelineScreen(
-            onBack = onBack,
-            onUnlock = {
+            onBack = onBack, onUnlock = {
                 context.findActivity()?.let { activity ->
                     keyguardManager?.requestDismissKeyguard(activity, null)
                 }
-            }
-        )
+            })
         return
     }
 
@@ -239,9 +226,7 @@ fun TimelineScreen(
     val groupedItems = remember(visibleItems) {
         visibleItems.groupBy { item ->
             if (item.timestamp <= 0L) null else {
-                Instant.ofEpochMilli(item.timestamp)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
+                Instant.ofEpochMilli(item.timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
             }
         }
     }
@@ -258,97 +243,98 @@ fun TimelineScreen(
     var showClearConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = if (state.selectionMode) {
-                                "已选择 ${state.selection.totalCount} 项"
-                            } else {
-                                "时光轴"
-                            },
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            if (state.selectionMode) viewModel.exitSelection() else onBack()
-                        }) {
-                            Icon(
-                                imageVector = if (state.selectionMode) {
-                                    Icons.Filled.Close
-                                } else {
-                                    Icons.AutoMirrored.Filled.ArrowBack
-                                },
-                                contentDescription = if (state.selectionMode) "退出多选" else "返回"
-                            )
+        Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }, floatingActionButton = {
+            if (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0) {
+                FloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            listState.animateScrollToItem(0)
                         }
-                    },
-                    actions = {
-                        if (state.selectionMode) {
-                            val allSelected = visibleItems.isNotEmpty() &&
-                                state.selection.totalCount == visibleItems.size
-                            TextButton(
-                                onClick = {
-                                    if (allSelected) {
-                                        viewModel.clearSelection()
-                                    } else {
-                                        viewModel.selectAll(visibleItems)
-                                    }
-                                },
-                                enabled = visibleItems.isNotEmpty() && !state.isDeleting
-                            ) {
-                                Text(if (allSelected) "取消全选" else "全选")
-                            }
-                        } else {
-                            TextButton(
-                                onClick = viewModel::enterSelectionMode,
-                                enabled = visibleItems.isNotEmpty()
-                            ) {
-                                Text("选择")
-                            }
-                            Box {
-                                IconButton(onClick = { showMenu = true }) {
-                                    Icon(Icons.Filled.MoreVert, contentDescription = "更多")
-                                }
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("清空扫码记录") },
-                                        enabled = state.scans.isNotEmpty(),
-                                        onClick = {
-                                            showMenu = false
-                                            showClearConfirm = true
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
-            },
-            bottomBar = {
-                if (state.selectionMode) {
-                    SelectionBottomBar(
-                        count = state.selection.totalCount,
-                        enabled = !state.isDeleting,
-                        onDelete = { showDeleteConfirm = true }
-                    )
+                    }) {
+                    Icon(Icons.Filled.VerticalAlignTop, contentDescription = "回到顶部")
                 }
             }
-        ) { padding ->
+        }, topBar = {
+            TopAppBar(
+                title = {
+                Text(
+                    text = if (state.selectionMode) {
+                        "已选择 ${state.selection.totalCount} 项"
+                    } else {
+                        "时光轴"
+                    }, fontWeight = FontWeight.SemiBold
+                )
+            }, navigationIcon = {
+                IconButton(onClick = {
+                    if (state.selectionMode) viewModel.exitSelection() else onBack()
+                }) {
+                    Icon(
+                        imageVector = if (state.selectionMode) {
+                            Icons.Filled.Close
+                        } else {
+                            Icons.AutoMirrored.Filled.ArrowBack
+                        },
+                        contentDescription = if (state.selectionMode) "退出多选" else "返回"
+                    )
+                }
+            }, actions = {
+                if (state.selectionMode) {
+                    val allSelected =
+                        visibleItems.isNotEmpty() && state.selection.totalCount == visibleItems.size
+                    TextButton(
+                        onClick = {
+                            if (allSelected) {
+                                viewModel.clearSelection()
+                            } else {
+                                viewModel.selectAll(visibleItems)
+                            }
+                        }, enabled = visibleItems.isNotEmpty() && !state.isDeleting
+                    ) {
+                        Text(if (allSelected) "取消全选" else "全选")
+                    }
+                } else {
+                    TextButton(
+                        onClick = viewModel::enterSelectionMode,
+                        enabled = visibleItems.isNotEmpty()
+                    ) {
+                        Text("选择")
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("清空扫码记录") },
+                                enabled = state.scans.isNotEmpty(),
+                                onClick = {
+                                    showMenu = false
+                                    showClearConfirm = true
+                                })
+                        }
+                    }
+                }
+            }, colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+            )
+        }, bottomBar = {
+            if (state.selectionMode) {
+                SelectionBottomBar(
+                    count = state.selection.totalCount,
+                    enabled = !state.isDeleting,
+                    onDelete = { showDeleteConfirm = true })
+            }
+        }) { padding ->
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (!state.selectionMode) {
@@ -365,26 +351,21 @@ fun TimelineScreen(
                     when (state.mediaAccess) {
                         MediaAccessState.DENIED -> {
                             item(key = "media_permission") {
-                                MediaPermissionCard(
-                                    onRequest = {
-                                        viewModel.markMediaPermissionRequested()
-                                        mediaPermissionLauncher.launch(
-                                            MediaPermissions.requestedPermissions
-                                        )
-                                    },
-                                    onOpenSettings = {
-                                        context.startActivity(
-                                            Intent(
-                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                                Uri.fromParts(
-                                                    "package",
-                                                    context.packageName,
-                                                    null
-                                                )
+                                MediaPermissionCard(onRequest = {
+                                    viewModel.markMediaPermissionRequested()
+                                    mediaPermissionLauncher.launch(
+                                        MediaPermissions.requestedPermissions
+                                    )
+                                }, onOpenSettings = {
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            Uri.fromParts(
+                                                "package", context.packageName, null
                                             )
                                         )
-                                    }
-                                )
+                                    )
+                                })
                             }
                         }
 
@@ -395,8 +376,7 @@ fun TimelineScreen(
                                         mediaPermissionLauncher.launch(
                                             MediaPermissions.requestedPermissions
                                         )
-                                    }
-                                )
+                                    })
                             }
                         }
 
@@ -468,8 +448,7 @@ fun TimelineScreen(
                                 } else {
                                     viewModel.enterSelection(item)
                                 }
-                            }
-                        )
+                            })
                     }
                 }
 
@@ -504,9 +483,7 @@ fun TimelineScreen(
             ScannedContentClassifier.fromRecord(record)
         }
         ScanResultDialog(
-            content = content,
-            onDismiss = { selectedScan = null },
-            dismissLabel = "关闭"
+            content = content, onDismiss = { selectedScan = null }, dismissLabel = "关闭"
         )
     }
 
@@ -531,16 +508,14 @@ fun TimelineScreen(
                             append("扫码记录会从时光轴移除")
                         }
                         append("，无法恢复。")
-                    }
-                )
+                    })
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showDeleteConfirm = false
                         viewModel.requestDeleteSelected()
-                    },
-                    colors = ButtonDefaults.buttonColors(
+                    }, colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
@@ -549,8 +524,7 @@ fun TimelineScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") }
-            }
-        )
+            })
     }
 
     // 清空扫码历史只影响 JSON 记录，不删除相册照片。
@@ -568,8 +542,7 @@ fun TimelineScreen(
                     onClick = {
                         showClearConfirm = false
                         viewModel.clearScanHistory()
-                    },
-                    colors = ButtonDefaults.buttonColors(
+                    }, colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
@@ -578,323 +551,6 @@ fun TimelineScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) { Text("取消") }
-            }
-        )
-    }
-}
-
-/** 全部/照片/扫码三个筛选 Chip；数量直接来自当前完整数据。 */
-@Composable
-private fun TimelineFilterRow(
-    selected: TimelineFilter,
-    photoCount: Int,
-    scanCount: Int,
-    enabled: Boolean,
-    onSelected: (TimelineFilter) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        FilterChip(
-            selected = selected == TimelineFilter.ALL,
-            onClick = { onSelected(TimelineFilter.ALL) },
-            label = { Text("全部 ${photoCount + scanCount}") },
-            enabled = enabled
-        )
-        FilterChip(
-            selected = selected == TimelineFilter.PHOTOS,
-            onClick = { onSelected(TimelineFilter.PHOTOS) },
-            label = { Text("照片 $photoCount") },
-            enabled = enabled
-        )
-        FilterChip(
-            selected = selected == TimelineFilter.SCANS,
-            onClick = { onSelected(TimelineFilter.SCANS) },
-            label = { Text("扫码 $scanCount") },
-            enabled = enabled
-        )
-    }
-}
-
-/** 完全无相册权限时的说明卡片。 */
-@Composable
-private fun MediaPermissionCard(
-    onRequest: () -> Unit,
-    onOpenSettings: () -> Unit
-) {
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text("允许访问相册", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "授权后会显示相册中的全部照片。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onRequest) { Text("允许访问") }
-                TextButton(onClick = onOpenSettings) { Text("系统设置") }
-            }
-        }
-    }
-}
-
-/** Android 14 仅授权部分照片时的提示，可再次打开系统照片选择器。 */
-@Composable
-private fun PartialAccessBanner(onManage: () -> Unit) {
-    Card {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "当前仅显示已授权的照片",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onManage) { Text("管理照片访问") }
-        }
-    }
-}
-
-/** 日期分组标题，今天/昨天使用相对文案。 */
-@Composable
-private fun DateHeader(date: LocalDate?) {
-    Text(
-        text = dateLabel(date),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
-    )
-}
-
-/**
- * 单条时光轴内容。
- *
- * 短按查看详情，长按进入多选；多选状态下右侧显示复选框。
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TimelineRow(
-    item: TimelineItem,
-    selectionMode: Boolean,
-    selected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    Surface(
-        color = if (selected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        },
-        shape = MaterialTheme.shapes.large
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            when (item) {
-                is TimelineItem.Photo -> PhotoLeading(item.photo)
-                is TimelineItem.Scan -> ScanLeading(item.record)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = when (item) {
-                        is TimelineItem.Photo -> item.photo.displayName
-                        is TimelineItem.Scan -> item.record.title
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = when (item) {
-                        is TimelineItem.Photo -> item.photo.bucketName ?: "相册"
-                        is TimelineItem.Scan -> item.record.subtitle
-                            ?: item.record.rawContent
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (item.timestamp > 0L) {
-                    Text(
-                        text = Instant.ofEpochMilli(item.timestamp)
-                            .atZone(ZoneId.systemDefault())
-                            .format(timeFormatter),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
-            if (selectionMode) {
-                Checkbox(checked = selected, onCheckedChange = { onClick() })
-            }
-        }
-    }
-}
-
-/** 固定解码到 180px 的缩略图，避免列表滚动时加载原图。 */
-@Composable
-private fun PhotoLeading(photo: GalleryPhoto) {
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(photo.uri)
-            .size(180)
-            .build(),
-        contentDescription = photo.displayName,
-        modifier = Modifier
-            .size(64.dp)
-            .clip(RoundedCornerShape(12.dp)),
-        contentScale = ContentScale.Crop
-    )
-}
-
-/** 使用内容类型图标占位，避免扫码记录依赖网络缩略图。 */
-@Composable
-private fun ScanLeading(record: ScanRecord) {
-    val icon = when (record.type) {
-        ScanRecordType.SOCIAL_CARD -> Icons.Filled.QrCode
-        ScanRecordType.PLATFORM -> Icons.Filled.Link
-        ScanRecordType.TEXT -> Icons.AutoMirrored.Filled.TextSnippet
-    }
-    Box(
-        modifier = Modifier
-            .size(64.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    }
-}
-
-/** 多选底部操作栏；删除按钮由页面统一确认。 */
-@Composable
-private fun SelectionBottomBar(
-    count: Int,
-    enabled: Boolean,
-    onDelete: () -> Unit
-) {
-    Surface(tonalElevation = 3.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "已选择 $count 项",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Button(
-                onClick = onDelete,
-                enabled = enabled && count > 0,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Icon(Icons.Filled.Delete, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("删除")
-            }
-        }
-    }
-}
-
-/** 无照片且无扫码记录时的空态。 */
-@Composable
-private fun EmptyTimeline() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            Icons.Filled.PhotoLibrary,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text("暂无内容", color = MaterialTheme.colorScheme.outline)
-    }
-}
-
-/** 锁屏占位页；不读取相册，只提供返回和解锁操作。 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LockedTimelineScreen(
-    onBack: () -> Unit,
-    onUnlock: () -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("时光轴") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                Icons.Filled.Lock,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "时光轴已锁定，请解锁设备后查看。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onUnlock) { Text("解锁") }
-        }
-    }
-}
-
-
-/** 把分组日期格式化为今天、昨天或完整日期。 */
-private fun dateLabel(date: LocalDate?): String {
-    if (date == null) return "未知日期"
-    val today = LocalDate.now()
-    return when (date) {
-        today -> "今天"
-        today.minusDays(1) -> "昨天"
-        else -> date.format(dateFormatter)
+            })
     }
 }

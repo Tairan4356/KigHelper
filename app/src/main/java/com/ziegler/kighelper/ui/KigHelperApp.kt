@@ -136,10 +136,13 @@ fun KigHelperApp(
         showNavigation && !isExpanded && !(currentRoute == AppRoutes.INPUT && isImeVisible)
     // 重复点击当前 Tab 不能再次导航：相机会因此重建 CameraX 会话并表现为卡死。
     val onDestinationClick: (String) -> Unit = { route ->
+        // 外部相机需要响应点击，但当前已经在相机页时不能重复导航。
+        val externalCamera =
+            route == AppRoutes.CAMERA && settings.cameraProvider != CameraProvider.BUILT_IN
+        if (externalCamera) {
+            cameraLaunchRequested = true
+        }
         if (route != currentRoute) {
-            if (route == AppRoutes.CAMERA && settings.cameraProvider != CameraProvider.BUILT_IN) {
-                cameraLaunchRequested = true
-            }
             navController.navigateToTopLevelDestination(route)
         }
     }

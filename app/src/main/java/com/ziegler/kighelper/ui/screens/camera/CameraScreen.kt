@@ -11,14 +11,17 @@ import androidx.camera.core.CameraSelector
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
@@ -51,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -60,6 +64,7 @@ import com.ziegler.kighelper.data.camera.CameraProvider
 import com.ziegler.kighelper.data.scan.ScannedContent
 import com.ziegler.kighelper.ui.CameraEvent
 import com.ziegler.kighelper.ui.CameraViewModel
+import com.ziegler.kighelper.ui.utils.findActivity
 import com.ziegler.kighelper.ui.utils.rememberPhysicalButtonHaptics
 import com.ziegler.kighelper.utils.SocialPlatformLauncher
 import com.ziegler.kighelper.utils.VolumeKeyDispatcher
@@ -99,6 +104,7 @@ fun CameraScreen(
         mutableStateOf(CameraPermissions.hasCamera(context))
     }
     var requestedCameraPermission by rememberSaveable { mutableStateOf(false) }
+    var cameraPermissionPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
     var pendingBuiltInCapture by rememberSaveable { mutableStateOf(false) }
     var topPrompt by remember { mutableStateOf<CameraEvent.TopPrompt?>(null) }
     var livePhotoCountdown by remember { mutableIntStateOf(0) }
@@ -107,12 +113,50 @@ fun CameraScreen(
     }
     var requestedLocationPermission by rememberSaveable { mutableStateOf(false) }
 
+    val scanMode = state.mode == CameraMode.SCAN
+    val useBuiltIn = scanMode || state.source.provider == CameraProvider.BUILT_IN
+
+    /** 系统是否仍允许弹出相机授权框；首次请求时也返回 true。 */
+    fun canRequestCameraPermission(): Boolean {
+        val activity = context.findActivity() ?: return true
+        return ActivityCompat.shouldShowRequestPermissionRationale(
+            activity, Manifest.permission.CAMERA
+        )
+    }
+
+    fun openAppSettings() {
+        context.startActivity(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null)
+            )
+        )
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
-        if (!granted) {
-            Toast.makeText(context, "未授予相机权限，无法拍照或扫码", Toast.LENGTH_SHORT).show()
+        if (granted) {
+            cameraPermissionPermanentlyDenied = false
+        } else {
+            cameraPermissionPermanentlyDenied = !canRequestCameraPermission()
+            if (cameraPermissionPermanentlyDenied) {
+                // 系统已禁止弹窗，直接带用户去设置，避免按钮看起来没有反应。
+                openAppSettings()
+            } else {
+                Toast.makeText(context, "未授予相机权限，无法拍照或扫码", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /** 需要相机权限时优先弹窗，弹窗被禁用后改为打开应用设置。 */
+    fun requestCameraPermissionOrOpenSettings() {
+        if (cameraPermissionPermanentlyDenied || (requestedCameraPermission && !canRequestCameraPermission())) {
+            openAppSettings()
+        } else {
+            requestedCameraPermission = true
+            permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -150,6 +194,18 @@ fun CameraScreen(
             context = context,
             livePhotoEnabled = state.livePhotoEnabled,
             onSaved = viewModel::onBuiltInPhotoCaptured,
+            onError = viewModel::reportCameraError
+        )
+    }
+
+    /** 扫码快门：拍一张临时照片交给 ViewModel 解码，不写入相册。 */
+    fun captureScanSnapshot() {
+        if (state.isCapturing || state.isProcessing) return
+        if (!viewModel.onScanCaptureStarted()) return
+        controller.capture(
+            context = context,
+            livePhotoEnabled = false,
+            onSaved = { file, _ -> viewModel.onScanImageCaptured(file) },
             onError = viewModel::reportCameraError
         )
     }
@@ -202,9 +258,9 @@ fun CameraScreen(
         }
     }
 
-    // 首次进入且尚未授权时自动请求一次；用户拒绝后不再反复打扰。
+    // 只有内置相机需要 CAMERA 权限；外部相机由目标应用自行申请。
     LaunchedEffect(Unit) {
-        if (!hasCameraPermission && !requestedCameraPermission) {
+        if (!hasCameraPermission && !requestedCameraPermission && useBuiltIn) {
             requestedCameraPermission = true
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
@@ -214,16 +270,31 @@ fun CameraScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         hasCameraPermission = CameraPermissions.hasCamera(context)
         hasLocationPermission = CameraPermissions.hasLocation(context)
+        if (hasCameraPermission) {
+            cameraPermissionPermanentlyDenied = false
+        } else if (requestedCameraPermission) {
+            cameraPermissionPermanentlyDenied = !canRequestCameraPermission()
+        }
     }
 
+    // 外部相机由目标应用自行申请相机权限，本应用没有相机权限时也应能直接拉起。
     LaunchedEffect(
         externalLaunchRequested, hasCameraPermission, state.source.provider, state.mode
     ) {
-        if (externalLaunchRequested && hasCameraPermission) {
+        val canLaunchExternal =
+            state.mode == CameraMode.PHOTO && state.source.provider != CameraProvider.BUILT_IN
+        if (externalLaunchRequested && (hasCameraPermission || canLaunchExternal)) {
             onExternalLaunchHandled()
-            if (state.mode == CameraMode.PHOTO && state.source.provider != CameraProvider.BUILT_IN) {
+            if (canLaunchExternal) {
                 launchExternalBurst()
             }
+        }
+    }
+
+    // 外部相机模式下如果停留在扫码页，会因缺少相机权限而无法退出；自动回到拍照并提供外部启动。
+    LaunchedEffect(hasCameraPermission, state.source.provider, state.mode) {
+        if (!hasCameraPermission && state.source.provider != CameraProvider.BUILT_IN && state.mode == CameraMode.SCAN) {
+            viewModel.setMode(CameraMode.PHOTO)
         }
     }
 
@@ -278,7 +349,7 @@ fun CameraScreen(
                 is CameraEvent.TopPrompt -> topPrompt = event
                 is CameraEvent.PhotoSaved -> {
                     topPrompt = CameraEvent.TopPrompt(
-                        text = "已保存到相册 DCIM/KigHelper", showTimelineAction = true
+                        text = "已保存到相册", showTimelineAction = true
                     )
                 }
             }
@@ -308,8 +379,6 @@ fun CameraScreen(
         }
     }
 
-    val scanMode = state.mode == CameraMode.SCAN
-    val useBuiltIn = scanMode || state.source.provider == CameraProvider.BUILT_IN
     val scanningPaused =
         state.isProcessing || state.scanResult != null || (state.resumeRequired && useBuiltIn)
 
@@ -319,28 +388,30 @@ fun CameraScreen(
                 .fillMaxSize()
                 .padding(contentPadding),
             topBar = {
-                Column {
+                // 提示悬浮在 TopAppBar 内部居中。
+                Box {
                     TopAppBar(
-                        title = { Text("相机", fontWeight = FontWeight.SemiBold) },
-                        actions = {
-                            IconButton(onClick = onOpenTimeline) {
-                                Icon(Icons.Filled.PhotoLibrary, contentDescription = "时光轴")
-                            }
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(Icons.Filled.Settings, contentDescription = "设置")
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        windowInsets = WindowInsets(0, 0, 0, 0)
+                        title = {
+                        Text(
+                            text = if (scanMode) "扫码" else "拍照",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }, actions = {
+                        IconButton(onClick = onOpenTimeline) {
+                            Icon(Icons.Filled.PhotoLibrary, contentDescription = "时光轴")
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = "设置")
+                        }
+                    }, colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ), windowInsets = WindowInsets(0, 0, 0, 0)
                     )
-                    AnimatedVisibility(visible = topPrompt != null) {
+                    AnimatedVisibility(
+                        visible = topPrompt != null, modifier = Modifier.align(Alignment.Center)
+                    ) {
                         topPrompt?.let { prompt ->
-                            CameraTopPromptBanner(prompt = prompt, onOpenTimeline = {
-                                topPrompt = null
-                                onOpenTimeline()
-                            })
+                            CameraTopPromptBanner(prompt = prompt)
                         }
                     }
                 }
@@ -361,49 +432,51 @@ fun CameraScreen(
                         .clipToBounds()
                 ) {
                     when {
-                        !hasCameraPermission -> {
-                            CameraPermissionCard(showGallery = scanMode, onPickGallery = {
-                                galleryLauncher.launch("image/*")
-                            }, onRequest = {
-                                permissionLauncher.launch(Manifest.permission.CAMERA)
-                            }, onOpenSettings = {
-                                context.startActivity(
-                                    Intent(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        Uri.fromParts("package", context.packageName, null)
-                                    )
-                                )
-                            })
+                        !hasCameraPermission && useBuiltIn -> {
+                            CameraPermissionCard(
+                                canRequestPermission = !cameraPermissionPermanentlyDenied,
+                                onPermissionAction = ::requestCameraPermissionOrOpenSettings
+                            )
                         }
 
                         useBuiltIn -> {
-                            BuiltInCameraPreview(
+                            // 预览始终按 3:4 计算并居中，横竖屏都不会拉伸。
+                            BoxWithConstraints(
                                 modifier = Modifier.fillMaxSize(),
-                                lensFacing = lensFacing,
-                                scanMode = scanMode,
-                                livePhotoEnabled = state.livePhotoEnabled && !scanMode,
-                                preferHdr = state.hdrEnabled,
-                                scanningPaused = scanningPaused,
-                                flashOn = flashOn,
-                                controller = controller,
-                                onQrDetected = viewModel::onQrDetected,
-                                onCameraError = viewModel::reportCameraError
-                            )
-                            if (scanMode) {
-                                ScanFrameHint(
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val previewWidth = minOf(maxWidth, maxHeight * 3f / 4f)
+                                Box(
                                     modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .fillMaxWidth(0.72f)
-                                )
+                                        .width(previewWidth)
+                                        .aspectRatio(3f / 4f)
+                                        .clipToBounds()
+                                ) {
+                                    BuiltInCameraPreview(
+                                        modifier = Modifier.fillMaxSize(),
+                                        lensFacing = lensFacing,
+                                        scanMode = scanMode,
+                                        livePhotoEnabled = state.livePhotoEnabled && !scanMode,
+                                        preferHdr = state.hdrEnabled,
+                                        scanningPaused = scanningPaused,
+                                        flashOn = flashOn,
+                                        controller = controller,
+                                        onQrDetected = viewModel::onQrDetected,
+                                        onCameraError = viewModel::reportCameraError
+                                    )
+                                    if (scanMode) {
+                                        ScanFrameHint(
+                                            modifier = Modifier
+                                                .align(Alignment.Center)
+                                                .fillMaxWidth(0.6f)
+                                        )
+                                    }
+                                }
                             }
                         }
 
                         else -> {
-                            ExternalCameraCard(
-                                appLabel = state.source.app?.label,
-                                onLaunch = { launchExternalBurst() },
-                                enabled = !state.isProcessing
-                            )
+                            ExternalCameraCard(app = state.source.app)
                         }
                     }
 
@@ -448,17 +521,27 @@ fun CameraScreen(
                     }
                 }
 
-                CameraModeSelector(
-                    selected = state.mode,
-                    enabled = !state.isProcessing && !state.isCapturing && state.scanResult == null && livePhotoCountdown == 0,
-                    onSelected = viewModel::setMode
-                )
+                // 没有相机权限时隐藏模式切换，避免用户进入无法使用的扫码取景。
+                if (hasCameraPermission) {
+                    CameraModeSelector(
+                        selected = state.mode,
+                        enabled = !state.isProcessing && !state.isCapturing && state.scanResult == null && livePhotoCountdown == 0,
+                        onSelected = { mode ->
+                            viewModel.setMode(mode)
+                            // 外部相机没有内部取景页，点“拍照”就直接拉起。
+                            if (mode == CameraMode.PHOTO && state.source.provider != CameraProvider.BUILT_IN) {
+                                launchExternalBurst()
+                            }
+                        })
+                }
 
-                if (hasCameraPermission && useBuiltIn) {
+                val controlsVisible = !useBuiltIn || hasCameraPermission
+                if (controlsVisible) {
                     CameraControls(
                         mode = state.mode,
                         flashOn = flashOn,
                         enabled = !state.isProcessing && !state.isCapturing && state.scanResult == null && livePhotoCountdown == 0,
+                        externalCamera = !useBuiltIn,
                         onFlashChange = { flashOn = it },
                         onPickGallery = { galleryLauncher.launch("image/*") },
                         onSwitchCamera = {
@@ -469,8 +552,10 @@ fun CameraScreen(
                             }
                         },
                         onCapture = {
-                            if (state.mode == CameraMode.PHOTO) {
-                                requestBuiltInCapture()
+                            when {
+                                !useBuiltIn -> launchExternalBurst()
+                                state.mode == CameraMode.PHOTO -> requestBuiltInCapture()
+                                else -> captureScanSnapshot()
                             }
                         })
                 }

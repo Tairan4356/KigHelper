@@ -1,39 +1,44 @@
 package com.ziegler.kighelper.ui.screens.camera
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.SwitchCamera
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.camera.CameraMode
 
+private val CONTROL_BAR_HEIGHT = 104.dp
+
 /**
- * 内置相机底部操作栏。
+ * 底部操作栏。
  *
- * 拍照模式显示快门，扫码模式把主操作换成相册导入；闪光灯和镜头切换两种模式都保留。
+ * 高度固定为 [CONTROL_BAR_HEIGHT]。
+ * 外部相机模式只保留一个“启动相机”主按钮；内置扫码模式同时保留相册和快门。
  */
 @Composable
 internal fun CameraControls(
     mode: CameraMode,
     flashOn: Boolean,
     enabled: Boolean,
+    externalCamera: Boolean = false,
     onFlashChange: (Boolean) -> Unit,
     onPickGallery: () -> Unit,
     onSwitchCamera: () -> Unit,
@@ -42,13 +47,24 @@ internal fun CameraControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .height(CONTROL_BAR_HEIGHT)
+            .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (externalCamera) {
+            FilledIconButton(
+                onClick = onCapture, modifier = Modifier.size(72.dp)
+            ) {
+                Icon(
+                    Icons.Filled.RocketLaunch, contentDescription = "启动相机"
+                )
+            }
+            return@Row
+        }
+
         IconButton(
-            onClick = { onFlashChange(!flashOn) },
-            enabled = enabled
+            onClick = { onFlashChange(!flashOn) }, enabled = enabled
         ) {
             Icon(
                 imageVector = if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
@@ -56,38 +72,36 @@ internal fun CameraControls(
             )
         }
 
-        if (mode == CameraMode.PHOTO) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
             FilledIconButton(
-                onClick = onCapture,
-                enabled = enabled,
-                modifier = Modifier.size(72.dp)
+                onClick = onCapture, enabled = enabled, modifier = Modifier.size(72.dp),
+            ) {}
+        }
+
+        if (mode == CameraMode.SCAN) {
+            IconButton(
+                onClick = onPickGallery, enabled = enabled
             ) {
                 Icon(
-                    Icons.Filled.CameraAlt,
-                    contentDescription = "拍照",
-                    modifier = Modifier.size(32.dp)
+                    Icons.Filled.PhotoLibrary, contentDescription = "从相册选择二维码"
                 )
             }
         } else {
-            FilledTonalButton(
-                onClick = onPickGallery,
-                enabled = enabled
-            ) {
-                Icon(
-                    Icons.Filled.PhotoLibrary,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("相册")
-            }
-        }
 
-        IconButton(
-            onClick = onSwitchCamera,
-            enabled = enabled
-        ) {
-            Icon(Icons.Filled.SwitchCamera, contentDescription = "切换镜头")
+            IconButton(
+                onClick = onSwitchCamera, enabled = enabled
+            ) {
+                Icon(Icons.Filled.SwitchCamera, contentDescription = "切换镜头")
+            }
         }
     }
 }

@@ -4,11 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -18,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.camera.CameraMode
@@ -35,8 +37,10 @@ internal fun CameraModeSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(56.dp)
             .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         ButtonGroup(
             modifier = Modifier.width(260.dp), horizontalArrangement = Arrangement.spacedBy(
@@ -47,7 +51,7 @@ internal fun CameraModeSelector(
             CameraMode.entries.forEachIndexed { index, mode ->
                 val label = if (mode == CameraMode.PHOTO) "拍照" else "扫码"
                 val icon = if (mode == CameraMode.PHOTO) {
-                    Icons.Filled.CameraAlt
+                    Icons.Filled.Camera
                 } else {
                     Icons.Filled.QrCodeScanner
                 }

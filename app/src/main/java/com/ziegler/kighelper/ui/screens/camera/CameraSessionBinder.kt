@@ -11,6 +11,8 @@ import androidx.camera.core.Preview
 import androidx.camera.core.SessionConfig
 import androidx.camera.core.UseCase
 import androidx.camera.core.featuregroup.GroupableFeature
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
@@ -64,11 +66,20 @@ internal object CameraSessionBinder {
         // 每次切换镜头/模式都重建完整的用例集合，防止旧分析器继续回调。
         provider.unbindAll()
 
-        val preview = Preview.Builder().build().apply {
-            surfaceProvider = previewView.surfaceProvider
-        }
-        val imageCapture = ImageCapture.Builder().build()
-        val useCases = mutableListOf<UseCase>(preview, imageCapture)
+        // 预览和照片统一优先选择 4:3；设备不支持时退回系统自动策略。
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+            .build()
+        val preview = Preview.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .build()
+            .apply {
+                surfaceProvider = previewView.surfaceProvider
+            }
+        val imageCapture = ImageCapture.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .build()
+        val useCases = mutableListOf(preview, imageCapture)
 
         val analyzer = if (scanMode) {
             QrImageAnalyzer(onQrDetected).also { qrAnalyzer ->
