@@ -56,6 +56,12 @@ internal class CameraController {
         analyzer?.enabled = enabled
     }
 
+    /** 同步物理设备方向；系统锁定竖屏时也要让照片按实际横竖方向写入。 */
+    fun setTargetRotation(rotation: Int) {
+        imageCapture?.targetRotation = rotation
+        videoCapture?.targetRotation = rotation
+    }
+
     fun capture(
         context: Context,
         livePhotoEnabled: Boolean,

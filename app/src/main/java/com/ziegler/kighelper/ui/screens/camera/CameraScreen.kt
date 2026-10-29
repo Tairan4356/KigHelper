@@ -2,6 +2,7 @@ package com.ziegler.kighelper.ui.screens.camera
 
 import android.Manifest
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
@@ -10,13 +11,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -50,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -115,6 +121,8 @@ fun CameraScreen(
 
     val scanMode = state.mode == CameraMode.SCAN
     val useBuiltIn = scanMode || state.source.provider == CameraProvider.BUILT_IN
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val deviceRotation = rememberDeviceRotation()
 
     /** 系统是否仍允许弹出相机授权框；首次请求时也返回 true。 */
     fun canRequestCameraPermission(): Boolean {
@@ -382,36 +390,177 @@ fun CameraScreen(
     val scanningPaused =
         state.isProcessing || state.scanResult != null || (state.resumeRequired && useBuiltIn)
 
+    val controlsVisible = !useBuiltIn || hasCameraPermission
+    val controlsEnabled =
+        !state.isProcessing && !state.isCapturing && state.scanResult == null && livePhotoCountdown == 0
+
+    val cameraPreview: @Composable BoxScope.() -> Unit = {
+        when {
+            !hasCameraPermission && useBuiltIn -> {
+                CameraPermissionCard(
+                    canRequestPermission = !cameraPermissionPermanentlyDenied,
+                    onPermissionAction = ::requestCameraPermissionOrOpenSettings
+                )
+            }
+
+            useBuiltIn -> {
+                // 竖屏保持 3:4，横屏改为 4:3；两种方向都按比例居中，不会拉伸。
+                val previewAspect = if (isLandscape) 4f / 3f else 3f / 4f
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                ) {
+                    val previewWidth = minOf(maxWidth, maxHeight * previewAspect)
+                    Box(
+                        modifier = Modifier
+                            .width(previewWidth)
+                            .aspectRatio(previewAspect)
+                            .clipToBounds()
+                    ) {
+                        BuiltInCameraPreview(
+                            modifier = Modifier.fillMaxSize(),
+                            lensFacing = lensFacing,
+                            scanMode = scanMode,
+                            livePhotoEnabled = state.livePhotoEnabled && !scanMode,
+                            preferHdr = state.hdrEnabled,
+                            scanningPaused = scanningPaused,
+                            flashOn = flashOn,
+                            targetRotation = deviceRotation,
+                            controller = controller,
+                            onQrDetected = viewModel::onQrDetected,
+                            onCameraError = viewModel::reportCameraError
+                        )
+                        if (scanMode) {
+                            ScanFrameHint(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .fillMaxWidth(0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            else -> {
+                ExternalCameraCard(app = state.source.app)
+            }
+        }
+
+        if (livePhotoCountdown > 0 && state.mode == CameraMode.PHOTO && useBuiltIn) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "实况",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = livePhotoCountdown.toString(),
+                        color = Color.White,
+                        fontSize = 96.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        if (state.isProcessing) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.35f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color.White)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "正在识别…", color = Color.White
+                    )
+                }
+            }
+        }
+    }
+
+    val modeSelector: @Composable () -> Unit = {
+        // 没有相机权限时隐藏模式切换，避免用户进入无法使用的扫码取景。
+        if (hasCameraPermission) {
+            CameraModeSelector(
+                selected = state.mode, enabled = controlsEnabled, onSelected = { mode ->
+                    viewModel.setMode(mode)
+                    // 外部相机没有内部取景页，点“拍照”就直接拉起。
+                    if (mode == CameraMode.PHOTO && state.source.provider != CameraProvider.BUILT_IN) {
+                        launchExternalBurst()
+                    }
+                })
+        }
+    }
+
+    val captureControls: @Composable () -> Unit = {
+        if (controlsVisible) {
+            CameraControls(
+                mode = state.mode,
+                flashOn = flashOn,
+                enabled = controlsEnabled,
+                externalCamera = !useBuiltIn,
+                vertical = isLandscape,
+                onFlashChange = { flashOn = it },
+                onPickGallery = { galleryLauncher.launch("image/*") },
+                onSwitchCamera = {
+                    lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+                        CameraSelector.LENS_FACING_FRONT
+                    } else {
+                        CameraSelector.LENS_FACING_BACK
+                    }
+                },
+                onCapture = {
+                    when {
+                        !useBuiltIn -> launchExternalBurst()
+                        state.mode == CameraMode.PHOTO -> requestBuiltInCapture()
+                        else -> captureScanSnapshot()
+                    }
+                })
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding),
             topBar = {
-                // 提示悬浮在 TopAppBar 内部居中。
-                Box {
-                    TopAppBar(
-                        title = {
-                        Text(
-                            text = if (scanMode) "扫码" else "拍照",
-                            fontWeight = FontWeight.SemiBold
+                if (!isLandscape) {
+                    // 提示悬浮在 TopAppBar 内部居中。
+                    Box {
+                        TopAppBar(
+                            title = {
+                            Text(
+                                text = if (scanMode) "扫码" else "拍照",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }, actions = {
+                            IconButton(onClick = onOpenTimeline) {
+                                Icon(
+                                    Icons.Filled.PhotoLibrary, contentDescription = "时光轴"
+                                )
+                            }
+                            IconButton(onClick = onOpenSettings) {
+                                Icon(Icons.Filled.Settings, contentDescription = "设置")
+                            }
+                        }, colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ), windowInsets = WindowInsets(0, 0, 0, 0)
                         )
-                    }, actions = {
-                        IconButton(onClick = onOpenTimeline) {
-                            Icon(Icons.Filled.PhotoLibrary, contentDescription = "时光轴")
-                        }
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Filled.Settings, contentDescription = "设置")
-                        }
-                    }, colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ), windowInsets = WindowInsets(0, 0, 0, 0)
-                    )
-                    AnimatedVisibility(
-                        visible = topPrompt != null, modifier = Modifier.align(Alignment.Center)
-                    ) {
-                        topPrompt?.let { prompt ->
-                            CameraTopPromptBanner(prompt = prompt)
+                        AnimatedVisibility(
+                            visible = topPrompt != null, modifier = Modifier.align(Alignment.Center)
+                        ) {
+                            topPrompt?.let { prompt ->
+                                CameraTopPromptBanner(prompt = prompt)
+                            }
                         }
                     }
                 }
@@ -419,145 +568,69 @@ fun CameraScreen(
             snackbarHost = { SnackbarHost(snackBarHostState) },
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { scaffoldPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(scaffoldPadding)
-            ) {
-                Box(
+            if (isLandscape) {
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .clipToBounds()
+                        .fillMaxSize()
+                        .padding(scaffoldPadding)
                 ) {
-                    when {
-                        !hasCameraPermission && useBuiltIn -> {
-                            CameraPermissionCard(
-                                canRequestPermission = !cameraPermissionPermanentlyDenied,
-                                onPermissionAction = ::requestCameraPermissionOrOpenSettings
-                            )
-                        }
-
-                        useBuiltIn -> {
-                            // 预览始终按 3:4 计算并居中，横竖屏都不会拉伸。
-                            BoxWithConstraints(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .padding(horizontal = 12.dp)
+                            .clipToBounds()
+                    ) {
+                        cameraPreview()
+                        topPrompt?.let { prompt ->
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(12.dp)
                             ) {
-                                val previewWidth = minOf(maxWidth, maxHeight * 3f / 4f)
-                                Box(
-                                    modifier = Modifier
-                                        .width(previewWidth)
-                                        .aspectRatio(3f / 4f)
-                                        .clipToBounds()
+                                CameraTopPromptBanner(prompt = prompt)
+                            }
+                        }
+                    }
+
+                    if (hasCameraPermission || controlsVisible) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(horizontal = 4.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (hasCameraPermission) {
+                                RotatedControl(
+                                    originalWidth = 260.dp, originalHeight = 56.dp
                                 ) {
-                                    BuiltInCameraPreview(
-                                        modifier = Modifier.fillMaxSize(),
-                                        lensFacing = lensFacing,
-                                        scanMode = scanMode,
-                                        livePhotoEnabled = state.livePhotoEnabled && !scanMode,
-                                        preferHdr = state.hdrEnabled,
-                                        scanningPaused = scanningPaused,
-                                        flashOn = flashOn,
-                                        controller = controller,
-                                        onQrDetected = viewModel::onQrDetected,
-                                        onCameraError = viewModel::reportCameraError
-                                    )
-                                    if (scanMode) {
-                                        ScanFrameHint(
-                                            modifier = Modifier
-                                                .align(Alignment.Center)
-                                                .fillMaxWidth(0.6f)
-                                        )
-                                    }
+                                    modeSelector()
                                 }
                             }
-                        }
-
-                        else -> {
-                            ExternalCameraCard(app = state.source.app)
-                        }
-                    }
-
-                    if (livePhotoCountdown > 0 && state.mode == CameraMode.PHOTO && useBuiltIn) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "实况",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = livePhotoCountdown.toString(),
-                                    color = Color.White,
-                                    fontSize = 96.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-
-                    if (state.isProcessing) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.35f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                CircularProgressIndicator(color = Color.White)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = "正在识别…", color = Color.White
-                                )
+                            Box(modifier = Modifier.width(112.dp)) {
+                                captureControls()
                             }
                         }
                     }
                 }
-
-                // 没有相机权限时隐藏模式切换，避免用户进入无法使用的扫码取景。
-                if (hasCameraPermission) {
-                    CameraModeSelector(
-                        selected = state.mode,
-                        enabled = !state.isProcessing && !state.isCapturing && state.scanResult == null && livePhotoCountdown == 0,
-                        onSelected = { mode ->
-                            viewModel.setMode(mode)
-                            // 外部相机没有内部取景页，点“拍照”就直接拉起。
-                            if (mode == CameraMode.PHOTO && state.source.provider != CameraProvider.BUILT_IN) {
-                                launchExternalBurst()
-                            }
-                        })
-                }
-
-                val controlsVisible = !useBuiltIn || hasCameraPermission
-                if (controlsVisible) {
-                    CameraControls(
-                        mode = state.mode,
-                        flashOn = flashOn,
-                        enabled = !state.isProcessing && !state.isCapturing && state.scanResult == null && livePhotoCountdown == 0,
-                        externalCamera = !useBuiltIn,
-                        onFlashChange = { flashOn = it },
-                        onPickGallery = { galleryLauncher.launch("image/*") },
-                        onSwitchCamera = {
-                            lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
-                                CameraSelector.LENS_FACING_FRONT
-                            } else {
-                                CameraSelector.LENS_FACING_BACK
-                            }
-                        },
-                        onCapture = {
-                            when {
-                                !useBuiltIn -> launchExternalBurst()
-                                state.mode == CameraMode.PHOTO -> requestBuiltInCapture()
-                                else -> captureScanSnapshot()
-                            }
-                        })
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(scaffoldPadding)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .clipToBounds()
+                    ) {
+                        cameraPreview()
+                    }
+                    modeSelector()
+                    captureControls()
                 }
             }
         }

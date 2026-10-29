@@ -1,5 +1,6 @@
 package com.ziegler.kighelper.ui
 
+import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -131,6 +133,8 @@ fun KigHelperApp(
     val showNavigation = currentRoute in topLevelRoutes && !isFullScreen
     val isExpanded = windowSize.widthSizeClass != WindowWidthSizeClass.Compact
     val isImeVisible = WindowInsets.isImeVisible
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val showCameraChromeActions = isLandscape && currentRoute == AppRoutes.CAMERA
 
     val showBottomBar =
         showNavigation && !isExpanded && !(currentRoute == AppRoutes.INPUT && isImeVisible)
@@ -150,8 +154,11 @@ fun KigHelperApp(
     Row(modifier = Modifier.fillMaxSize()) {
         if (showNavigation && isExpanded) {
             AppNavigationRail(
-                currentRoute = currentRoute, onDestinationClick = onDestinationClick
-            )
+                currentRoute = currentRoute,
+                onDestinationClick = onDestinationClick,
+                showCameraActions = showCameraChromeActions,
+                onOpenTimeline = { navController.navigate(AppRoutes.TIMELINE) },
+                onOpenSettings = { navController.navigate(AppRoutes.SETTINGS) })
         }
 
         Scaffold(
@@ -161,8 +168,10 @@ fun KigHelperApp(
                 AppBottomBar(
                     visible = showBottomBar,
                     currentRoute = currentRoute,
-                    onDestinationClick = onDestinationClick
-                )
+                    onDestinationClick = onDestinationClick,
+                    showCameraActions = showCameraChromeActions,
+                    onOpenTimeline = { navController.navigate(AppRoutes.TIMELINE) },
+                    onOpenSettings = { navController.navigate(AppRoutes.SETTINGS) })
             }) { innerPadding ->
             SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
                 NavHost(

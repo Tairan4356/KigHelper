@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -29,6 +30,7 @@ internal fun BuiltInCameraPreview(
     preferHdr: Boolean,
     scanningPaused: Boolean,
     flashOn: Boolean,
+    targetRotation: Int,
     controller: CameraController,
     onQrDetected: (String) -> Unit,
     onCameraError: (String) -> Unit
@@ -42,6 +44,7 @@ internal fun BuiltInCameraPreview(
         }
     }
     var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    val latestTargetRotation by rememberUpdatedState(targetRotation)
 
     AndroidView(
         factory = { previewView }, modifier = modifier
@@ -61,6 +64,7 @@ internal fun BuiltInCameraPreview(
                 scanMode = scanMode,
                 livePhotoEnabled = livePhotoEnabled,
                 preferHdr = preferHdr,
+                targetRotation = latestTargetRotation,
                 analysisExecutor = controller.analysisExecutor,
                 onQrDetected = onQrDetected
             )
@@ -72,6 +76,7 @@ internal fun BuiltInCameraPreview(
             )
             controller.setScanMode(scanMode)
             controller.setScanningEnabled(scanMode && !scanningPaused)
+            controller.setTargetRotation(latestTargetRotation)
             controller.setFlash(flashOn)
         } catch (error: Exception) {
             onCameraError(error.message ?: "相机启动失败")
@@ -85,6 +90,10 @@ internal fun BuiltInCameraPreview(
 
     LaunchedEffect(flashOn) {
         controller.setFlash(flashOn)
+    }
+
+    LaunchedEffect(targetRotation) {
+        controller.setTargetRotation(targetRotation)
     }
 
     DisposableEffect(Unit) {

@@ -3,9 +3,12 @@ package com.ziegler.kighelper.ui.screens.camera
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -25,13 +28,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ziegler.kighelper.data.camera.CameraMode
 
-private val CONTROL_BAR_HEIGHT = 104.dp
+private val CONTROL_BAR_HEIGHT = 100.dp
+private val LANDSCAPE_CONTROLS_MAX_WIDTH = 360.dp
 
 /**
- * 底部操作栏。
+ * 拍照操作栏。
  *
- * 高度固定为 [CONTROL_BAR_HEIGHT]。
- * 外部相机模式只保留一个“启动相机”主按钮；内置扫码模式同时保留相册和快门。
+ * 竖屏使用固定高度的横向栏；横屏右侧栏改为纵向排列，并限制最大宽度。
  */
 @Composable
 internal fun CameraControls(
@@ -39,11 +42,39 @@ internal fun CameraControls(
     flashOn: Boolean,
     enabled: Boolean,
     externalCamera: Boolean = false,
+    vertical: Boolean = false,
     onFlashChange: (Boolean) -> Unit,
     onPickGallery: () -> Unit,
     onSwitchCamera: () -> Unit,
     onCapture: () -> Unit
 ) {
+    if (vertical) {
+        Column(
+            modifier = Modifier
+                .heightIn(max = LANDSCAPE_CONTROLS_MAX_WIDTH)
+                .fillMaxHeight()
+                .padding(vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceAround
+        ) {
+            if (externalCamera) {
+                LaunchCameraButton(onCapture = onCapture)
+            } else {
+                FlashButton(
+                    flashOn = flashOn, enabled = enabled, onFlashChange = onFlashChange
+                )
+                ShutterButton(enabled = enabled, onCapture = onCapture)
+                SecondaryButton(
+                    mode = mode,
+                    enabled = enabled,
+                    onPickGallery = onPickGallery,
+                    onSwitchCamera = onSwitchCamera
+                )
+            }
+        }
+        return
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -53,55 +84,77 @@ internal fun CameraControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (externalCamera) {
-            FilledIconButton(
-                onClick = onCapture, modifier = Modifier.size(72.dp)
-            ) {
-                Icon(
-                    Icons.Filled.RocketLaunch, contentDescription = "启动相机"
-                )
-            }
+            LaunchCameraButton(onCapture = onCapture)
             return@Row
         }
 
+        FlashButton(flashOn = flashOn, enabled = enabled, onFlashChange = onFlashChange)
+        ShutterButton(enabled = enabled, onCapture = onCapture)
+        SecondaryButton(
+            mode = mode,
+            enabled = enabled,
+            onPickGallery = onPickGallery,
+            onSwitchCamera = onSwitchCamera
+        )
+    }
+}
+
+@Composable
+private fun LaunchCameraButton(onCapture: () -> Unit) {
+    FilledIconButton(
+        onClick = onCapture, modifier = Modifier.size(72.dp)
+    ) {
+        Icon(Icons.Filled.RocketLaunch, contentDescription = "启动相机")
+    }
+}
+
+@Composable
+private fun FlashButton(
+    flashOn: Boolean, enabled: Boolean, onFlashChange: (Boolean) -> Unit
+) {
+    IconButton(
+        onClick = { onFlashChange(!flashOn) }, enabled = enabled
+    ) {
+        Icon(
+            imageVector = if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+            contentDescription = if (flashOn) "关闭闪光灯" else "打开闪光灯"
+        )
+    }
+}
+
+@Composable
+private fun ShutterButton(enabled: Boolean, onCapture: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .border(
+                width = 2.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        FilledIconButton(
+            onClick = onCapture, enabled = enabled, modifier = Modifier.size(72.dp),
+        ) {}
+    }
+}
+
+@Composable
+private fun SecondaryButton(
+    mode: CameraMode, enabled: Boolean, onPickGallery: () -> Unit, onSwitchCamera: () -> Unit
+) {
+    if (mode == CameraMode.SCAN) {
         IconButton(
-            onClick = { onFlashChange(!flashOn) }, enabled = enabled
+            onClick = onPickGallery, enabled = enabled
         ) {
-            Icon(
-                imageVector = if (flashOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
-                contentDescription = if (flashOn) "关闭闪光灯" else "打开闪光灯"
-            )
+            Icon(Icons.Filled.PhotoLibrary, contentDescription = "从相册选择二维码")
         }
-
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
+    } else {
+        IconButton(
+            onClick = onSwitchCamera, enabled = enabled
         ) {
-            FilledIconButton(
-                onClick = onCapture, enabled = enabled, modifier = Modifier.size(72.dp),
-            ) {}
-        }
-
-        if (mode == CameraMode.SCAN) {
-            IconButton(
-                onClick = onPickGallery, enabled = enabled
-            ) {
-                Icon(
-                    Icons.Filled.PhotoLibrary, contentDescription = "从相册选择二维码"
-                )
-            }
-        } else {
-
-            IconButton(
-                onClick = onSwitchCamera, enabled = enabled
-            ) {
-                Icon(Icons.Filled.SwitchCamera, contentDescription = "切换镜头")
-            }
+            Icon(Icons.Filled.SwitchCamera, contentDescription = "切换镜头")
         }
     }
 }

@@ -5,10 +5,21 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -17,6 +28,7 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -52,7 +64,11 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.navSlideDirection
 
 @Composable
 internal fun AppNavigationRail(
-    currentRoute: String, onDestinationClick: (String) -> Unit
+    currentRoute: String,
+    onDestinationClick: (String) -> Unit,
+    showCameraActions: Boolean = false,
+    onOpenTimeline: () -> Unit = {},
+    onOpenSettings: () -> Unit = {}
 ) {
     // 宽屏使用侧向 NavigationRail，避免底部导航占用纵向空间。
     NavigationRail(
@@ -70,13 +86,58 @@ internal fun AppNavigationRail(
                 )
             }
         }) {
-        topLevelDestinations.forEach { item ->
-            AppNavigationRailItem(
-                item = item,
-                selected = currentRoute == item.route,
-                onClick = { onDestinationClick(item.route) })
+        BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            val minContentHeight = maxHeight
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = minContentHeight),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    topLevelDestinations.forEach { item ->
+                        AppNavigationRailItem(
+                            item = item,
+                            selected = currentRoute == item.route,
+                            onClick = { onDestinationClick(item.route) })
+                    }
+                }
+                if (showCameraActions) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        HorizontalDivider(modifier = Modifier.width(48.dp))
+                        AppNavigationRailItem(
+                            icon = Icons.Filled.PhotoLibrary,
+                            label = "时光轴",
+                            selected = false,
+                            onClick = onOpenTimeline
+                        )
+                        AppNavigationRailItem(
+                            icon = Icons.Filled.Settings,
+                            label = "设置",
+                            selected = false,
+                            onClick = onOpenSettings
+                        )
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun AppNavigationRailItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationRailItem(
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) },
+        selected = selected,
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -94,7 +155,12 @@ private fun AppNavigationRailItem(
 
 @Composable
 internal fun AppBottomBar(
-    visible: Boolean, currentRoute: String, onDestinationClick: (String) -> Unit
+    visible: Boolean,
+    currentRoute: String,
+    onDestinationClick: (String) -> Unit,
+    showCameraActions: Boolean = false,
+    onOpenTimeline: () -> Unit = {},
+    onOpenSettings: () -> Unit = {}
 ) {
     // 窄屏底部导航保留原有滑入滑出效果，键盘或横屏全屏场景由调用方控制 visible。
     AnimatedVisibility(
@@ -111,6 +177,30 @@ internal fun AppBottomBar(
                     label = { Text(item.label) },
                     selected = currentRoute == item.route,
                     onClick = { onDestinationClick(item.route) })
+            }
+            if (showCameraActions) {
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Filled.PhotoLibrary,
+                            contentDescription = "时光轴"
+                        )
+                    },
+                    label = { Text("时光轴") },
+                    selected = false,
+                    onClick = onOpenTimeline
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = "设置"
+                        )
+                    },
+                    label = { Text("设置") },
+                    selected = false,
+                    onClick = onOpenSettings
+                )
             }
         }
     }

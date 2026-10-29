@@ -60,6 +60,7 @@ internal object CameraSessionBinder {
         scanMode: Boolean,
         livePhotoEnabled: Boolean,
         preferHdr: Boolean,
+        targetRotation: Int,
         analysisExecutor: ExecutorService,
         onQrDetected: (String) -> Unit
     ): CameraSession {
@@ -68,17 +69,12 @@ internal object CameraSessionBinder {
 
         // 预览和照片统一优先选择 4:3；设备不支持时退回系统自动策略。
         val resolutionSelector = ResolutionSelector.Builder()
-            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
-            .build()
-        val preview = Preview.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .build()
-            .apply {
+            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY).build()
+        val preview = Preview.Builder().setResolutionSelector(resolutionSelector).build().apply {
                 surfaceProvider = previewView.surfaceProvider
             }
-        val imageCapture = ImageCapture.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .build()
+        val imageCapture = ImageCapture.Builder().setResolutionSelector(resolutionSelector)
+            .setTargetRotation(targetRotation).build()
         val useCases = mutableListOf(preview, imageCapture)
 
         val analyzer = if (scanMode) {
@@ -97,7 +93,10 @@ internal object CameraSessionBinder {
 
         val videoCapture = if (!scanMode && livePhotoEnabled) {
             val recorder = Recorder.Builder().setAspectRatio(AspectRatio.RATIO_4_3).build()
-            VideoCapture.withOutput(recorder).also { useCases += it }
+            VideoCapture.withOutput(recorder).also {
+                it.targetRotation = targetRotation
+                useCases += it
+            }
         } else {
             null
         }
