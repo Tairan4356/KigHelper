@@ -89,20 +89,10 @@ fun TimelinePhotoViewer(
     var isPreparing by remember(photo.id) { mutableStateOf(false) }
     var errorMessage by remember(photo.id) { mutableStateOf<String?>(null) }
 
-    // 先读取 XMP；如果是实况照片，自动提取并播放一次。切换照片时重新检测。
+    // 切换照片时只检测 XMP，实况视频等用户点击后再提取。
     LaunchedEffect(photo.id) {
         errorMessage = null
         motionPhoto = reader.read(photo.uri)
-        val info = motionPhoto ?: return@LaunchedEffect
-        isPreparing = true
-        val file = reader.extract(photo.uri, info, photo.id)
-        isPreparing = false
-        if (file == null) {
-            errorMessage = "无法读取实况视频"
-        } else {
-            videoFile = file
-            isPlaying = true
-        }
     }
 
     Dialog(

@@ -134,10 +134,10 @@ class SettingsRepository @Inject constructor(
             ) ?: prefs.getString(Keys.LEGACY_THIRD_PARTY_CAMERA_COMPONENT, null)
                 ?.substringAfter('/', "")?.takeIf { it.isNotBlank() },
             writePhotoLocation = prefs.getBoolean(
-                Keys.WRITE_PHOTO_LOCATION, false
+                Keys.WRITE_PHOTO_LOCATION, true
             ),
             livePhotoEnabled = prefs.getBoolean(
-                Keys.LIVE_PHOTO_ENABLED, false
+                Keys.LIVE_PHOTO_ENABLED, true
             ),
             cameraCompatibilityMode = prefs.getBoolean(
                 Keys.CAMERA_COMPATIBILITY_MODE, false

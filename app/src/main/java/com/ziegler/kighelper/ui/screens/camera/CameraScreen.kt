@@ -306,7 +306,7 @@ fun CameraScreen(
         }
     }
 
-    // 首次启用位置写入且缺少权限时请求定位；拒绝后照片仍会正常保存，只是不带 GPS。
+    // 进入相机页且默认开启位置写入时自动请求定位；相机权限先完成，避免同时弹两个授权框。
     LaunchedEffect(
         state.writePhotoLocation, state.mode, state.source.provider, hasCameraPermission
     ) {
