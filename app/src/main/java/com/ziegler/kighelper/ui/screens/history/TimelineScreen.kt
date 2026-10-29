@@ -27,13 +27,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VerticalAlignTop
@@ -63,6 +67,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,6 +96,11 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.time.Duration.Companion.milliseconds
 
+/** 时光轴的两种展示方式；缩略图模式使用自适应列数的网格。 */
+private enum class TimelineLayoutMode {
+    LIST, THUMBNAILS
+}
+
 /**
  * 时光轴：把相册照片和扫码记录合并为统一时间线。
  *
@@ -105,7 +115,11 @@ fun TimelineScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    var layoutMode by rememberSaveable {
+        mutableStateOf(TimelineLayoutMode.THUMBNAILS)
+    }
+    val showThumbnails = layoutMode == TimelineLayoutMode.THUMBNAILS
     val scope = rememberCoroutineScope()
     val keyguardManager = remember {
         context.getSystemService(KeyguardManager::class.java)
@@ -230,6 +244,10 @@ fun TimelineScreen(
             }
         }
     }
+    // 查看器只切换当前筛选结果中的照片，顺序与时光轴一致。
+    val visiblePhotos = remember(visibleItems) {
+        visibleItems.filterIsInstance<TimelineItem.Photo>().map { it.photo }
+    }
     // 多选时返回键先退出多选，而不是直接离开时光轴。
     BackHandler(enabled = state.selectionMode) {
         viewModel.exitSelection()
@@ -244,11 +262,11 @@ fun TimelineScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }, floatingActionButton = {
-            if (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0) {
+            if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
                 FloatingActionButton(
                     onClick = {
                         scope.launch {
-                            listState.animateScrollToItem(0)
+                            gridState.animateScrollToItem(0)
                         }
                     }) {
                     Icon(Icons.Filled.VerticalAlignTop, contentDescription = "回到顶部")
@@ -273,8 +291,7 @@ fun TimelineScreen(
                             Icons.Filled.Close
                         } else {
                             Icons.AutoMirrored.Filled.ArrowBack
-                        },
-                        contentDescription = if (state.selectionMode) "退出多选" else "返回"
+                        }, contentDescription = if (state.selectionMode) "退出多选" else "返回"
                     )
                 }
             }, actions = {
@@ -305,7 +322,36 @@ fun TimelineScreen(
                         }
                         DropdownMenu(
                             expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            if (layoutMode == TimelineLayoutMode.LIST) {
+                                DropdownMenuItem(leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.GridView, contentDescription = null
+                                    )
+                                }, text = { Text("缩略图模式") }, onClick = {
+                                    layoutMode = TimelineLayoutMode.THUMBNAILS
+                                    showMenu = false
+                                })
+                            } else {
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.List,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    text = { Text("列表模式") },
+                                    onClick = {
+                                        layoutMode = TimelineLayoutMode.LIST
+                                        showMenu = false
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
+                                leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Delete, contentDescription = null
+                                )
+                            },
                                 text = { Text("清空扫码记录") },
                                 enabled = state.scans.isNotEmpty(),
                                 onClick = {
@@ -327,18 +373,25 @@ fun TimelineScreen(
                     onDelete = { showDeleteConfirm = true })
             }
         }) { padding ->
-            LazyColumn(
-                state = listState,
+            LazyVerticalGrid(
+                columns = if (showThumbnails) {
+                    GridCells.Adaptive(minSize = 96.dp)
+                } else {
+                    GridCells.Fixed(1)
+                },
+                state = gridState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 contentPadding = PaddingValues(
                     start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp
                 ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (!state.selectionMode) {
-                    item(key = "filters") {
+                    item(
+                        key = "filters", span = { GridItemSpan(maxLineSpan) }) {
                         TimelineFilterRow(
                             selected = state.filter,
                             photoCount = state.photos.size,
@@ -350,7 +403,8 @@ fun TimelineScreen(
 
                     when (state.mediaAccess) {
                         MediaAccessState.DENIED -> {
-                            item(key = "media_permission") {
+                            item(
+                                key = "media_permission", span = { GridItemSpan(maxLineSpan) }) {
                                 MediaPermissionCard(onRequest = {
                                     viewModel.markMediaPermissionRequested()
                                     mediaPermissionLauncher.launch(
@@ -370,7 +424,8 @@ fun TimelineScreen(
                         }
 
                         MediaAccessState.PARTIAL -> {
-                            item(key = "media_partial") {
+                            item(
+                                key = "media_partial", span = { GridItemSpan(maxLineSpan) }) {
                                 PartialAccessBanner(
                                     onManage = {
                                         mediaPermissionLauncher.launch(
@@ -384,7 +439,8 @@ fun TimelineScreen(
                     }
 
                     if (state.isLoading) {
-                        item(key = "loading") {
+                        item(
+                            key = "loading", span = { GridItemSpan(maxLineSpan) }) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
@@ -398,7 +454,8 @@ fun TimelineScreen(
                     }
 
                     state.errorMessage?.let { message ->
-                        item(key = "error") {
+                        item(
+                            key = "error", span = { GridItemSpan(maxLineSpan) }) {
                             Card {
                                 Row(
                                     modifier = Modifier
@@ -421,39 +478,55 @@ fun TimelineScreen(
                 }
 
                 groupedItems.forEach { (date, group) ->
-                    item(key = "date:${date ?: "unknown"}") {
+                    item(
+                        key = "date:${date ?: "unknown"}", span = { GridItemSpan(maxLineSpan) }) {
                         DateHeader(date)
                     }
                     items(group, key = { it.stableKey }) { item ->
-                        TimelineRow(
-                            item = item,
-                            selectionMode = state.selectionMode,
-                            selected = when (item) {
-                                is TimelineItem.Photo -> item.photo.id in state.selection.photoIds
-                                is TimelineItem.Scan -> item.record.id in state.selection.scanIds
-                            },
-                            onClick = {
-                                if (state.selectionMode) {
-                                    viewModel.toggleSelection(item)
-                                } else {
-                                    when (item) {
-                                        is TimelineItem.Photo -> selectedPhoto = item.photo
-                                        is TimelineItem.Scan -> selectedScan = item.record
-                                    }
+                        val selected = when (item) {
+                            is TimelineItem.Photo -> item.photo.id in state.selection.photoIds
+                            is TimelineItem.Scan -> item.record.id in state.selection.scanIds
+                        }
+                        val onClick = {
+                            if (state.selectionMode) {
+                                viewModel.toggleSelection(item)
+                            } else {
+                                when (item) {
+                                    is TimelineItem.Photo -> selectedPhoto = item.photo
+                                    is TimelineItem.Scan -> selectedScan = item.record
                                 }
-                            },
-                            onLongClick = {
-                                if (state.selectionMode) {
-                                    viewModel.toggleSelection(item)
-                                } else {
-                                    viewModel.enterSelection(item)
-                                }
-                            })
+                            }
+                        }
+                        val onLongClick = {
+                            if (state.selectionMode) {
+                                viewModel.toggleSelection(item)
+                            } else {
+                                viewModel.enterSelection(item)
+                            }
+                        }
+                        if (showThumbnails) {
+                            TimelineThumbnail(
+                                item = item,
+                                selectionMode = state.selectionMode,
+                                selected = selected,
+                                onClick = onClick,
+                                onLongClick = onLongClick
+                            )
+                        } else {
+                            TimelineRow(
+                                item = item,
+                                selectionMode = state.selectionMode,
+                                selected = selected,
+                                onClick = onClick,
+                                onLongClick = onLongClick
+                            )
+                        }
                     }
                 }
 
                 if (visibleItems.isEmpty() && !state.isLoading) {
-                    item(key = "empty") {
+                    item(
+                        key = "empty", span = { GridItemSpan(maxLineSpan) }) {
                         EmptyTimeline()
                     }
                 }
@@ -474,7 +547,8 @@ fun TimelineScreen(
     }
 
     selectedPhoto?.let { photo ->
-        TimelinePhotoViewer(photo = photo, onDismiss = { selectedPhoto = null })
+        TimelinePhotoViewer(
+            photos = visiblePhotos, initialPhotoId = photo.id, onDismiss = { selectedPhoto = null })
     }
 
     // 历史记录只存摘要，打开时再分类恢复完整详情。

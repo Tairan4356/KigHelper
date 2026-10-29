@@ -4,7 +4,8 @@ import android.net.Uri
 import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PauseCircleOutline
@@ -61,14 +64,24 @@ import java.io.File
 /**
  * 全屏照片查看器。
  *
- * 先检测 JPEG 是否包含 Motion Photo XMP；只有用户点击播放时才提取视频。
- * 普通照片支持双击和双指缩放，播放实况时暂时隐藏图片。
+ * 在 [photos] 中左右滑动切换照片，并先检测 JPEG 是否包含 Motion Photo XMP；
+ * 只有用户点击播放时才提取视频。普通照片支持双击和双指缩放，播放实况时暂时隐藏图片。
  */
 @Composable
-fun TimelinePhotoViewer(photo: GalleryPhoto, onDismiss: () -> Unit) {
+fun TimelinePhotoViewer(
+    photos: List<GalleryPhoto>, initialPhotoId: Long, onDismiss: () -> Unit
+) {
+    if (photos.isEmpty()) return
+
     val context = LocalContext.current
     val reader = remember(context) { MotionPhotoReader(context) }
     val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(
+        initialPage = photos.indexOfFirst { it.id == initialPhotoId }.coerceAtLeast(0),
+        pageCount = { photos.size })
+    // 相册刷新可能让页数变化，读取当前页前先限制范围。
+    val currentPage = pagerState.currentPage.coerceIn(0, photos.lastIndex)
+    val photo = photos[currentPage]
 
     var motionPhoto by remember(photo.id) { mutableStateOf<MotionPhotoInfo?>(null) }
     var videoFile by remember(photo.id) { mutableStateOf<File?>(null) }
@@ -76,12 +89,12 @@ fun TimelinePhotoViewer(photo: GalleryPhoto, onDismiss: () -> Unit) {
     var isPreparing by remember(photo.id) { mutableStateOf(false) }
     var errorMessage by remember(photo.id) { mutableStateOf<String?>(null) }
 
-    // 先读取 XMP；如果是实况照片，自动提取并播放一次。
+    // 先读取 XMP；如果是实况照片，自动提取并播放一次。切换照片时重新检测。
     LaunchedEffect(photo.id) {
+        errorMessage = null
         motionPhoto = reader.read(photo.uri)
         val info = motionPhoto ?: return@LaunchedEffect
         isPreparing = true
-        errorMessage = null
         val file = reader.extract(photo.uri, info, photo.id)
         isPreparing = false
         if (file == null) {
@@ -121,15 +134,19 @@ fun TimelinePhotoViewer(photo: GalleryPhoto, onDismiss: () -> Unit) {
                     .weight(1f)
                     .fillMaxWidth()
             ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    key = { photos[it].id }) { page ->
+                    ZoomablePhoto(
+                        photo = photos[page], modifier = Modifier.fillMaxSize()
+                    )
+                }
                 if (isPlaying && videoFile != null) {
                     LivePhotoVideo(
                         file = videoFile!!,
                         modifier = Modifier.fillMaxSize(),
                         onFinished = { isPlaying = false })
-                } else {
-                    ZoomablePhoto(
-                        photo = photo, modifier = Modifier.fillMaxSize()
-                    )
                 }
             }
 
@@ -208,16 +225,37 @@ fun TimelinePhotoViewer(photo: GalleryPhoto, onDismiss: () -> Unit) {
     }
 }
 
-/** 支持双击切换 1x/2.5x，以及 1x~5x 双指缩放和边界内拖动。 */
+/**
+ * 支持双击切换 1x/2.5x，以及 1x~5x 双指缩放和边界内拖动。
+ *
+ * 未放大时只处理缩放、不消费单指拖动，让外层 Pager 接管横滑切图；
+ * 放大后由图片消费拖动，用于查看局部。
+ */
 @Composable
 private fun ZoomablePhoto(photo: GalleryPhoto, modifier: Modifier = Modifier) {
     var scale by remember(photo.id) { mutableFloatStateOf(1f) }
     var offset by remember(photo.id) { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
+    val transformableState = rememberTransformableState { _, zoom, pan, _ ->
+        val nextScale = (scale * zoom).coerceIn(1f, 5f)
+        // 缩放后图片四周可移动的距离，限制偏移避免拖出空白区域。
+        val maxX = viewport.width * (nextScale - 1f) / 2f
+        val maxY = viewport.height * (nextScale - 1f) / 2f
+        scale = nextScale
+        offset = if (nextScale <= 1f) {
+            Offset.Zero
+        } else {
+            Offset(
+                x = (offset.x + pan.x).coerceIn(-maxX, maxX),
+                y = (offset.y + pan.y).coerceIn(-maxY, maxY)
+            )
+        }
+    }
 
     Box(modifier = modifier
         .clipToBounds()
         .onSizeChanged { viewport = it }
+        .transformable(state = transformableState, canPan = { scale > 1f })
         .pointerInput(photo.id) {
             detectTapGestures(
                 onDoubleTap = {
@@ -229,23 +267,6 @@ private fun ZoomablePhoto(photo: GalleryPhoto, modifier: Modifier = Modifier) {
                         offset = Offset.Zero
                     }
                 })
-        }
-        .pointerInput(photo.id) {
-            detectTransformGestures { _, pan, zoom, _ ->
-                val nextScale = (scale * zoom).coerceIn(1f, 5f)
-                // 缩放后图片四周可移动的距离，限制偏移避免拖出空白区域。
-                val maxX = viewport.width * (nextScale - 1f) / 2f
-                val maxY = viewport.height * (nextScale - 1f) / 2f
-                scale = nextScale
-                offset = if (nextScale <= 1f) {
-                    Offset.Zero
-                } else {
-                    Offset(
-                        x = (offset.x + pan.x).coerceIn(-maxX, maxX),
-                        y = (offset.y + pan.y).coerceIn(-maxY, maxY)
-                    )
-                }
-            }
         }) {
         AsyncImage(
             model = photo.uri,
