@@ -26,7 +26,9 @@ data class CameraUiState(
     /** 外部应用返回后暂停扫码，防止同一二维码被立即重复记录。 */
     val resumeRequired: Boolean = false,
     val writePhotoLocation: Boolean = false,
-    val livePhotoEnabled: Boolean = false
+    val livePhotoEnabled: Boolean = false,
+    /** 拍照模式下是否在取景框上绘制三分构图线。 */
+    val cameraGridEnabled: Boolean = true
 )
 
 /**

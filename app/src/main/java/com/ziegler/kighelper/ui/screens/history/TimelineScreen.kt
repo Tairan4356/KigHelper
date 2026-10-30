@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -244,6 +245,38 @@ fun TimelineScreen(
             }
         }
     }
+    // 快速浏览手柄按网格 item 索引定位，先算出筛选栏、权限提示等前置项数量。
+    val leadingTimelineIndex = remember(
+        state.selectionMode, state.mediaAccess, state.isLoading, state.errorMessage
+    ) {
+        if (state.selectionMode) {
+            0
+        } else {
+            var count = 1
+            if (state.mediaAccess == MediaAccessState.DENIED || state.mediaAccess == MediaAccessState.PARTIAL) {
+                count += 1
+            }
+            if (state.isLoading) count += 1
+            if (state.errorMessage != null) count += 1
+            count
+        }
+    }
+    // 只在月份变化处记录锚点，拖动时即可用目标 item 索引反查所属月份。
+    val monthMarkers = remember(groupedItems, leadingTimelineIndex) {
+        val markers = mutableListOf<TimelineMonthMarker>()
+        var gridIndex = leadingTimelineIndex
+        var previousLabel: String? = null
+        groupedItems.forEach { (date, group) ->
+            val label = formatTimelineMonthLabel(date)
+            if (label != previousLabel) {
+                markers += TimelineMonthMarker(gridIndex, label)
+                previousLabel = label
+            }
+            // 当前分组的日期标题占 1 个 item，组内每条内容各占 1 个 item。
+            gridIndex += 1 + group.size
+        }
+        markers
+    }
     // 查看器只切换当前筛选结果中的照片，顺序与时光轴一致。
     val visiblePhotos = remember(visibleItems) {
         visibleItems.filterIsInstance<TimelineItem.Photo>().map { it.photo }
@@ -373,163 +406,182 @@ fun TimelineScreen(
                     onDelete = { showDeleteConfirm = true })
             }
         }) { padding ->
-            LazyVerticalGrid(
-                columns = if (showThumbnails) {
-                    GridCells.Adaptive(minSize = 96.dp)
-                } else {
-                    GridCells.Fixed(1)
-                },
-                state = gridState,
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp
-                ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(padding)
             ) {
-                if (!state.selectionMode) {
-                    item(
-                        key = "filters", span = { GridItemSpan(maxLineSpan) }) {
-                        TimelineFilterRow(
-                            selected = state.filter,
-                            photoCount = state.photos.size,
-                            scanCount = state.scans.size,
-                            enabled = !state.isDeleting,
-                            onSelected = viewModel::setFilter
-                        )
-                    }
-
-                    when (state.mediaAccess) {
-                        MediaAccessState.DENIED -> {
-                            item(
-                                key = "media_permission", span = { GridItemSpan(maxLineSpan) }) {
-                                MediaPermissionCard(onRequest = {
-                                    viewModel.markMediaPermissionRequested()
-                                    mediaPermissionLauncher.launch(
-                                        MediaPermissions.requestedPermissions
-                                    )
-                                }, onOpenSettings = {
-                                    context.startActivity(
-                                        Intent(
-                                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                            Uri.fromParts(
-                                                "package", context.packageName, null
-                                            )
-                                        )
-                                    )
-                                })
-                            }
+                LazyVerticalGrid(
+                    columns = if (showThumbnails) {
+                        GridCells.Adaptive(minSize = 96.dp)
+                    } else {
+                        GridCells.Fixed(1)
+                    },
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (!state.selectionMode) {
+                        item(
+                            key = "filters", span = { GridItemSpan(maxLineSpan) }) {
+                            TimelineFilterRow(
+                                selected = state.filter,
+                                photoCount = state.photos.size,
+                                scanCount = state.scans.size,
+                                enabled = !state.isDeleting,
+                                onSelected = viewModel::setFilter
+                            )
                         }
 
-                        MediaAccessState.PARTIAL -> {
-                            item(
-                                key = "media_partial", span = { GridItemSpan(maxLineSpan) }) {
-                                PartialAccessBanner(
-                                    onManage = {
+                        when (state.mediaAccess) {
+                            MediaAccessState.DENIED -> {
+                                item(
+                                    key = "media_permission",
+                                    span = { GridItemSpan(maxLineSpan) }) {
+                                    MediaPermissionCard(onRequest = {
+                                        viewModel.markMediaPermissionRequested()
                                         mediaPermissionLauncher.launch(
                                             MediaPermissions.requestedPermissions
                                         )
+                                    }, onOpenSettings = {
+                                        context.startActivity(
+                                            Intent(
+                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                Uri.fromParts(
+                                                    "package", context.packageName, null
+                                                )
+                                            )
+                                        )
                                     })
+                                }
                             }
+
+                            MediaAccessState.PARTIAL -> {
+                                item(
+                                    key = "media_partial", span = { GridItemSpan(maxLineSpan) }) {
+                                    PartialAccessBanner(
+                                        onManage = {
+                                            mediaPermissionLauncher.launch(
+                                                MediaPermissions.requestedPermissions
+                                            )
+                                        })
+                                }
+                            }
+
+                            MediaAccessState.FULL -> Unit
                         }
 
-                        MediaAccessState.FULL -> Unit
-                    }
-
-                    if (state.isLoading) {
-                        item(
-                            key = "loading", span = { GridItemSpan(maxLineSpan) }) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("正在读取相册…", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-
-                    state.errorMessage?.let { message ->
-                        item(
-                            key = "error", span = { GridItemSpan(maxLineSpan) }) {
-                            Card {
+                        if (state.isLoading) {
+                            item(
+                                key = "loading", span = { GridItemSpan(maxLineSpan) }) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        text = message,
-                                        modifier = Modifier.weight(1f),
-                                        color = MaterialTheme.colorScheme.error
+                                        "正在读取相册…", style = MaterialTheme.typography.bodySmall
                                     )
-                                    IconButton(onClick = viewModel::refresh) {
-                                        Icon(Icons.Filled.Refresh, contentDescription = "重试")
+                                }
+                            }
+                        }
+
+                        state.errorMessage?.let { message ->
+                            item(
+                                key = "error", span = { GridItemSpan(maxLineSpan) }) {
+                                Card {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = message,
+                                            modifier = Modifier.weight(1f),
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        IconButton(onClick = viewModel::refresh) {
+                                            Icon(Icons.Filled.Refresh, contentDescription = "重试")
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                groupedItems.forEach { (date, group) ->
-                    item(
-                        key = "date:${date ?: "unknown"}", span = { GridItemSpan(maxLineSpan) }) {
-                        DateHeader(date)
-                    }
-                    items(group, key = { it.stableKey }) { item ->
-                        val selected = when (item) {
-                            is TimelineItem.Photo -> item.photo.id in state.selection.photoIds
-                            is TimelineItem.Scan -> item.record.id in state.selection.scanIds
+                    groupedItems.forEach { (date, group) ->
+                        item(
+                            key = "date:${date ?: "unknown"}",
+                            span = { GridItemSpan(maxLineSpan) }) {
+                            DateHeader(date)
                         }
-                        val onClick = {
-                            if (state.selectionMode) {
-                                viewModel.toggleSelection(item)
-                            } else {
-                                when (item) {
-                                    is TimelineItem.Photo -> selectedPhoto = item.photo
-                                    is TimelineItem.Scan -> selectedScan = item.record
+                        items(group, key = { it.stableKey }) { item ->
+                            val selected = when (item) {
+                                is TimelineItem.Photo -> item.photo.id in state.selection.photoIds
+                                is TimelineItem.Scan -> item.record.id in state.selection.scanIds
+                            }
+                            val onClick = {
+                                if (state.selectionMode) {
+                                    viewModel.toggleSelection(item)
+                                } else {
+                                    when (item) {
+                                        is TimelineItem.Photo -> selectedPhoto = item.photo
+                                        is TimelineItem.Scan -> selectedScan = item.record
+                                    }
                                 }
                             }
-                        }
-                        val onLongClick = {
-                            if (state.selectionMode) {
-                                viewModel.toggleSelection(item)
+                            val onLongClick = {
+                                if (state.selectionMode) {
+                                    viewModel.toggleSelection(item)
+                                } else {
+                                    viewModel.enterSelection(item)
+                                }
+                            }
+                            if (showThumbnails) {
+                                TimelineThumbnail(
+                                    item = item,
+                                    selectionMode = state.selectionMode,
+                                    selected = selected,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick
+                                )
                             } else {
-                                viewModel.enterSelection(item)
+                                TimelineRow(
+                                    item = item,
+                                    selectionMode = state.selectionMode,
+                                    selected = selected,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick
+                                )
                             }
                         }
-                        if (showThumbnails) {
-                            TimelineThumbnail(
-                                item = item,
-                                selectionMode = state.selectionMode,
-                                selected = selected,
-                                onClick = onClick,
-                                onLongClick = onLongClick
-                            )
-                        } else {
-                            TimelineRow(
-                                item = item,
-                                selectionMode = state.selectionMode,
-                                selected = selected,
-                                onClick = onClick,
-                                onLongClick = onLongClick
-                            )
+                    }
+
+                    if (visibleItems.isEmpty() && !state.isLoading) {
+                        item(
+                            key = "empty", span = { GridItemSpan(maxLineSpan) }) {
+                            EmptyTimeline()
                         }
                     }
                 }
 
-                if (visibleItems.isEmpty() && !state.isLoading) {
-                    item(
-                        key = "empty", span = { GridItemSpan(maxLineSpan) }) {
-                        EmptyTimeline()
-                    }
-                }
+                // 底部留出 FAB 的 88dp 空间，拖动轨道不会与“回到顶部”按钮重叠。
+                TimelineQuickScroller(
+                    gridState = gridState,
+                    monthMarkers = monthMarkers,
+                    enabled = !state.selectionMode && !state.isDeleting && visibleItems.isNotEmpty(),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(top = 8.dp, bottom = 88.dp)
+                )
             }
         }
 

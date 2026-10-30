@@ -38,6 +38,9 @@ data class AppSettings(
     val thirdPartyCameraPackage: String? = null,
     val thirdPartyCameraActivity: String? = null,
 
+    /** 是否在内置相机拍照取景框中显示三分构图线。 */
+    val cameraGridEnabled: Boolean = true,
+
     /** 是否尝试把定位写入照片 EXIF。 */
     val writePhotoLocation: Boolean = true,
 
@@ -84,6 +87,7 @@ class SettingsRepository @Inject constructor(
         const val LEGACY_THIRD_PARTY_CAMERA_COMPONENT = "third_party_camera_component"
         const val WRITE_PHOTO_LOCATION = "write_photo_location"
         const val LIVE_PHOTO_ENABLED = "live_photo_enabled"
+        const val CAMERA_GRID_ENABLED = "camera_grid_enabled"
         const val CAMERA_COMPATIBILITY_MODE = "camera_compatibility_mode"
     }
 
@@ -133,6 +137,9 @@ class SettingsRepository @Inject constructor(
                 Keys.THIRD_PARTY_CAMERA_ACTIVITY, null
             ) ?: prefs.getString(Keys.LEGACY_THIRD_PARTY_CAMERA_COMPONENT, null)
                 ?.substringAfter('/', "")?.takeIf { it.isNotBlank() },
+            cameraGridEnabled = prefs.getBoolean(
+                Keys.CAMERA_GRID_ENABLED, true
+            ),
             writePhotoLocation = prefs.getBoolean(
                 Keys.WRITE_PHOTO_LOCATION, true
             ),
@@ -238,6 +245,12 @@ class SettingsRepository @Inject constructor(
             putString(Keys.THIRD_PARTY_CAMERA_PACKAGE, packageName)
             putString(Keys.THIRD_PARTY_CAMERA_ACTIVITY, activityName)
         }
+        saveAndEmit()
+    }
+
+    /** 构图线只影响取景预览，不会写入最终照片。 */
+    fun updateCameraGridEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(Keys.CAMERA_GRID_ENABLED, enabled) }
         saveAndEmit()
     }
 

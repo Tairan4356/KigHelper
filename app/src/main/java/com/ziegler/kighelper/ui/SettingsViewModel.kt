@@ -273,6 +273,10 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.updateThirdPartyCamera(packageName, activityName)
     }
 
+    fun updateCameraGridEnabled(enabled: Boolean) {
+        settingsRepository.updateCameraGridEnabled(enabled)
+    }
+
     fun updateWritePhotoLocation(enabled: Boolean) {
         settingsRepository.updateWritePhotoLocation(enabled)
     }

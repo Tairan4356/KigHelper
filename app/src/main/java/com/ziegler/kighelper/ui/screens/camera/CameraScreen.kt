@@ -429,6 +429,10 @@ fun CameraScreen(
                             onQrDetected = viewModel::onQrDetected,
                             onCameraError = viewModel::reportCameraError
                         )
+                        // 参考线只用于拍照构图；扫码模式保留原有取景框提示。
+                        if (state.cameraGridEnabled && !scanMode) {
+                            CameraGridOverlay(modifier = Modifier.fillMaxSize())
+                        }
                         if (scanMode) {
                             ScanFrameHint(
                                 modifier = Modifier

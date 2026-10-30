@@ -54,6 +54,7 @@ class CameraViewModel @Inject constructor(
             source = cameraAppResolver.resolve(initialSettings),
             writePhotoLocation = initialSettings.writePhotoLocation,
             livePhotoEnabled = initialSettings.livePhotoEnabled,
+            cameraGridEnabled = initialSettings.cameraGridEnabled,
             hdrEnabled = !initialSettings.cameraCompatibilityMode
         )
     )
@@ -73,6 +74,7 @@ class CameraViewModel @Inject constructor(
                         source = resolved,
                         writePhotoLocation = settings.writePhotoLocation,
                         livePhotoEnabled = settings.livePhotoEnabled,
+                        cameraGridEnabled = settings.cameraGridEnabled,
                         hdrEnabled = !settings.cameraCompatibilityMode,
                         resumeRequired = it.resumeRequired && resolved.provider == CameraProvider.BUILT_IN
                     )

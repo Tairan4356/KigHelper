@@ -117,6 +117,13 @@ internal fun SettingsCameraSection(
         if (settings.cameraProvider == CameraProvider.BUILT_IN) {
             Spacer(modifier = Modifier.height(16.dp))
             SettingSwitch(
+                title = "参考线",
+                subtitle = "在取景框中显示三分构图线",
+                checked = settings.cameraGridEnabled,
+                onCheckedChange = viewModel::updateCameraGridEnabled
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SettingSwitch(
                 title = "实况照片",
                 subtitle = "保存拍照后 2 秒动态画面",
                 checked = settings.livePhotoEnabled,

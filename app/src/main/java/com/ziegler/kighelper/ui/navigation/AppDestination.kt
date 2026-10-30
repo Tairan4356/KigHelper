@@ -23,6 +23,10 @@ object AppRoutes {
     const val VOICE_SETTINGS = "voice_settings"
     const val ABOUT = "about"
     const val SETTINGS = "settings"
+
+    /** 设置页的可选分区参数，取值见 SettingsSection.routeValue。 */
+    const val SETTINGS_SECTION_ARG = "section"
+    const val SETTINGS_PATTERN = "$SETTINGS?$SETTINGS_SECTION_ARG={$SETTINGS_SECTION_ARG}"
     const val SOCIAL_CARD_EDIT = "social_card_edit"
     const val ONBOARDING = "onboarding"
 
@@ -43,6 +47,15 @@ object AppRoutes {
         }
 
         return if (queryParams.isEmpty()) ADD_EDIT else "$ADD_EDIT?${queryParams.joinToString("&")}"
+    }
+
+    /** 生成设置页路由；section 用于进入页面后定位到指定设置分区。 */
+    fun settingsRoute(section: String? = null): String {
+        return if (section == null) {
+            SETTINGS
+        } else {
+            "$SETTINGS?$SETTINGS_SECTION_ARG=${Uri.encode(section)}"
+        }
     }
 }
 

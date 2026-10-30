@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,6 +53,28 @@ import com.ziegler.kighelper.ui.utils.findActivity
 import kotlinx.coroutines.launch
 
 /**
+ * 设置页可被外部直接定位的分区。
+ *
+ * routeValue 同时作为导航参数值，避免路由层依赖页面内部的枚举顺序。
+ */
+enum class SettingsSection(val routeValue: String) {
+    FONT("font"), APPEARANCE("appearance"), SYSTEM("system"), CAMERA("camera"), PERMISSION("permission");
+
+    companion object {
+        fun fromRoute(value: String?): SettingsSection? {
+            return entries.firstOrNull { it.routeValue == value }
+        }
+    }
+}
+
+/** 各卡片在 LazyColumn 中的位置；新增或调整分区顺序时需要同步更新。 */
+private const val FONT_SECTION_INDEX = 0
+private const val APPEARANCE_SECTION_INDEX = 1
+private const val SYSTEM_SECTION_INDEX = 2
+private const val CAMERA_SECTION_INDEX = 3
+private const val PERMISSION_SECTION_INDEX = 4
+
+/**
  * 设置页编排层。
  *
  * 各设置分区已拆分到 `ui/screens/settings`，页面只负责收集状态、
@@ -60,7 +83,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel, onBack: () -> Unit, onTestDevice: (Int) -> Unit
+    viewModel: SettingsViewModel,
+    onBack: () -> Unit,
+    onTestDevice: (Int) -> Unit,
+    initialSection: SettingsSection? = null
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val playbackDevices by viewModel.playbackDevices.collectAsStateWithLifecycle()
@@ -70,10 +96,23 @@ fun SettingsScreen(
     val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
     val isLoadingCatalog by viewModel.isLoadingCatalog.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val listState = rememberLazyListState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // 进入时直接定位到设置，其他入口仍保持从顶部开始。
+    LaunchedEffect(initialSection) {
+        when (initialSection) {
+            SettingsSection.FONT -> listState.scrollToItem(FONT_SECTION_INDEX)
+            SettingsSection.APPEARANCE -> listState.scrollToItem(APPEARANCE_SECTION_INDEX)
+            SettingsSection.SYSTEM -> listState.scrollToItem(SYSTEM_SECTION_INDEX)
+            SettingsSection.CAMERA -> listState.scrollToItem(CAMERA_SECTION_INDEX)
+            SettingsSection.PERMISSION -> listState.scrollToItem(PERMISSION_SECTION_INDEX)
+            null -> Unit
+        }
+    }
 
     var showFontManagementDialog by remember { mutableStateOf(false) }
     var showCameraPicker by remember { mutableStateOf(false) }
@@ -188,23 +227,24 @@ fun SettingsScreen(
             )
         }) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
+            item(key = "font") {
                 SettingsFontSection(
                     settings = settings,
                     installedFonts = installedFonts,
                     viewModel = viewModel,
                     onShowFontManagement = { showFontManagementDialog = true })
             }
-            item {
+            item(key = "appearance") {
                 SettingsAppearanceSection(settings = settings, viewModel = viewModel)
             }
-            item {
+            item(key = "system") {
                 SettingsSystemSection(
                     settings = settings,
                     playbackDevices = playbackDevices,
@@ -212,7 +252,7 @@ fun SettingsScreen(
                     onTestDevice = onTestDevice
                 )
             }
-            item {
+            item(key = "camera") {
                 SettingsCameraSection(
                     settings = settings,
                     cameraApps = cameraApps,
@@ -221,7 +261,7 @@ fun SettingsScreen(
                     onWriteLocationChange = ::requestLocationForPhotoSetting
                 )
             }
-            item {
+            item(key = "permission") {
                 SettingsPermissionSection(settings = settings, viewModel = viewModel)
             }
         }

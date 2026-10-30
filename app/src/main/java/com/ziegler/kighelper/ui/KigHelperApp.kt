@@ -64,6 +64,7 @@ import com.ziegler.kighelper.ui.screens.EditScreen
 import com.ziegler.kighelper.ui.screens.InputScreen
 import com.ziegler.kighelper.ui.screens.MainScreen
 import com.ziegler.kighelper.ui.screens.SettingsScreen
+import com.ziegler.kighelper.ui.screens.SettingsSection
 import com.ziegler.kighelper.ui.screens.SocialCardEditScreen
 import com.ziegler.kighelper.ui.screens.ToolboxScreen
 import com.ziegler.kighelper.ui.screens.VoiceSettingsScreen
@@ -158,7 +159,11 @@ fun KigHelperApp(
                 onDestinationClick = onDestinationClick,
                 showCameraActions = showCameraChromeActions,
                 onOpenTimeline = { navController.navigate(AppRoutes.TIMELINE) },
-                onOpenSettings = { navController.navigate(AppRoutes.SETTINGS) })
+                onOpenSettings = {
+                    navController.navigate(
+                        AppRoutes.settingsRoute(SettingsSection.CAMERA.routeValue)
+                    )
+                })
         }
 
         Scaffold(
@@ -171,7 +176,11 @@ fun KigHelperApp(
                     onDestinationClick = onDestinationClick,
                     showCameraActions = showCameraChromeActions,
                     onOpenTimeline = { navController.navigate(AppRoutes.TIMELINE) },
-                    onOpenSettings = { navController.navigate(AppRoutes.SETTINGS) })
+                    onOpenSettings = {
+                        navController.navigate(
+                            AppRoutes.settingsRoute(SettingsSection.CAMERA.routeValue)
+                        )
+                    })
             }) { innerPadding ->
             SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
                 NavHost(
@@ -343,7 +352,9 @@ fun KigHelperApp(
                                 navController.navigate(AppRoutes.TIMELINE)
                             },
                             onOpenSettings = {
-                                navController.navigate(AppRoutes.SETTINGS)
+                                navController.navigate(
+                                    AppRoutes.settingsRoute(SettingsSection.CAMERA.routeValue)
+                                )
                             },
                             externalLaunchRequested = cameraLaunchRequested,
                             onExternalLaunchHandled = {
@@ -552,11 +563,25 @@ fun KigHelperApp(
                         AboutScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composable(AppRoutes.SETTINGS) {
+                    // 设置页支持可选的 section 参数，用于从相机页进入时直接定位相机分区。
+                    composable(
+                        route = AppRoutes.SETTINGS_PATTERN,
+                        arguments = listOf(
+                            navArgument(AppRoutes.SETTINGS_SECTION_ARG) {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            })
+                    ) { backStackEntry ->
                         SettingsScreen(
                             viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
-                            onTestDevice = onTestDevice
+                            onTestDevice = onTestDevice,
+                            initialSection = SettingsSection.fromRoute(
+                                backStackEntry.arguments?.getString(
+                                    AppRoutes.SETTINGS_SECTION_ARG
+                                )
+                            )
                         )
                     }
 

@@ -3,13 +3,16 @@ package com.ziegler.kighelper.ui.screens.camera
 import android.content.Context
 import android.util.Log
 import androidx.camera.core.Camera
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.MeteringPoint
 import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
 import com.ziegler.kighelper.data.camera.CAMERA_LOG_TAG
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * 连接 Compose 页面与当前 CameraX 会话的轻量控制器。
@@ -62,6 +65,23 @@ internal class CameraController {
         videoCapture?.targetRotation = rotation
     }
 
+    /**
+     * 在预览画面上手动对焦和测光。
+     *
+     * 3 秒后自动取消，让相机恢复连续自动对焦，避免用户离开点击位置后画面长期失焦。
+     */
+    fun focus(point: MeteringPoint) {
+        val control = camera?.cameraControl ?: return
+        val action = FocusMeteringAction.Builder(
+            point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+        ).setAutoCancelDuration(3, TimeUnit.SECONDS).build()
+        runCatching {
+            control.startFocusAndMetering(action)
+        }.onFailure { error ->
+            Log.w(CAMERA_LOG_TAG, "focus failed", error)
+        }
+    }
+
     fun capture(
         context: Context,
         livePhotoEnabled: Boolean,
@@ -95,6 +115,8 @@ internal class CameraController {
         analyzer?.enabled = false
         analyzer = null
         captureCoordinator.cancel()
+        // 会话即将解绑时取消未完成的手动对焦。
+        runCatching { camera?.cameraControl?.cancelFocusAndMetering() }
         camera = null
         imageCapture = null
         videoCapture = null
