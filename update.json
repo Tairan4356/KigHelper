@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "1.3.3",
-  "updateContent": "1. 快捷卡片新增图片和视频显示\n2. 设置页新增主页自定义提示文字\n3. 语音设置新增在线 TTS API 调用功能\n4. 重构部分页面为MD3 Expressive\n5. 修复了小组件无法点击的问题\n6. 升级了部分依赖库",
+  "versionCode": 11,
+  "versionName": "1.4.0",
+  "updateContent": "1. 新增相机页面\n2. 新增时光轴页面\n3. 扩列卡片新增集合码\n4. 扩列卡片支持分享\n5. 设置页面新增相机设置",
   "downloadUrl": "https://kighelper.pages.dev/"
 }
